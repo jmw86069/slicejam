@@ -1,0 +1,80 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# slicejam
+
+<!-- badges: start -->
+
+<!-- badges: end -->
+
+The goal of slicejam is to perform differential ChIP-seq and ATAC-seq
+peak analysis with a reproducible that includes detailed data QC,
+normalization, optional batch adjustment, and user-configurable
+statistical filtering.
+
+The workflow is wrapped into an Rmarkdown file in the `exec/` subfolder
+of the package.
+
+## Installation
+
+The development version of slicejam can be installed with:
+
+``` r
+# install.packages("remotes")
+remotes::install_github("jmw86069/slicejam");
+```
+
+## Brief Overview of Slicejam
+
+This workflow is intended to be paired with another tool (to be
+released) which performs a simple task. It merges peak calls across
+multiple samples, then slices peaks based upon a maximum allowed peak
+width. The sliced peaks are used in featureCounts to generate a read
+count matrix by sliced peaks. Because the peaks are limited in width,
+the comparisons are more consistent than when using a wide variety of
+peak widths. Also, this process is also more sensitive to changes in a
+subset portion of a broadly enriched genomic region. ATAC-seq data, and
+H3K27Ac data often has quite broad regions of enriched signal, where
+part of this region may be consistently increasing or decreasing across
+sample groups. In many cases the overall “area under the curve” for the
+broad region is not significantly different, while the “area under the
+curve” for the subset region appears very substantially and consistently
+different.
+
+A nice by-product of this workflow is that the statistical comparison is
+more tolerant to lenient peak calling parameters. In other words, slight
+differences in peak calling across different samples are well-tolerated
+by this workflow.
+
+The basic workflow is similar to many other “omics” type analyses:
+
+  - data import
+  - define sample groups
+  - normalize data (quantile normalization)
+  - optional batch adjustment
+  - visual QC using MA-plots from the jamma R package
+  - sample correlation heatmaps
+  - stats comparisons using limma-voom
+  - optionally filter peaks tested upfront by minimum signal, then
+    repeat limma-voom
+  - volcano plots
+  - directional Venn diagrams
+  - heatmap of hits
+  - annotate peaks by genome region, nearest gene, etc.
+  - save stats results to files
+  - optionally save R session to RData file
+
+## Rmarkdown
+
+Currently the workflow is implemented as an Rmarkdown document, which
+can be invoked from the commandline to produce a report in a
+subdirectory named based upon the input filename.
+
+The workflow starts with a featureCounts `".fc"` file, whose columns
+represent sequence replicates of ChIP-seq and/or ATAC-seq data. Rows of
+this table are expected to be peaks, or sliced peaks, where peaks are
+sliced based upon maximum allowed width.
+
+The available options, and more details about the exact workflow, are
+described in the file `"slicejam_setup.html"`.
+[slicejam\_setup.html](https://jmw86069.github.io/slicejam/slicejam_setup.html)

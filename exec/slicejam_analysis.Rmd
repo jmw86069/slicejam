@@ -1,0 +1,2206 @@
+---
+title: "Slicejam Analysis"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+    theme: cerulean
+    highlight: pygments
+    df_print: kable
+    self_contained: false
+---
+   
+About this document:
+
+* prepared on **`r format(Sys.time(), "%a %b %d %X %Y")`**
+* using **`r R.version.string`**
+* R slicejam package version **`r packageVersion("slicejam")`**.
+
+### R environment setup
+
+This document can be reproduced using the R code displayed in
+this document. The initial steps involve loading R packages
+into memory.
+
+```{r, outdir}
+OUTDIR <- Sys.getenv("OUTDIR");
+if (length(OUTDIR) == 0 || nchar(OUTDIR) == 0) {
+   OUTDIR <- ".";
+}
+CACHEDIR <- Sys.getenv("CACHEDIR");
+if (length(CACHEDIR) == 0 || nchar(CACHEDIR) == 0) {
+   CACHEDIR <- file.path(OUTDIR, "cache", "");
+}
+if (length(grep("/$", CACHEDIR)) == 0) {
+   CACHEDIR <- file.path(CACHEDIR, "");
+}
+SAVE_RDATA <- Sys.getenv("SAVE_RDATA");
+if (length(SAVE_RDATA) == 0 || nchar(SAVE_RDATA) == 0 || SAVE_RDATA %in% c("0", "FALSE", "F")) {
+   SAVE_RDATA <- FALSE;
+} else {
+   SAVE_RDATA <- TRUE;
+}
+ATAC <- Sys.getenv("ATAC");
+if (length(ATAC) == 0 || nchar(ATAC) == 0 || is.na(ATAC) || ATAC %in% c(0, "0", "F", "NA", "N", "n")) {
+   ATAC <- FALSE;
+} else {
+   ATAC <- TRUE;
+}
+GTF <- Sys.getenv("GTF");
+if (length(GTF) == 0 || nchar(GTF) == 0 || !file.exists(GTF)) {
+   GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/EA_Jul052017_RNAseq/hg19_refgene_041619_minimus_exons.gtf";
+   GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Copied_Intersections/110519_ATAC_broadpeak/To_James/hg19_refgene_041619_minimus_exons_v2.gtf";
+   GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Adelman/Scripts/fetch_refGene_gtf/test/hg19_121619_genes.gtf"; # 20dec2019
+}
+```
+
+```{r setup, include=TRUE}
+#    css: liao_style.css
+## To render this page:
+## In the farrisSeq folder run:
+## rmarkdown::render("Adam19_Rnaseq_Analysis_vM21.Rmd", "html_document", knit_root_dir=getwd(), output_dir=getwd());
+##    css: /Users/wardjm/Projects/R-scripts/liao_style.css
+
+## Define the cache so it is dependent upon:
+## - the versions of a few R packages,
+## - the environmental variable FC_FILE
+knitr::opts_chunk$set(cache=TRUE,
+   autodep=TRUE,
+   dev=c("png", "cairo_pdf"),
+   dev.args=list(
+      pointsize=14
+   ),
+   fig.align="center",
+   pdf.options(encoding="ISOLatin9.enc"),
+   cache.path=CACHEDIR,
+   cache.extra=list(
+      packageVersion("jamba"),
+      packageVersion("jamma"),
+      packageVersion("splicejam"),
+      paste0("FC_FILE:", Sys.getenv("FC_FILE")),
+      paste0("GTF:", Sys.getenv("GTF"))
+   )
+);
+
+options("kable_styling_position"="left",
+   "kable_styling_full_width"=FALSE,
+   "kable_styling_bootstrap_options"=c("striped",
+      "hover",
+      "condensed",
+      "responsive")
+);
+## Set font to Arial which helps compatibility in Adobe Illustrator,
+## and helps display of up and down arrow characters in Venn diagrams
+par("family"="Arial",
+   "lend"="square",
+   "ljoin"="mitre");
+```
+
+
+```{r, r_initialization, cache=FALSE}
+## Prepend a common R package install location to .libPaths()
+#.libPaths(
+#   file.path(dirname(Sys.getenv("HOME")),
+#      "wardjm/R/x86_64-pc-linux-gnu-library/3.5")
+#);
+print(".libPaths():");
+print(.libPaths());
+
+## Load R packages
+suppressPackageStartupMessages(library(jamba));
+if (!"CBioRUtils" %in% search()) {
+   cbioPath <- file.path(
+      dirname(Sys.getenv("HOME")),
+      "wardjm/Builds/NIEHS_IntegrativeBIx-svn/Bpipe/bpipeScripts/CBioRUtils.R"
+   );
+   CBioRUtils <- new.env(parent=.GlobalEnv);
+   suppressMessages(
+      sys.source(cbioPath,
+         envir=CBioRUtils,
+         keep.source=TRUE));
+   attach(CBioRUtils);
+} else {
+   ## Refresh CBioRUtils.R
+   refreshCBioRUtils();
+}
+suppressPackageStartupMessages(library(SummarizedExperiment));
+suppressPackageStartupMessages(library(colorjam));
+suppressPackageStartupMessages(library(jamma));
+suppressPackageStartupMessages(library(splicejam));
+suppressPackageStartupMessages(library(data.table));
+suppressPackageStartupMessages(library(matrixStats));
+suppressPackageStartupMessages(library(extrafont));
+suppressPackageStartupMessages(library(GenomicFeatures));
+suppressPackageStartupMessages(library(rtracklayer));
+suppressPackageStartupMessages(library(methods));
+
+```
+
+## Description of workflow
+
+* Import the first `.fc` file found in the current working directory.
+
+    * Optionally use "FC_FILE" environmental variable.
+
+* Curate filename columns by one of two processes:
+
+    * If environment variable `"CURATE_YAML"` is defined, and points to
+    a file that exists, the yaml curation workflow is used.
+    * Otherwise the following rules are used to derive Sample, Group, Run,
+    assuming the colnames are in the rough format **RUN**_*GROUP*_**REP**:
+    
+        * Samples are defined by calling `basename()` to remove the
+         directory of each file (if it exists), then removing
+         the file stem, and any recognized keywords such as `"dedup"`,
+         `"cutadapt"`, `"fastq"`, etc.
+        * Sample is split using the delimiter `"[-_.]"` and the
+         first word is used for `"Run"`, the second word is used
+         for `"Group"`.
+        * The delimiter therefore can be any of: hyphen `"-"`,
+         underscore `"_"`, or decimal `"."`.
+        * Group is converted to factor, whose levels are ordered
+         so that several recognized control labels are first:
+         `"Control","ctrl","ctl","veh","blank","ntc"`, followed by
+         the groups in the order they appear as column names in
+         the featureCounts file.
+
+* An R object `SummarizedExperiment` is created, using the columns
+from featureCounts to populate rows, such as
+`"Geneid", "Chr", "Start", "End", "Strand", "Length"`.
+* Assign categorical colors to the unique values in the `"Group"` column.
+
+* Normalization and batch adjustment
+
+    * Quantile-normalize peak counts across all samples.
+    * When the `"Run"` column contains more than one unique value,
+    apply batch adjustment using the `"Run"` column to define batch,
+    and `"Group"` to define groups, using the quantile-normalized data.
+
+* Create MA-plots:
+
+    * un-normalized data, global-centered
+    * un-normalized data, centered by "Run"
+    * quantile-normalized data, global-centered
+    * quantile-normalized data, centered by "Run"
+    * quantile-normalized data, centered by "Group","Run"
+    * quantile-normalizeddata, global-centered, batch-adjusted by "Run"
+
+* Create sample correlation heatmaps:
+
+   * quantile-normalized data, centered by the first factor level
+   in "Group", intended to act as a control group.
+   * quantile-normalized data, batch-adjusted by "Run", centered by the
+   first factor level in "Group".
+
+* Statistical comparisons
+
+   * Use the `"Group"` column to define groups, design, and contrasts.
+   
+       * Note that contrasts are limited to comparisons to the first
+       `"Group"` level.
+   
+   * Use quantile-normalized, batch-adjusted counts.
+   * Apply cutoffs: maxGroupMean >= 4; fold change >= 1.5; adjusted P-value <= 0.05
+   * Apply secondary max group mean filtering with MGM=`{r cat(MGM)}`, to
+   reduce the number of peaks used for statistical testing
+   * Apply cutoffs: maxGroupMean >= 4; fold change >= 1.5; adjusted P-value <= 0.05
+
+* Create volcano plots
+
+    * Plot each contrast using the P-value, then using adjusted P-value.
+
+* Create Venn diagrams:
+
+    * Include each set of two contrasts with "all peak" hits.
+    * Include each set of two contrasts with "MGM-filtered peak" hits.
+
+* Annotate peaks
+
+    * Associate each peak with one or more overlapping feature_types
+    * Call one feature_type_winner per peak, based upon order: promoter, TTS, exon, intron, intergenic
+    * Create pie charts showing distribution of feature_type for differential
+    peaks from the "all peaks" comparison
+    * Create pie charts showing distribution of feature_type for differential
+    peaks from the "MGM-filtered peaks" comparison
+
+* Re-annotate peaks into broad_peaks by merging adjacent slices
+
+    * Count broad_peak hits from the "all peaks" comparison.
+    * Count broad_peak hits from the "MGM-filtered peaks" comparison.
+
+* Heatmap of peak hits across samples
+
+    * Heatmap of peak hits from the "all peaks" comparison.
+    * Heatmap of peak hits from the "MGM-filtered peaks" comparison.
+
+* Optional ATAC-mode annotation to "active promoter genes"
+
+    * Define active promoter genes by presence of ATAC-seq peak in promoter region.
+    * Annotate peaks by nearest active promoter peak, along with distance.
+
+* Save stats results to text files
+
+    * Save "all peak" stats to tab-delimited text file.
+    * Save "MGM-filtered peak" stats to tab-delimited text file.
+    * This file is also used to create the "table of Venn intersections."
+
+* Optionally save RData session
+
+## Analysis workflow
+
+
+### Import .fc file
+
+Currently this workflow will use a `".fc"` file defined
+via the environmental variable `"FC_FILE"`, or if that
+variable is not defined, it searches for the first `".fc"`
+file in the current working directory.
+
+```{r, import_fc}
+## Try to use FC_FILE
+fc_env <- Sys.getenv("FC_FILE");
+if (nchar(fc_env) > 0) {
+   if (!file.exists(fc_env)) {
+      stop(paste0("FC_FILE does not exists as a file:", fc_env,
+         " in working directory:", getwd()));
+   }
+   fc_file <- fc_env;
+} else {
+   fc_file <- head(list.files(pattern="[.]fc$"), 1);
+}
+printDebug("Using fc_file:", fc_file);
+
+## Import
+fc_data <- data.frame(check.names=FALSE,
+   stringsAsFactors=FALSE,
+   data.table::fread(fc_file, skip="Geneid"));
+## Add zero-padding to peak numbers
+fc_data[,"Geneid"] <- paste0("peak_",
+   jamba::padInteger(seq_len((nrow(fc_data)))));
+rownames(fc_data) <- fc_data[,"Geneid"];
+
+# featureCounts colnames
+fc_colnames <- intersect(c("Geneid","Chr","Start","End","Strand","Length"),
+   colnames(fc_data));
+if (length(fc_colnames) == 0) {
+   stop(paste0("None of the featureCounts colnames were detected: ", cPaste(fc_colnames)));
+}
+filenames <- setdiff(colnames(fc_data), fc_colnames);
+
+curation_yaml <- Sys.getenv("CURATION_YAML");
+if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curation_yaml)) {
+   curationL <- tryCatch({
+      yaml::yaml.load(curation_yaml);
+   }, error=function(e){
+      jamba::printDebug("Error: ",
+         c("curation_yaml file '",
+         curation_yaml,
+         "' coult not be parsed by yaml::yaml.load()"),
+         sep="",
+         fgText=c("red", "dodgerblue"));
+      list();
+   });
+   if (length(curationL) > 0) {
+      sample_df <- curateVtoDF(filenames, curationL);
+      sample_colname <- head(vigrep("^sample[s]*$", colnames(sample_df)), 1)
+      if (length(sample_colname) > 0) {
+         iSamples <- jamba::makeNames(sample_df[[sample_colname]]);
+      } else {
+         jamba::printDebug("Error:",
+            c("No '","Sample","' column was recognized."),
+            sep="",
+            fgText=c("red", "dodgerblue"));
+      }
+      run_colname <- head(vigrep("^run$", colnames(sample_df)), 1)
+      if (length(run_colname) > 0) {
+         Run <- sample_df[[run_colname]];
+      } else {
+         jamba::printDebug("Error:",
+            c("No '","Run","' column was recognized."),
+            sep="",
+            fgText=c("red", "dodgerblue"));
+      }
+      group_colname <- head(vigrep("^Group$", colnames(sample_df)), 1)
+      if (length(group_colname) > 0) {
+         iGroup <- sample_df[[group_colname]];
+         iGroup <- factor(iGroup,
+            levels=provigrep(c("UL3", "p2w5", "p4w4",
+               "Control|ctrl", "Veh", "NTC", "blank",
+               "."),
+               unique(iGroup)));
+         sample_df[[group_colname]] <- iGroup;
+      } else {
+         jamba::printDebug("Error:",
+            c("No '","Group","' column was recognized."),
+            sep="",
+            fgText=c("red", "dodgerblue"));
+      }
+      filename_colname <- head(vigrep("^filename$", colnames(sample_df)), 1);
+      if (length(filename_colname) == 0) {
+         filename_colname <- "Filename";
+         sample_df[[filename_colname]] <- filenames;
+      }
+      rownames(sample_df) <- sample_df[[sample_colname]];
+      knitr::kable(sample_df,
+         caption="Sample Groups Defined by curation_yaml");
+      if (any(!sapply(c("iSamples", "Run", "iGroup"), exists))) {
+         stop("One or more of iSamples,Run,Group could not be defined.");
+      }
+   } else {
+      curation_yaml <- NULL;
+   }
+}
+if (length(curation_yaml) == 0) {
+   iSamples <- gsub("[-_.](v[0-9]|Coord|DeDup|dudup|cutadapt|sickle|sanger|trim|bam|fastq|fq).*$",
+      ignore.case=TRUE,
+      "",
+      basename(filenames));
+   Run <- gsub("[-_.].+$", "", iSamples);
+   iGroup <- gsub("^([^-_.]+)[-_.]+([^-_.]+)[-_.].*$",
+      "\\2",
+      iSamples);
+   iGroup <- factor(iGroup,
+      levels=provigrep(c("UL3", "p2w5", "p4w4",
+         "Control|ctrl|ctl", "Veh", "NTC", "blank",
+         "."),
+         unique(iGroup)));
+   group_colname <- "Group";
+   sample_colname <- "Sample";
+   filename_colname <- "Filename";
+   run_colname <- "Run";
+   sample_df <- data.frame(
+      check.names=FALSE,
+      stringsAsFactors=FALSE,
+      Filename=filenames,
+      Sample=iSamples,
+      Group=Group,
+      Run=Run,
+      row.names=iSamples
+   );
+}
+
+## Rename featureCounts columns to match iSamples
+fc_data <- jamba::renameColumn(fc_data,
+   from=filenames,
+   to=iSamples);
+
+## Make SummarizedExperiment
+fc_se <- SummarizedExperiment(
+   assays=list(counts=log2(1+as.matrix(fc_data[,iSamples,drop=FALSE]))),
+   rowData=fc_data[,fc_colnames,drop=FALSE],
+   colData=sample_df);
+
+## Re-order samples by Group
+iSamples <- mixedSortDF(colData(fc_se),
+   byCols=group_colname)[[sample_colname]];
+fc_se <- fc_se[,iSamples];
+Run <- nameVector(colData(fc_se)[[run_colname]], colnames(fc_se));
+iGroup <- nameVector(colData(fc_se)[[group_colname]], colnames(fc_se));
+
+## Define sample colors
+g_levels <- levels(colData(fc_se)[[group_colname]]);
+n_levels <- length(g_levels);
+sample_colors <- nameVector(
+   head(rainbowJam(n_levels+3)[c(-3,-4,-6)], n_levels),
+   g_levels);
+color_sub1 <- nameVector(sample_colors[colData(fc_se)[[group_colname]]],
+   colData(fc_se)[[sample_colname]]);
+run_colors <- group2colors(unique(Run));
+
+run_colors1 <- nameVector(run_colors[colData(fc_se[,iSamples])[[run_colname]]],
+   iSamples);
+```
+
+### Plot distribution of peak sizes
+
+If the featureCounts output included column name `"Length"`,
+the plots below will show the distribution of lengths.
+
+```{r, peak_sizes, fig.height=6, fig.width=6}
+if ("Length" %in% colnames(rowData(fc_se))) {
+   plotPolygonDensity(rowData(fc_se)$Length,
+      main="Peak sizes",
+      xlab="Peak width",
+      breaks=100);
+   
+   plotPolygonDensity(rowData(fc_se)$Length,
+      main="Peak sizes (log-scales x-axis",
+      log="x",
+      xlab="Peak width",
+      breaks=100);
+}
+```
+
+
+### Apply quantile normalization
+
+
+```{r, norm_quantile, dependson="import_fc"}
+## Raw data
+iMatrix <- assays(fc_se[,iSamples])[["counts"]];
+
+## Evaluate quantile normalization
+fc_se <- doNorm(fc_se,
+   signal="counts",
+   methodList=c("quantile"));
+
+## Quantile-normalized data
+iMatrixQ <- assays(fc_se[,iSamples])[["quantile_counts"]];
+
+```
+
+### Apply batch-adjustment by "Run", grouped by "Group"
+
+```{r, batch_adjust_run, dependson="norm_quantile"}
+## Batch adjustment
+if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
+   fc_se_b <- tryCatch({
+      removeAllNormBatchEffect(
+         fc_se[,iSamples],
+         groupColumn=group_colname,
+         batchColumn=run_colname,
+         signal=c("counts","quantile_counts"),
+         adjustMethod="limma");
+   }, error=function(e){
+      printDebug("Error during removeAllNormBatchEffect():");
+      print(e);
+      NULL;
+   });
+   if (length(fc_se_b) > 0) {
+      ## batch-adjusted raw data
+      iMatrixB <- assays(fc_se_b[,iSamples])[["countsbatch"]];
+      ## quantile-normalized data, batch-adjusted
+      iMatrixQB <- assays(fc_se_b[,iSamples])[["quantile_countsbatch"]];
+   } else {
+      ## Do not perform batch adjustment
+      fc_se_b <- fc_se;
+      ## batch-adjusted raw data
+      iMatrixB <- assays(fc_se[,iSamples])[["counts"]];
+      ## quantile-normalized data, batch-adjusted
+      iMatrixQB <- assays(fc_se[,iSamples])[["quantile_counts"]];
+   }
+} else {
+   ## Do not perform batch adjustment
+   fc_se_b <- fc_se;
+   ## batch-adjusted raw data
+   iMatrixB <- assays(fc_se[,iSamples])[["counts"]];
+   ## quantile-normalized data, batch-adjusted
+   iMatrixQB <- assays(fc_se[,iSamples])[["quantile_counts"]];
+}
+
+
+```
+
+### Create MA-plots
+
+#### Un-normalized data, global-centered
+
+```{r, ma_layout, dependson="import_fc"}
+## Determine blank plot positions to organize Group and Run
+Group_ctm <- as.matrix(table(colData(fc_se)[,c(group_colname, run_colname)]));
+sub_n <- colMaxs(Group_ctm);
+ctm_n <- matrix(cumsum(rep(sub_n, nrow(Group_ctm))),
+   ncol=ncol(Group_ctm),
+   byrow=TRUE);
+#ctm_n;
+ma_ncol <- sum(sub_n);
+blank_pos <- unlist(lapply(1:nrow(Group_ctm), function(i){
+   rmNULL(lapply(1:ncol(Group_ctm), function(j){
+      iseq <- seq(from=ctm_n[i,j], by=-1, length.out=sub_n[j]);
+      head(iseq, sub_n[j] - Group_ctm[i,j])
+   }))
+}));
+
+```
+
+```{r, ma_raw_global, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+jp_raw <- jammaplot(
+   noiseFloor(iMatrix[,iSamples,drop=FALSE],
+      minimum=4,
+      newValue=NA),
+   ncol=ma_ncol,
+   blankPlotPos=blank_pos,
+   maintitle=c("un-normalized data", "global-centered"),
+   groupSuffix="",
+   subtitlePreset="bottomleft",
+   subtitle=Run[iSamples],
+   subtitleBoxColor=run_colors1[iSamples],
+   useMean=TRUE,
+   titleBoxColor=color_sub1[iSamples]
+)
+```
+
+#### Un-normalized data, centered by "Run"
+
+```{r, ma_raw_run, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+jp_raw_run <- jammaplot(
+   noiseFloor(iMatrix[,iSamples,drop=FALSE],
+      minimum=4,
+      newValue=NA),
+   ncol=ma_ncol,
+   blankPlotPos=blank_pos,
+   maintitle=c("un-normalized data", "centered by 'Run'"),
+   centerGroups=colData(fc_se[,iSamples])[[run_colname]],
+   groupSuffix="",
+   subtitlePreset="bottomleft",
+   subtitle=paste0("by ", Run[iSamples]),
+   subtitleBoxColor=run_colors1[iSamples],
+   useMean=TRUE,
+   titleBoxColor=color_sub1[iSamples]
+)
+```
+
+#### Quantile-normalized data, global-centered
+
+```{r, ma_q_global, fig.height=10, fig.width=14, dependson=c("norm_quantile", "ma_layout")}
+jp_q <- jammaplot(
+   noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
+      minimum=4,
+      newValue=NA),
+   ncol=ma_ncol,
+   blankPlotPos=blank_pos,
+   maintitle=c("quantile-normalized data", "global-centered"),
+   groupSuffix="",
+   subtitlePreset="bottomleft",
+   subtitle=Run[iSamples],
+   subtitleBoxColor=run_colors1[iSamples],
+   useMean=TRUE,
+   displayMAD=TRUE,
+   outlierMAD=2,
+   titleBoxColor=color_sub1[iSamples]
+)
+```
+
+#### Quantile-normalized data, centered by "Run"
+
+```{r, ma_q_run, fig.height=10, fig.width=14, dependson=c("norm_quantile", "ma_layout")}
+jp_q_run <- jammaplot(
+   noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
+      minimum=4,
+      newValue=NA),
+   ncol=ma_ncol,
+   blankPlotPos=blank_pos,
+   maintitle=c("quantile-normalized data", "centered by 'Run'"),
+   centerGroups=colData(fc_se[,iSamples])[[run_colname]],
+   groupSuffix="",
+   subtitlePreset="bottomleft",
+   subtitle=paste0("by ", Run[iSamples]),
+   subtitleBoxColor=run_colors1[iSamples],
+   useMean=TRUE,
+   displayMAD=TRUE,
+   outlierMAD=2,
+   titleBoxColor=color_sub1[iSamples]
+)
+```
+
+#### Quantile-normalized data, centered by "Group", Run"
+
+If there are replicates per Group_Run, then MA-plots will
+be displayed below, centered by Group and Run.
+
+```{r, ma_q_group_run, fig.height=10, fig.width=14, dependson=c("norm_quantile", "ma_layout")}
+grouprun_ct <- tcount(pasteByRow(colData(fc_se[,iSamples])[,c(group_colname,run_colname)]));
+if (any(grouprun_ct > 1)) {
+   jp_q_group_run <- jammaplot(
+      noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
+         minimum=4,
+         newValue=NA),
+      ncol=ma_ncol,
+      blankPlotPos=blank_pos,
+      maintitle=c("quantile-normalized data", "centered by 'Group','Run'"),
+      centerGroups=pasteByRow(colData(fc_se[,iSamples])[,c("Group","Run")]),
+      groupSuffix="",
+      subtitlePreset="bottomleft",
+      subtitle=paste0("by ", iGroup[iSamples], ",", Run[iSamples]),
+      subtitleBoxColor=get("blendColors", envir=CBioRUtils)(
+         color_sub1[iSamples],
+         run_colors1[iSamples]),
+      useMean=TRUE,
+      displayMAD=TRUE,
+      outlierMAD=2,
+      titleBoxColor=color_sub1[iSamples]
+   )
+}
+```
+
+#### Quantile-normalized data, global-centered, batch-adjusted by "Run"
+
+This set of MA-plots represents the data used for statistical comparisons.
+Note that panels display the MAD factor, which is a multiple of
+variability of each sample to the median variability across all samples.
+The threshold "2x MAD" is defined as one replicate having at least
+twice the median variability across all samples.
+
+> **At this point, outlier samples are not removed from
+downstream statistical comparisons.**
+
+```{r, ma_q_b_run, fig.height=10, fig.width=14, dependson=c("batch_adjust_run", "ma_layout")}
+jp_q_b_run <- jammaplot(
+   noiseFloor(iMatrixQB[,iSamples,drop=FALSE],
+      minimum=4,
+      newValue=NA),
+   ncol=ma_ncol,
+   blankPlotPos=blank_pos,
+   maintitle=c("quantile-normalized data", "global-centered", "batch-adjusted by 'Run'"),
+   groupSuffix="",
+   subtitlePreset="bottomleft",
+   subtitle=paste0("adj. by ", Run[iSamples]),
+   subtitleBoxColor=run_colors1[iSamples],
+   useMean=TRUE,
+   displayMAD=TRUE,
+   outlierMAD=1.951,
+   titleBoxColor=color_sub1[iSamples]
+)
+```
+
+#### Optional subset of sample outliers
+
+Initially, all samples are used, but this section is a placeholder
+for outlier detection and removal.
+
+```{r, sample_outliers}
+## Optional subset of samples (e.g. MA-plot outliers)
+iSamplesUse <- iSamples;
+printDebug("Using samples:", iSamplesUse);
+```
+
+### Sample Correlation Heatmaps
+
+
+#### Quantile-normalized data, centered by Group control
+
+```{r, cor_hm, fig.height=12, fig.width=12, dependson=c("norm_quantile", "sample_outliers")}
+## Define centering control samples
+iControl <- head(levels(Group), 1);
+iControlSamples <- intersect(
+   subset(colData(fc_se), Group %in% iControl)$Sample,
+   iSamplesUse);
+printDebug("Using control: ", iControl);
+printDebug("Control Samples: ", iControlSamples);
+
+## Center iMatrixQ
+## center all samples, but only relative to control samples in iSamplesUse
+iMatrixQctr <- centerGeneData(iMatrixQ[,iSamples,drop=FALSE],
+   mean=TRUE,
+   controlSamples=iControlSamples);
+
+## Correlation matrix
+iCorM <- cor(use="pairwise.complete.obs",
+   iMatrixQctr[,iSamplesUse,drop=FALSE]);
+
+## hcluster
+iCorM_hc <- tryCatch({
+   amap::hcluster(iCorM);
+}, error=function(e){
+   printDebug("Error during hcluster(iCorM):");
+   print(e);
+   FALSE;
+});
+
+## Heatmap
+heatmap.3(
+   iCorM,
+   hclCutoff=60,
+   ColSideColors=data.frame(
+      Group=color_sub1[iSamplesUse],
+      Run=run_colors1[iSamplesUse]),
+   ColSideColorsNote=data.frame(
+      Group=iGroup[iSamplesUse],
+      Run=Run[iSamplesUse]),
+   cexColSideColorsNote=c(0.5, 1.5),
+   RowSideColors=color_sub1[iSamplesUse],
+   Rowv=iCorM_hc,
+   Colv=iCorM_hc,
+   margins=c(20,20),
+   colLensFactor=5,
+   add.expr=box(),
+   plotAltRowDendro=FALSE,
+   main=c("quantile-normalized data"),
+   subMain=paste0("centered by ", iControl)
+)
+```
+
+
+#### Quantile-normalized data, batch-adjusted, centered by Group control
+
+```{r, cor_hm_b, fig.height=12, fig.width=12, dependson=c("batch_adjust_run", "sample_outliers")}
+## Center iMatrixQB
+## center all samples, but only relative to control samples in iSamplesUse
+iMatrixQBctr <- centerGeneData(iMatrixQB[,iSamples,drop=FALSE],
+   mean=TRUE,
+   controlSamples=iControlSamples);
+
+## Correlation matrix
+iCorMB <- cor(use="pairwise.complete.obs",
+   iMatrixQBctr[,iSamplesUse,drop=FALSE])
+
+## hcluster
+iCorMB_hc <- tryCatch({
+   amap::hcluster(iCorMB);
+}, error=function(e){
+   printDebug("Error during hcluster(iCorM):");
+   print(e);
+   FALSE;
+});
+
+## Heatmap
+heatmap.3(
+   iCorMB,
+   hclCutoff=60,
+   ColSideColors=data.frame(
+      Group=color_sub1[iSamplesUse],
+      Run=run_colors1[iSamples]),
+   ColSideColorsNote=data.frame(
+      Group=iGroup[iSamplesUse],
+      Run=Run[iSamplesUse]),
+   cexColSideColorsNote=c(0.5, 1.5),
+   RowSideColors=color_sub1[iSamplesUse],
+   Rowv=iCorMB_hc,
+   Colv=iCorMB_hc,
+   margins=c(20,20),
+   colLensFactor=5,
+   add.expr=box(),
+   plotAltRowDendro=FALSE,
+   main=c("quantile-normalized data", "batch-adjusted by 'Run'"),
+   subMain=paste0("centered by ", iControl)
+)
+```
+
+
+### Statistical Comparisons
+
+#### Confirm biological replicates
+
+If there is only one replicate per sample group, then
+the collection of samples are used to estimate
+variability during statistical testing. This procedure
+uses the moderated t-test from the `limma` R package,
+which uses an improved estimation of variability
+by including pooled variability from neighboring
+measurements.
+
+
+```{r, check_reps}
+ctGroup <- table(iGroup[iSamplesUse]);
+if (any(ctGroup > 1)) {
+   printDebug("At least one sample group contains replicates.");
+   denovo_controls <<- FALSE;
+} else {
+   printDebug("No sample group contains replicates. Pooled replicates will be created.");
+   denovo_controls <<- TRUE;
+   fc_se_ctrl <- fc_se_b[,iSamplesUse];
+   colData(fc_se_ctrl)[,group_colname] <- "Control";
+   colnames(fc_se_ctrl) <- jamba::makeNames(rep("Control", ncol(fc_se_ctrl)));
+   colData(fc_se_ctrl)[,"Sample"] <- colnames(fc_se_ctrl);
+   fc_se_b <- cbind(fc_se_ctrl, fc_se_b);
+   iSamplesUse <- colnames(fc_se_b);
+
+}
+```
+
+#### Define Design and Contrast Matrices
+
+```{r, stats_design, dependson=c("batch_adjust_run", "sample_outliers", "check_reps")}
+###############################################
+## Statistical comparisons
+conDesB <- splicejam::groups2contrasts(
+   as.data.frame(colData(fc_se_b[,iSamplesUse])[,group_colname,drop=FALSE]),
+   returnDesign=TRUE);
+iContrasts <- conDesB$iContrasts;
+iDesign <- conDesB$iDesign;
+
+## Optionally remove denovo controls from contrasts if needed
+if (denovo_controls) {
+   iRemove <- igrep("Control-|-Control", colnames(iContrasts));
+   if (length(iRemove) > 0) {
+      iContrasts <- iContrasts[, -iRemove, drop=FALSE];
+   }
+}
+
+color_sub_im <- c(`1`="#2222AA", `0`="white", `-1`="#BB5555");
+
+kable_coloring(
+   colorSub=color_sub_im,
+   as.data.frame(iDesign),
+   row.names=TRUE,
+   caption="The sample design matrix: 'iDesign'"
+   ) %>%
+   kable_styling(bootstrap_options=c("striped","bordered")) %>%
+   row_spec(0, background="#DDDDDD");
+
+kable_coloring(
+   colorSub=color_sub_im,
+   as.data.frame(iContrasts),
+   row.names=TRUE,
+   caption="The group contrast matrix: 'iContrasts'"
+   ) %>%
+   kable_styling(bootstrap_options=c("striped","bordered")) %>%
+   row_spec(0, background="#DDDDDD");
+```
+
+#### Limma stats
+
+Limma uses a "moderated t-test" for statistics, and the method
+below enables "limma-voom" which is intended for
+use with count-based data.
+
+```{r, run_limma, dependson=c("stats_design")}
+## Find best available signal
+signalList <- head(
+   provigrep(c("quantile_countsbatch", "quantile_counts"),
+      names(assays(fc_se_b))),
+   1);
+## Use all peaks
+iPeaks <- rownames(fc_se);
+
+## Determine whether we can use Voom
+useVoom <- TRUE;
+if (all(colSums(iDesign) == 1)) {
+   useVoom <- FALSE;
+}
+
+## Stats using all batches
+cutoffMaxGroupMean <- 4;
+AtacStats <- tryCatch({
+   allNormStatsTests(allNorm=fc_se_b[,iSamplesUse],
+      signalList=signalList,
+      useVoom=useVoom,
+      iContrasts=iContrasts,
+      iDesign=iDesign[iSamplesUse,,drop=FALSE],
+      cutoffMaxGroupMean=cutoffMaxGroupMean,
+      returnAllDFs=TRUE,
+      returnLmFit=TRUE,
+      iGenes=iPeaks,
+      cutoffFold=c(1.5),
+      cutoffP=NULL,
+      transformAveExpr="none",
+      cutoffAdjP=c(0.05),
+      iSamples=iSamplesUse,
+      collapseByGene=FALSE,
+      verbose=FALSE);
+}, error=function(e){
+   printDebug("Error during allNormStatsTests():");
+   print(e);
+   NULL;
+});
+if (length(AtacStats) > 0) {
+   printDebug("Stats hits by contrast and hit criteria:");
+   AtacStats$statsHitsA;
+}
+```
+
+#### Limma stats with subset peaks by signal threshold
+
+The method below is identical to that used above, except that
+peaks are filtered by minimum signal, since we apply a minimum
+signal threshold for candidate peak hits. Peak mean counts
+(normalized, batch-adjusted) are required to be at least
+this same threshold in at least one sample group to be
+included in the moderated t-test.
+
+The default threshold is **4** after `log2(1+x)` transformation,
+which corresponds to **15 counts** `(2^4 - 1)` per peak, averaged
+across replicates in each sample group. This same threshold
+is reflected in the MA-plots above, since the x-axis minimum
+value is also **4**.
+
+The maxGroupMean threshold is defined by the environmental
+variable `MGM`, used to customize the threshold during the stats
+tests:
+
+```{r, mgm_arg}
+## Get maxGroupMean threshold argument
+MGM <- Sys.getenv("MGM", 4);
+MGM <- jamba::rmNA(as.numeric(unlist(strsplit(MGM, "[ ,]+"))));
+if (length(MGM) == 0) {
+   MGM <- c(4);
+}
+if (length(MGM) > 1) {
+   jamba::printDebug("maxGroupMean thresholds: ", MGM);
+} else {
+   jamba::printDebug("maxGroupMean threshold: ", MGM);
+}
+```
+
+The max group mean threshold is: **`r cat(MGM)`**
+
+```{r, run_limma_mgm4, dependson=c("stats_design","run_limma","mgm_arg")}
+## Use the lmFit1 coefficients directly, which ensures
+## we apply the threshold to exactly the same data 
+## used in the limma test
+if (length(AtacStats) > 0) {
+   
+   if ("quantile_countsbatch" %in% names(AtacStats$statsLmFits)) {
+      coef_1 <- coefficients(AtacStats$statsLmFits$quantile_countsbatch$lmFit1);
+   } else {
+      coef_1 <- coefficients(AtacStats$statsLmFits$quantile_counts$lmFit1);
+   }
+   if (length(coef_1) == 0 || !is.matrix(coef_1)) {
+      AtacStatsMgm4 <- NULL;
+   } else {
+      iPeaksMgm4 <- rownames(coef_1)[rowMaxs(coef_1) >= head(MGM, 1)];
+      printDebug("Filtered from: ",
+         format(nrow(coef_1), big.mark=","),
+         " total peaks to ",
+         format(length(iPeaksMgm4), big.mark=","),
+         " (", format(length(iPeaksMgm4)*100/nrow(coef_1), digits=1), " %)",
+         " with log2(1+x) group mean >= ",
+         MGM,
+         " (normalized, batch-adjusted) in at least one sample group.");
+      
+      ## Stats using all batches
+      AtacStatsMgm4 <- tryCatch({
+         allNormStatsTests(allNorm=fc_se_b[iPeaksMgm4,iSamplesUse],
+            signalList=signalList,
+            useVoom=TRUE,
+            iContrasts=iContrasts,
+            iDesign=iDesign[iSamplesUse,,drop=FALSE],
+            cutoffMaxGroupMean=c(MGM),
+            returnAllDFs=TRUE,
+            returnLmFit=TRUE,
+            iGenes=iPeaksMgm4,
+            cutoffFold=c(1.5, 1.5),
+            cutoffP=c(0.05,0.05),
+            transformAveExpr="none",
+            cutoffAdjP=c(1,0.05),
+            iSamples=iSamplesUse,
+            collapseByGene=FALSE,
+            verbose=FALSE);
+      }, error=function(e){
+         printDebug("Error during allNormStatsTests():");
+         print(e);
+         NULL;
+      });
+   }
+   if (length(AtacStatsMgm4) > 0) {
+      printDebug("Stats hits by contrast and hit criteria ",
+         c("(", "MGM ", ">= ", MGM, ")"), ":",
+         sep="");
+      AtacStatsMgm4$statsHitsA;
+   }
+}
+```
+
+#### Volcano plots (all peaks)
+
+```{r, volcano_plots, fig.height=12, fig.width=12, dependson=c("run_limma")}
+if (length(AtacStats) > 0) {
+
+   for (iSig in dimnames(AtacStats$statsHitsA)[[3]]) {
+      for (iCon in dimnames(AtacStats$statsHitsA)[[2]]) {
+         iDF <- AtacStats$statsDFs[[iSig]][[iCon]];
+         par("mar"=c(7,7,4,3));
+         vp1 <- volcanoPlot(iDF,
+            pvalueCutoff=0.05,
+            fcCutoff=log2(1.5),
+            intensityCutoff=0,
+            main=iCon,
+            subMain="All peaks",
+            pvCol="P.Value");
+         volcanoPlot(iDF,
+            pvalueCutoff=0.05,
+            fcCutoff=log2(1.5),
+            intensityCutoff=0,
+            main=iCon,
+            subMain="All peaks",
+            pvCol="adj.P.Val");
+      }
+   }
+}
+```
+
+#### Volcano plots (subset peaks)
+
+Volcano plots below were created using the limma results
+after subsetting peaks for max group mean >= 
+**`r cat(MGM)`**.
+
+```{r, volcano_plots_mgm4, fig.height=12, fig.width=12, dependson=c("run_limma_mgm4")}
+if (length(AtacStatsMgm4) > 0) {
+   for (iSig in dimnames(AtacStatsMgm4$statsHitsA)[[3]]) {
+      for (iCon in dimnames(AtacStatsMgm4$statsHitsA)[[2]]) {
+         iDF <- AtacStatsMgm4$statsDFs[[iSig]][[iCon]];
+         par("mar"=c(7,7,4,3))
+         tryCatch({
+            volcanoPlot(iDF,
+               pvalueCutoff=0.05,
+               fcCutoff=log2(1.5),
+               intensityCutoff=MGM,
+               main=iCon,
+               subMain=paste0("Subset peaks mgm >= ", MGM),
+               pvCol="P.Value");
+            volcanoPlot(iDF,
+               pvalueCutoff=0.05,
+               fcCutoff=log2(1.5),
+               intensityCutoff=MGM,
+               main=iCon,
+               subMain=paste0("Subset peaks mgm >= ", MGM),
+               pvCol="adj.P.Val");
+         }, error=function(e){
+            jamba::printDebug("Error during volcanoPlot(), skipping.");
+            jamba::printDebug("iSig:", iSig);
+            jamba::printDebug("iCon:", iCon);
+            print(e);
+         });
+      }
+   }
+}
+```
+
+
+#### Venn diagrams (all peaks)
+
+```{r, venn_pairs, fig.height=10, fig.width=10, dependson=c("run_limma")}
+if (length(AtacStats) > 0) {
+   pair_l <- unlist(recursive=FALSE,
+      apply(combn(dimnames(AtacStats$statsHitsA)[[2]], 2), 2, list));
+   
+   par("mar"=c(5,4,4,2));
+   for (iSig in dimnames(AtacStats$statsHitsA)[[3]]) {
+      for (iHit in dimnames(AtacStats$statsHitsA)[[1]]) {
+         for (iCon in pair_l) {
+            statsHitsAvenn(AtacStats$statsHitsA,
+               iCon=iCon,
+               iHit=iHit,
+               iSig=iSig);
+         }
+      }
+   }
+}
+```
+
+#### Venn diagrams (subset peaks)
+
+```{r, venn_pairs_mgm4, fig.height=10, fig.width=10, dependson=c("run_limma_mgm4")}
+if (length(AtacStatsMgm4) > 0) {
+   pair_l_mgm4 <- unlist(recursive=FALSE,
+      apply(combn(dimnames(AtacStatsMgm4$statsHitsA)[[2]], 2), 2, list));
+   
+   par("mar"=c(5,4,4,2));
+   for (iSig in dimnames(AtacStatsMgm4$statsHitsA)[[3]]) {
+      for (iHit in dimnames(AtacStatsMgm4$statsHitsA)[[1]]) {
+         for (iCon in pair_l_mgm4) {
+            statsHitsAvenn(AtacStatsMgm4$statsHitsA,
+               iCon=iCon,
+               iHit=iHit,
+               iSig=iSig);
+         }
+      }
+   }
+}
+```
+
+
+### Annotate peaks
+
+The GTF file was used to define genomic regions. Each peak is annotated
+with only one of the following categories, assigned in order.
+Therefore a peak that overlaps a promoter and an exon is only
+annotated "promoter".
+
+* **promoters**: 2,000 upstream and 200 downstream the TSS for each transcript
+* **TTS**: the last stranded nucleotide position in each transcript
+* **exon**: each stranded exon per transcript
+* **intron**: non-exonic region within a stranded transcript region
+* **intergenic**: all other regions.
+
+#### Define genome regions (or load previously defined genome regions)
+
+The GTF file is used to derive a filename to store genome regions
+derived from the gene-transcript-exon features.
+
+The GTF file:
+
+`r jamba::printDebug(unlist(strsplit(GTF, "/")), collapse="/", sep="")`
+
+is renamed to have file extension:
+
+`.genome_regions.RData`
+
+If the RData file does not exist, genome regions are defined, then
+saved into that RData file.
+
+```{r, refgene_txdb}
+
+#refgene_gtf <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/EA_Jul052017_RNAseq/hg19_refgene_041619_minimus_exons.gtf";
+refgene_gtf <- GTF;
+
+## genome_regions may be saved to a file already
+gtf_gr_file <- gsub("[.](gff|gtf|gff3)$",
+   ".genome_regions.RData",
+   ignore.case=TRUE,
+   refgene_gtf);
+if (!file.exists(gtf_gr_file) && file.exists(basename(gtf_gr_file))) {
+   gtf_gr_file <- basename(gtf_gr_file);
+}
+if (file.exists(gtf_gr_file)) {
+   genome_regions_o <- load(gtf_gr_file);
+   if (!exists("genome_regions")) {
+      printDebug("The RData file '",
+         gtf_gr_file,
+         "' did not contain R object '",
+         "genome_regions", "'.");
+      printDebug("Instead, it contained these R objects:",
+         genome_regions_o);
+   }
+}
+
+```
+
+If genome regions must be defined, they will be defined below:
+
+```{r, define_genome_regions}
+## If genome_regions is not define, create it
+if (!exists("genome_regions")) {
+   printDebug("Defining genome regions from GTF features.");
+   refgene_txdb <- GenomicFeatures::makeTxDbFromGFF(refgene_gtf);
+   
+   ## tx2geneDF
+   tx2geneDF <- unique(makeTx2geneFromGtf(refgene_gtf,
+      geneAttrNames=c("gene_id", "gene_name"),
+      txAttrNames=c("transcript_id"),
+      geneFeatureType="exon",
+      txFeatureType="exon"));
+   rownames(tx2geneDF) <- tx2geneDF$transcript_id;
+
+   ## Exons
+   exonsByGene <- exonsBy(refgene_txdb, by="gene");
+   values(exonsByGene@unlistData)$gene_name <- rep(
+      tx2geneDF[match(names(exonsByGene),
+         tx2geneDF$gene_id), "gene_name"],
+      elementNROWS(exonsByGene));
+   values(exonsByGene@unlistData)$gene_id <- rep(
+      names(exonsByGene),
+      elementNROWS(exonsByGene));
+   
+   ## transcript ranges
+   txByGene <- transcriptsBy(refgene_txdb);
+   values(txByGene@unlistData)$gene_name <- tx2geneDF[match(values(txByGene@unlistData)$tx_name,
+      tx2geneDF$transcript_id), "gene_name"];
+   values(txByGene@unlistData)$gene_id <- tx2geneDF[match(values(txByGene@unlistData)$tx_name,
+      tx2geneDF$transcript_id), "gene_id"];
+   
+   ## TTS per transcript range, extend -1000,+1000 around TTS
+   ttsByTx <- flank(txByGene@unlistData, start=FALSE, width=-1);
+   ttsByTx <- flank(ttsByTx, width=1000, both=TRUE);
+   
+   ## promoters
+   ## Use default values for GenomicFeatures::promoters()
+   ## but store them here to make sure they do not change
+   upstream <- 2000;
+   downstream <- 200;
+   promoters_gr <- promoters(refgene_txdb,
+      upstream=upstream,
+      downstream=downstream,
+      use.names=TRUE);
+   values(promoters_gr)$gene_name <- tx2geneDF[match(values(promoters_gr)$tx_name,
+      tx2geneDF$transcript_id), "gene_name"];
+   values(promoters_gr)$gene_id <- tx2geneDF[match(values(promoters_gr)$tx_name,
+      tx2geneDF$transcript_id), "gene_id"];
+   
+   ## Introns
+   intronsByGene <- GenomicRanges::setdiff(txByGene@unlistData,
+      exonsByGene@unlistData);
+   intronsByGene <- annotateGRfromGR(intronsByGene,
+      txByGene@unlistData[,c("gene_name", "gene_id")]);
+
+   ## Assemble each layer of genomic region
+   promoter_name <- paste0("Promoters (-", upstream, ",+", downstream, ")");
+   genome_regions_l <- list(
+      promoters=promoters_gr[,c("gene_name", "gene_id")],
+      exons=exonsByGene@unlistData[,c("gene_name", "gene_id")],
+      introns=intronsByGene[,c("gene_name", "gene_id")],
+      `TTS(-1000,+1000)`=ttsByTx[,c("gene_name", "gene_id")]);
+   names(genome_regions_l)[1] <- promoter_name;
+   genome_regions <- GRangesList(genome_regions_l)@unlistData;
+   values(genome_regions)$feature_type <- rep(names(genome_regions_l),
+      lengths(genome_regions_l));
+   
+   ## Save to the RData file
+   tryCatch({
+      save(list=c("genome_regions", "tx2geneDF"),
+         file=gtf_gr_file);
+      printDebug("Genome regions were saved for later re-use:",
+         gtf_gr_file);
+   }, error=function(e){
+      save(list=c("genome_regions", "tx2geneDF"),
+         file=basename(gtf_gr_file));
+      gtf_gr_file <- basename(gtf_gr_file);
+      printDebug("Genome regions were saved for later re-use:",
+         gtf_gr_file);
+   });
+} else {
+   printDebug("Genome regions were already defined.");
+}
+```
+
+#### Annotate peaks by genome region
+
+
+```{r, peak_genes}
+## Rules:
+## - first pass: annotate anything that overlaps the peak
+##    - gene_name, feature_type
+## - second pass: choose feature_type_winner, in order:
+##    - promoter
+##    - TTS
+##    - exon
+##    - intron
+##    - anything else is "intergenic"
+## - third pass: assign gene of "winner"
+## - fourth pass: distance to nearest gene body
+##    - gene_name of nearest gene body
+##
+
+## Annotate ATAC peaks
+fc_gr <- as(rowData(fc_se), "GRanges");
+values(fc_gr) <- renameColumn(values(fc_gr),
+   from="Geneid",
+   to="Gene");
+#write.table(file="fc_gr.txt", as.data.frame(head(fc_gr, 10)), sep="\t");
+
+## Expand comma-delimited genes from genome_regions
+gr_expl <- strsplit(values(genome_regions)$gene_name, ",");
+gr_expi <- rep(seq_along(genome_regions), lengths(gr_expl));
+genome_regions_exp <- unname(genome_regions)[gr_expi];
+values(genome_regions_exp)$gene_name <- unname(unlist(gr_expl));
+
+## Remove spaces and commas from feature_type column
+values(genome_regions_exp)$feature_type <- gsub("[, ]+",
+   "",
+   values(genome_regions_exp)$feature_type);
+
+##
+values(genome_regions_exp)[,"gene_feature_type"] <- pasteByRow(
+   values(genome_regions_exp)[,c("gene_name", "feature_type")],
+   sep=" ");
+
+# Annotate each peak by each genome_region overlapped
+## ~20 seconds, substantially faster than annotateGRfromGR()
+printDebug("Annotating peaks by genome_regions");
+system.time({
+   fco <- findOverlaps(fc_gr, genome_regions_exp);
+   grdt <- data.table::data.table(
+      fc=values(fc_gr[queryHits(fco)])$Gene,
+      gene_name=values(genome_regions_exp[subjectHits(fco)])$gene_name,
+      gene_id=values(genome_regions_exp[subjectHits(fco)])$gene_id,
+      feature_type=factor(
+         values(genome_regions_exp[subjectHits(fco)])$feature_type,
+         levels=provigrep(c("promoter", "tts", "exon", "intron", "intergenic", "."),
+            unique(values(genome_regions_exp[subjectHits(fco)])$feature_type))),
+      gene_feature_type=values(genome_regions_exp[subjectHits(fco)])$gene_feature_type);
+   ## Iterate each column, combine multi-row features into one row
+   ## then annotate using unique, sorted, comma-delimited values
+   grd_colnames <- c("gene_name", 
+      "gene_id", 
+      "feature_type", 
+      "gene_feature_type");
+   grd_vals <- lapply(nameVector(grd_colnames), function(i){
+      icols <- c("fc", i);
+      #printDebug(i, ": ", icols);
+      idt <- grdt[, ..icols];
+      ## expand comma-delimited entries
+      grdt0ft <- unique(mixedSortDF(idt, byCols=1:2)[,c(1,2)]);
+      grv <- cPaste(split(as.character(grdt0ft[[2]]), grdt0ft[[1]]));
+      grv;
+   });
+   ## Add each column to fc_gr
+   for (i in names(grd_vals)) {
+      printDebug(i);
+      imatch <- match(names(grd_vals[[i]]), values(fc_gr)$Gene);
+      if ("feature_type" == i) {
+         values(fc_gr)[,i] <- unname(c("intergenic", grd_vals[[i]][1])[1]);
+      } else {
+         values(fc_gr)[,i] <- unname(c(NA, grd_vals[[i]][1])[1]);
+      }
+      values(fc_gr)[imatch,i] <- grd_vals[[i]];
+   }
+})
+
+## is_duplicate()
+is_duplicate <- function(x) {
+   duplicated(x) | duplicated(x,
+      fromLast=TRUE);
+}
+
+## sort for best feature_type
+printDebug("Annotating peaks by best feature_type");
+system.time({
+   grdt0 <- mixedSortDF(grdt,
+      byCols=c("fc","feature_type","gene_name","gene_id"));
+   ## find first row per peak
+   grdt0_peak <- grdt0[["fc"]];
+   grdt0_peaku <- unique(grdt0_peak);
+   whichu <- match(grdt0_peaku, grdt0_peak);
+   ## First row per peak
+   grdt0_pk <- grdt0[whichu,][["fc"]];
+   grdt0_bestft <- grdt0[whichu,][["feature_type"]];
+   names(grdt0_bestft) <- grdt0_pk;
+   
+   ## subset for peaks having the best feature_type
+   bestftcolnames <- c("fc", "feature_type", "gene_name", "gene_id");
+   grdt0_hasbestft <- unique(
+      subset(grdt0, 
+         feature_type == grdt0_bestft[grdt0_peak])[,..bestftcolnames]);
+
+   ## Comma-delimit values for each column
+   ## peak_089268
+   for (i in c("feature_type", "gene_name", "gene_id")) {
+      inewcolname <- paste0(i, "_winner");
+      printDebug(i, ", ", inewcolname);
+      ikeepcolnames <- c("fc", i);
+      grdt0_hasbestft_sub <- unique(grdt0_hasbestft[, ..ikeepcolnames]);
+      if (anyDuplicated(grdt0_hasbestft_sub[["fc"]])) {
+         ## split only duplicate entries
+         fcdupes <- is_duplicate(grdt0_hasbestft_sub[["fc"]]);
+         grdt0_bestvalue_dupe <- cPaste(split(grdt0_hasbestft_sub[[i]][fcdupes],
+            grdt0_hasbestft_sub[["fc"]][fcdupes]));
+         grdt0_bestvalue_nondupe <- nameVector(as.character(grdt0_hasbestft_sub[[i]][!fcdupes]),
+            grdt0_hasbestft_sub[["fc"]][!fcdupes]);
+         grdt0_bestvalue <- c(grdt0_bestvalue_dupe,
+            grdt0_bestvalue_nondupe);
+      } else {
+         grdt0_bestvalue <- nameVector(as.character(grdt0_hasbestft_sub[[i]]),
+            grdt0_hasbestft_sub[["fc"]]);
+      }
+      imatch <- match(names(grdt0_bestvalue),
+         values(fc_gr)$Gene);
+      if ("feature_type" %in% i) {
+         values(fc_gr)[,inewcolname] <- "intergenic";
+      } else {
+         values(fc_gr)[,inewcolname] <- c(NA, "")[1];
+      }
+      if (length(imatch) > 0) {
+         values(fc_gr)[imatch,inewcolname] <- as.character(grdt0_bestvalue);
+      }
+   }
+});
+
+## For fun make an logical matrix of feature_type
+fc_typem <- as.data.frame(lapply(nameVector(c("Promoter", "TTS", "exon", "intron", "intergenic")), function(i){
+   j <- grepl(i, values(fc_gr)$feature_type);
+   names(j) <- values(fc_gr)$Gene;
+   j;
+}));
+#m1 <- as.matrix(fc_typem);
+#> t(m1) %*% (m1)
+#           Promoter  TTS  exon intron intergenic
+#Promoter      10951 1155  2754   3263          0
+#TTS            1155 5972  3811   2398          0
+#exon           2754 3811 16191  12770          0
+#intron         3263 2398 12770  72976          0
+#intergenic        0    0     0      0     208245
+
+## gene distance analysis
+fc_gr_genedist <- GenomicRanges::distanceToNearest(fc_gr,
+   genome_regions,
+   select="all");
+fc_gr_genedist_df <- data.frame(
+   Gene=values(fc_gr[queryHits(fc_gr_genedist)])[["Gene"]],
+   nearest_gene_distance=values(fc_gr_genedist)$distance,
+   renameColumn(
+      as.data.frame(values(genome_regions[subjectHits(fc_gr_genedist)])[,c("gene_name", "gene_id")]),
+      from=c("gene_name", "gene_id"),
+      to=c("nearest_gene_name", "nearest_gene_id"))
+)
+for (i in c("nearest_gene_name", "nearest_gene_id", "nearest_gene_distance")) {
+   printDebug(i);
+   fc_gr_genedist_df1 <- unique(fc_gr_genedist_df[,c("Gene", i)]);
+   if (igrepHas("_distance", i)) {
+      fc_gr_genedist_df1vals <- nameVector(fc_gr_genedist_df1[,c(i, "Gene")]);
+      values(fc_gr)[,i] <- c(NA, 0)[1];
+   } else {
+      fc_gr_genedist_df1vals <- cPaste(split(fc_gr_genedist_df1[[i]], fc_gr_genedist_df1[["Gene"]]))
+      values(fc_gr)[,i] <- c(NA, "")[1];
+   }
+   imatch <- match(names(fc_gr_genedist_df1vals), values(fc_gr)$Gene);
+   if (length(imatch) > 0) {
+      if (igrepHas("_distance", i)) {
+         values(fc_gr)[imatch,i] <- fc_gr_genedist_df1vals;
+      } else {
+         values(fc_gr)[imatch,i] <- as.character(fc_gr_genedist_df1vals);
+      }
+   }
+}
+if (1 == 2) {
+   zero_dist <- which(values(fc_gr_genedist)$distance == 0);
+   nonzero_dist <- which(values(fc_gr_genedist)$distance > 0);
+   values(fc_gr)[,"nearest_gene_name"] <- values(fc_gr)[,"gene_name"];
+   nonzero_q <- queryHits(fc_gr_genedist[nonzero_dist]);
+   nonzero_s <- subjectHits(fc_gr_genedist[nonzero_dist]);
+   values(fc_gr[nonzero_q])[,"nearest_gene_name"] <- values(genome_regions[nonzero_s])$gene_name;
+   values(fc_gr)[,"nearest_gene_distance"] <- c(NA, 0)[1];
+   values(fc_gr[queryHits(fc_gr_genedist)])[,"nearest_gene_distance"] <- values(fc_gr_genedist)$distance;
+}
+
+
+feature_type_winner <- values(fc_gr)$feature_type_winner;
+names(feature_type_winner) <- values(fc_gr)$Gene;
+
+```
+
+#### Peak feature_type incidence matrix
+
+```{r, peak_featuretype_im}
+## For fun make an logical matrix of feature_type
+ftcols <- c("Promoter", "TTS", "exon", "intron", "intergenic")
+fc_typem <- as.data.frame(lapply(nameVector(ftcols), function(i){
+   j <- grepl(i, values(fc_gr)$feature_type);
+   names(j) <- values(fc_gr)$Gene;
+   j;
+}));
+m1 <- as.matrix(fc_typem);
+m1_counts <- (t(m1) %*% (m1));
+color_sub_imct <- colorjam::vals2colorLevels(
+   nameVector(sort(unique(as.vector(m1_counts)))),
+   lens=10);
+m1k <- kable_coloring(as.data.frame(m1_counts),
+   colorSub=color_sub_imct,
+   color_cells=TRUE,
+   row.names=TRUE) %>%
+   kable_styling(bootstrap_options=c("striped","bordered")) %>%
+   row_spec(0, background="#DDDDDD", color="#333333", bold=TRUE) %>%
+   column_spec(1, background="#DDDDDD", color="#333333", bold=TRUE)
+print(m1k)
+
+#           Promoter  TTS  exon intron intergenic
+#Promoter      10951 1155  2754   3263          0
+#TTS            1155 5972  3811   2398          0
+#exon           2754 3811 16191  12770          0
+#intron         3263 2398 12770  72976          0
+#intergenic        0    0     0      0     208245
+
+```
+
+#### Pie chart of statistical hits by genome region
+
+A pie chart is created for each statistical comparison, showing
+the number of peaks overlapping each genome region. A peak
+is only assigned one genome region, with preference in order:
+promoter, TTS, exon, intron, intergenic.
+
+For comparison, the pie chart using all peaks is also shown.
+
+
+```{r, pie_functions}
+feature_to_pie <- function
+(x,
+ do_pie=TRUE,
+ main=NULL,
+ ...)
+{
+   j <- table(rmNA(x));
+   if (length(j) == 0) {
+      return(NULL);
+   }
+   j_pct <- format(j / sum(j) * 100, digits=1, trim=TRUE);
+   j_df <- data.frame(
+      j,
+      pct=paste0(j_pct, "%")
+   );
+   main_v <- strsplit(main, "\n")[[1]];
+   if (length(main_v) == 4) {
+      names(main_v) <- c("Contrast", "Hit", "Signal", "PeakSet");
+   } else {
+      main_v <- c(Contrast=main, Hit="", Signal="", PeakSet="");
+   }
+   j_df[,names(main_v)] <- data.frame(as.list(main_v));
+   names(j) <- paste0(names(j), " (",
+      format(trim=TRUE, big.mark=",", j),
+      "; ", j_pct,
+      "%)");
+   main <- paste0(main,
+      "\n(",
+      sum(j),
+      " total)");
+   if (do_pie) {
+      pie(j,
+         col=rainbowJam(length(j)));
+      title(main=main,
+         ...);
+   }
+   return(j_df);
+}
+
+peak_pie_by_region <- function
+(statsHitsA,
+ feature_type_winner=NULL,
+ PeakSet="",
+ iHit=NULL,
+ iSig=NULL,
+ iCon=NULL,
+ iPeaks=NULL,
+ do_pie=TRUE,
+ main=NULL,
+ ...)
+{
+   ## Wrapper function for peak-to-region
+   if (length(iPeaks) > 0) {
+      k <- iPeaks;
+      if (length(main) == 0) {
+         main <- "All Peaks";
+      }
+      printDebug("peak_pie_by_region(): ",
+         "main:", main);
+      j_df <- feature_to_pie(feature_type_winner[k],
+         main=main,
+         do_pie=do_pie);
+      return(j_df);
+   } else {
+      if (length(iHit) == 0) {
+         iHit <- dimnames(statsHitsA)[[1]];
+      } else if (is.numeric(iHit)) {
+         iHit <- dimnames(statsHitsA)[[1]][iHit];
+      }
+      if (length(iSig) == 0) {
+         iSig <- dimnames(statsHitsA)[[3]];
+      } else if (is.numeric(iSig)) {
+         iSig <- dimnames(statsHitsA)[[3]][iSig];
+      }
+      if (length(iCon) == 0) {
+         iCon <- dimnames(statsHitsA)[[2]];
+      } else if (is.numeric(iSig)) {
+         iCon <- dimnames(statsHitsA)[[2]][iSig];
+      }
+      printDebug("peak_pie_by_region(): ",
+         "\niCon:", iCon,
+         "\niHit:", iHit,
+         "\niSig:", iSig);
+      j_df_l <- rbindList(lapply(iHit, function(iHit1) {
+         rbindList(lapply(iSig, function(iSig1) {
+            rbindList(lapply(iCon, function(iCon1) {
+               k <- names(statsHitsA[iHit1, iCon1, iSig1][[1]]);
+               main <- paste(c(iCon1, iHit1, iSig1, PeakSet), collapse="\n");
+               j_df <- feature_to_pie(feature_type_winner[k],
+                  main=main,
+                  do_pie=do_pie);
+               j_df;
+            }))
+         }))
+      }));
+      return(j_df_l);
+   }
+}
+```
+
+
+```{r, peak_region_pies, fig.height=12, fig.width=12}
+if (length(AtacStats) > 0) {
+   par("mfrow"=c(3,3), "mar"=c(5,5,6,8));
+   j_df_s <- peak_pie_by_region(AtacStats$statsHitsA,
+      PeakSet="All Peaks Tested",
+      do_pie=TRUE,
+      feature_type_winner=feature_type_winner);
+   if (length(j_df_s) > 0) {
+      j_df_all <- peak_pie_by_region(iPeaks=rownames(fc_se),
+         do_pie=TRUE,
+         feature_type_winner=feature_type_winner);
+      j_df <- rbind(j_df_s, j_df_all);
+      
+      ## Print the text results
+      kable_coloring(j_df,
+         row.names=TRUE,
+         caption="Data used for the pie charts:"
+         ) %>%
+         kable_styling(bootstrap_options=c("striped","bordered")) %>%
+         row_spec(0, background="#DDDDDD");
+   }
+}
+```
+
+#### Pie chart (subset peaks)
+
+The pie charts below reflect the peaks after filtering
+for the max group mean threshold: **`r cat(MGM)`**
+
+
+```{r, peak_region_pies_mgm4, fig.height=12, fig.width=12}
+if (length(AtacStatsMgm4) > 0) {
+   par("mfrow"=c(3,3), "mar"=c(5,5,6,8));
+   j_df_mgm4_s <- peak_pie_by_region(AtacStatsMgm4$statsHitsA,
+      PeakSet=paste0("Subset Peaks Mgm", MGM),
+      do_pie=TRUE,
+      feature_type_winner=feature_type_winner);
+   if (length(j_df_mgm4_s) > 0) {
+      j_df_mgm4 <- peak_pie_by_region(iPeaks=iPeaksMgm4,
+         do_pie=TRUE,
+         main=paste0("Subset Peaks Mgm", MGM),
+         feature_type_winner=feature_type_winner)
+      j_df_all <- peak_pie_by_region(iPeaks=iPeaks,
+         do_pie=TRUE,
+         main="All Peaks",
+         feature_type_winner=feature_type_winner)
+      
+      ## Print the text results
+      j_df_mgm4_tall <- rbind(j_df_mgm4_s, j_df_mgm4);
+      ## Print the text results
+      kable_coloring(j_df_mgm4_tall,
+         row.names=TRUE,
+         caption="Data used for the pie charts:"
+         ) %>%
+         kable_styling(bootstrap_options=c("striped","bordered")) %>%
+         row_spec(0, background="#DDDDDD");
+   }
+}
+```
+
+
+### Annotate peaks using continuous numbering
+
+Peaks are re-annotated so that contiguous peaks are numbered
+in column "broak_peak", with slices of each peak given suffix
+numbers in column "broak_peak_number". This process makes it
+feasible to count the number of contiguous peaks, that is
+before peaks were sliced to a max width threshold.
+
+We refer to "broad peaks" as the contiguous peaks.
+
+```{r, peak_renumbering}
+fc_gr_red <- reduce(fc_gr);
+values(fc_gr_red)$broad_peak <- makeNames(
+   rep("broad", length(fc_gr_red)),
+   doPadInteger=TRUE,
+   renameOnes=TRUE,
+   suffix="_");
+fc_gr <- annotateGRfromGR(fc_gr,
+   fc_gr_red);
+values(fc_gr)$broad_peak_number <- makeNames(
+   values(fc_gr)$broad_peak,
+   suffix="_",
+   doPadInteger=TRUE,
+   renameOnes=TRUE);
+fc_gr_bp_ct <- table(values(fc_gr)$broad_peak);
+values(fc_gr)$num_slices <- fc_gr_bp_ct[values(fc_gr)$broad_peak];
+rowData(fc_se)$broad_peak <- values(fc_gr)$broad_peak;
+rowData(fc_se)$broad_peak_number <- values(fc_gr)$broad_peak_number;
+rowData(fc_se)$broad_peak_slices <- fc_gr_bp_ct[values(fc_gr)$broad_peak];
+```
+
+
+#### Broad peak hit counts
+
+The peak statistical hits are re-counted by unique "broad_peak" values,
+to indicate how many unique broad peaks are found to be statistically
+changing.
+
+If most peaks are not sliced, this number should be almost identical
+to the number of sliced peak hits above.
+
+Similarly, if most hits involve only one slice from broad_peaks that
+have multiple slices, the number of broad_peak hits should be nearly
+identical to the number of sliced peak hits above.
+
+Lastly, if the number of broad_peak hits is substantially lower than
+the number of sliced peak hits above, it suggests that broad_peaks
+are statistically changing across multiple slices per peak.
+
+
+```{r, broad_hit_counts}
+if (length(AtacStats) > 0) {
+   
+   broad_hit_counts <- lapply(nameVector(dimnames(AtacStats$statsHitsA)[[1]]), function(p){
+      sapply(nameVectorN(AtacStats$statsHitsA[p,,]), function(i){
+         k <- AtacStats$statsHitsA[p,i,1][[1]];
+         k_bp <- values(fc_gr[names(k)])$broad_peak;
+         c(peak_hits=length(k_bp),
+            broad_peak_hits=length(table(k_bp)));
+      })
+   });
+   printDebug("broad_hit_counts:");
+   broad_hit_counts;
+}
+   
+if (length(AtacStatsMgm4) > 0) {
+   broad_hit_counts_mgm4 <- lapply(nameVector(dimnames(AtacStatsMgm4$statsHitsA)[[1]]), function(p){
+      sapply(nameVectorN(AtacStatsMgm4$statsHitsA[p,,]), function(i){
+         k <- AtacStatsMgm4$statsHitsA[p,i,1][[1]];
+         k_bp <- values(fc_gr[names(k)])$broad_peak;
+         c(peak_hits=length(k_bp),
+            broad_peak_hits=length(table(k_bp)));
+      })
+   });
+   printDebug("broad_hit_counts ",
+      c("(", "MGM", ">=", MGM, ")"),
+      ":", sep="");
+   broad_hit_counts_mgm4;
+
+}
+## Briefly compare All peak hits to Mgm4 peak hits
+## signedVennPlotSets(list(mgm4=AtacStatsMgm4$statsHitsA[1,2,1][[1]], all=AtacStats$statsHitsA[1,2,1][[1]]))
+
+```
+
+### Heatmap of peak hits
+
+```{r, heatmap_hits, fig.height=14, fig.width=10}
+if (length(AtacStats) > 0) {
+   stats_dim <- dim(AtacStats$statsHitsA);
+   peak_hits <- unique(unlist(lapply(AtacStats$statsHitsA[,1:2,], names)));
+   peak_hits_q <- unique(unlist(lapply(AtacStats$statsHitsA[stats_dim[1],1:2,], names)));
+}
+if (length(AtacStatsMgm4) > 0) {
+   mgm4_stats_dim <- dim(AtacStatsMgm4$statsHitsA);
+   peak_hits_mgm4 <- unique(unlist(lapply(AtacStatsMgm4$statsHitsA[,1:2,], names)));
+   peak_hits_mgm4_q <- unique(unlist(lapply(AtacStatsMgm4$statsHitsA[mgm4_stats_dim[1],1:2,], names)));
+   #lengths(list(peak_hits=peak_hits, peak_hits_q=peak_hits_q,
+   #   peak_hits_mgm4=peak_hits_mgm4, peak_hits_mgm4_q=peak_hits_mgm4_q))
+   
+   if (denovo_controls) {
+      iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
+   }
+   if (length(peak_hits_mgm4_q) > 1) {
+      iM <- iMatrixQBctr[peak_hits_mgm4_q,iSamplesUse,drop=FALSE];
+      hc <- hcluster(iM, link="ward", method="euclidean");
+      
+      
+      ## Subset only promoter peak hits
+      #peak_hits_mgm4_q_p <- subset(rowData(fc_se[peak_hits_mgm4_q,]), feature_type_winner %in% "promoter")$Geneid;
+      #iM <- iMatrixQBctr[peak_hits_mgm4_q_p,];
+      #hc_p <- hcluster(iM, link="ward", method="euclidean");
+      
+      hm_mgm4 <- heatmap.3(iM,
+      #   Colv=FALSE,
+         main=paste0("Hits (MGM >= ", MGM, ")"),
+         farbeLim=4,
+         Rowv=hc,
+         hclCutoff=60,
+         labRow=NA,
+         keysize=c(0.7,1),
+         ColSideColors=data.frame(
+            Group=color_sub1[iSamplesUse],
+            Run=run_colors1[iSamplesUse]),
+         ColSideColorsNote=data.frame(
+            Group=iGroup[iSamplesUse],
+            Run=Run[iSamplesUse]),
+         cexColSideColorsNote=c(1.5, 1.5),
+         cexColSideColors=1.5,
+         colLensFactor=5,
+         add.expr=box(),
+         margins=c(17,7)
+      )
+   }
+}
+```
+
+### Heatmap of peak hits using group means
+
+
+```{r, heatmap_groupmeans, fig.height=14, fig.width=10}
+if (length(AtacStatsMgm4) > 0) {
+   if (denovo_controls) {
+      iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
+   }
+   if (length(peak_hits_mgm4_q) > 1) {
+      iM_grp <- rowGroupMeans(iM[,iSamplesUse],
+         useMedian=FALSE,
+         groups=iGroup[iSamplesUse]);
+      
+      hm_mgm4_grp <- heatmap.3(iM_grp,
+      #   Colv=FALSE,
+         main=paste0("Hits (MGM >= ", MGM, ")"),
+         Rowv=hc,
+         hclCutoff=60,
+         labRow=NA,
+         keysize=c(0.7,1),
+         ColSideColors=data.frame(
+            Group=sample_colors[colnames(iM_grp)]),
+         ColSideColorsNote=data.frame(
+            Group=nameVector(colnames(iM_grp))),
+         cexColSideColorsNote=c(1.5),
+         cexColSideColors=1.5,
+         colLensFactor=5,
+         add.expr=box(),
+         margins=c(7,7)
+      )
+   }
+}
+```
+
+
+
+
+### Peak to ATAC-promoter analysis (optional)
+
+**`r jamba::printDebug("ATAC:", ATAC)`**
+
+**`{r if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {cat("ATAC-mode is enabled.")} else {cat("ATAC-mode is disabled."}}`**
+
+This workflow is enabled only when environment variable `ATAC=1`,
+and when stats have been performed, and when the max group mean
+filter has been applied.
+
+When enabled, this workflow defines a subset of genes as having
+"active promoters" if there are any ATAC-seq peaks found in the
+upstream promoter/TSS region of the gene. In practice, most genes
+that are active, or poised to be active, have an ATAC-seq peak
+across all conditions of an experiment. That said, this process
+greatly reduced the total set of GTF-defined genes, which can make
+the process of annotating peaks by genes much more accurate
+and informative.
+
+Peaks are annotated by the neared Mgm-filtered promoter peak,
+along with the distance to that peak.
+
+
+```{r, peak_promoters}
+mgmpg <- NULL;
+mgmpd <- NULL;
+if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {
+   
+   ## iPeaksMgm4 that are promoters
+   ## - call these active promoters
+   ##
+   ## annotate all peaks by nearest active promoter
+   ## - promoter,tts,intron,exon -- gene_name intersected
+   ## - all cases, nearest mgm4 promoter, and its gene_name
+   ## - distance to nearest mgm4 promoter
+   
+   promoters_gr <- subset(genome_regions, grepl("promoter", ignore.case=TRUE, feature_type));
+   #values(promoters_gr)[,"gene_strand"] <- as.character(strand(promoters_gr));
+   
+   promoter2tss <- function
+   (gr,
+      upstream=2000,
+      downstream=200)
+   {
+      ## Purpose is to convert coordinates of promoters back to original TSS
+      gr2pos <- strand(gr) %in% "+";
+      newstart <- ifelse(gr2pos,
+         start(gr) + upstream,
+         start(gr) + (downstream-1));
+      newend <- ifelse(gr2pos,
+         end(gr) - (downstream-1),
+         end(gr) - upstream);
+      ranges(gr) <- IRanges(start=newstart,
+         end=newend);
+      return(gr);
+   }
+   upstream <- 2000;
+   downstream <- 200;
+   
+   tryCatch({
+      mgm_promoter_gr <- subsetByOverlaps(promoters_gr,
+         fc_gr[iPeaksMgm4]);
+      mgm_tss_gr <- promoter2tss(mgm_promoter_gr[,c("gene_name", "gene_id")],
+         upstream=upstream,
+         downstream=downstream);
+      
+      mgmpg <- paste0("mgm", MGM, "_annoTSS_gene_name");
+      mgmpgid <- paste0("mgm", MGM, "_annoTSS_gene_id");
+      mgmpd <- paste0("mgm", MGM, "_annoTSS_distance");
+      
+      ## nearest mgm_annoTSS distance
+      fc_gr_dist <- GenomicRanges::distanceToNearest(fc_gr,
+         mgm_tss_gr);
+      ## Add comma-delimited values per column as needed
+      fc_gr_dist_df <- data.frame(
+         as.data.frame(values(fc_gr[queryHits(fc_gr_dist)])[,c("Gene")]),
+         gene_distance=values(fc_gr_dist)$distance,
+         renameColumn(
+            as.data.frame(values(genome_regions[subjectHits(fc_gr_dist)])[,c("gene_name", "gene_id")]),
+            from=c("gene_name", "gene_id", "gene_distance"),
+            to=c(mgmpg, mgmpgid, mgmpd))
+      )
+      for (i in c(mgmpg, mgmpgid, mgmpd)) {
+         fc_gr_dist_df1 <- unique(fc_gr_dist_df[,c("Gene", i)]);
+         if (igrepHas("_distance", i)) {
+            fc_gr_dist_df1vals <- nameVector(fc_gr_dist_df1[,c(i, "Gene")]);
+            values(fc_gr)[,i] <- c(NA, 0)[1];
+         } else {
+            fc_gr_dist_df1vals <- cPaste(split(fc_gr_dist_df1[[i]], fc_gr_dist_df1[["Gene"]]))
+            values(fc_gr)[,i] <- c(NA, "")[1];
+         }
+         imatch <- match(names(fc_gr_dist_df1vals), values(fc_gr)$Gene);
+         if (length(imatch) > 0) {
+            if (igrepHas("_distance", i)) {
+               values(fc_gr)[imatch,i] <- fc_gr_dist_df1vals;
+            } else {
+               values(fc_gr)[imatch,i] <- as.character(fc_gr_dist_df1vals);
+            }
+         }
+      }
+   }, error=function(e){
+      printDebug("Error during ATAC peak TSS annotation:",
+         fgText="red");
+      print(e);
+   });
+} else {
+   ATAC <- FALSE;
+}
+```
+
+
+#### Export stats results for hits (all peaks)
+
+Statistical results are saved in text file for the full set
+of peaks.
+Look in the folder defined by OUTDIR: **`{r cat(OUTDIR)}`**.
+
+
+```{r, stats_df, dependson=c("run_limma")}
+if (length(AtacStats) > 0) {
+   ## Subset statsDF for rows with at least one hit
+   for (iSig in dimnames(AtacStats$statsHitsA)[[3]]) {
+      iDF_all <- AtacStats$statsDF[[iSig]];
+      hit_cols <- vigrep("^hit ", colnames(iDF_all));
+      hits_l <- lapply(hit_cols, function(i){iDF_all[,i] != 0})
+      hits_v <- Reduce("|", hits_l);
+      #iDF_all_hits <- iDF_all[hits_v,,drop=FALSE];
+      iDF_all_hits <- iDF_all;
+      
+      ## Add nearest promoter df
+      pro_cols1 <- provigrep(c("gene_id",
+         "gene_name",
+         "feature_type",
+         "_distance",
+         "broad_peak"),
+         colnames(values(fc_gr)));
+      pro_cols <- intersect(
+         colnames(values(fc_gr)),
+         pro_cols1
+      );
+      if (length(pro_cols) > 0) {
+         idf_match <- match(iDF_all_hits$Gene, values(fc_gr)$Gene);
+         promoter_df <- as.data.frame(values(fc_gr[idf_match])[,pro_cols]);
+         iDF_all_hits[,pro_cols] <- promoter_df;
+      }
+      
+      ## Add genome coordinate annotations
+      coord_cols <- c("Chr", "Start", "End", "Length");
+      coord_df <- data.frame(rowData(
+         fc_se[match(iDF_all_hits$Gene, rowData(fc_se)$Geneid),]
+         )[,coord_cols]);
+      iDF_all_hits2 <- insertDFcols(iDF_all_hits,
+         coord_df,
+         colnum=2);
+      
+      txt_ext <- paste0(".stats_nomgm",
+         ifelse(ATAC, "_atac1", ""),
+         ".", iSig, ".txt");
+      txt_file <- file.path(OUTDIR,
+         gsub("[.]fc$|[.]fc[.]txt$",
+            txt_ext,
+            basename(fc_file)));
+      #if (file.exists(txt_file)) {
+      #   printDebug("Output text file already exists:", txt_file);
+      #} else {
+         #cat(file="debug_log.txt", txt_file, "\n");
+         writeTable(outfile=txt_file,
+            outdata=iDF_all_hits2);
+         printDebug("Wrote ",
+            formatInt(nrow(iDF_all_hits2)),
+            " rows to: ",
+            txt_file);
+      #}
+   }
+}
+```
+
+#### Export stats results for hits (subset)
+
+Statistical results are saved in text file for the subset
+of peaks with max group mean >= **`{r cat(MGM)}`**.
+Look in the folder defined by OUTDIR: **`{r cat(OUTDIR)}`**.
+
+
+```{r, stats_df_mgm4, dependson=c("run_limma_mgm4")}
+if (length(AtacStatsMgm4) > 0) {
+   ## Subset statsDF for rows with at least one hit
+   for (iSig in dimnames(AtacStatsMgm4$statsHitsA)[[3]]) {
+      iDF_all <- AtacStatsMgm4$statsDF[[iSig]];
+      hit_cols <- vigrep("^hit ", colnames(iDF_all));
+      hits_l <- lapply(hit_cols, function(i){iDF_all[,i] != 0})
+      hits_v <- Reduce("|", hits_l);
+      #iDF_all_hits <- iDF_all[hits_v,,drop=FALSE];
+      iDF_all_hits <- iDF_all;
+   
+      ## Add nearest promoter df
+      pro_cols1 <- provigrep(c("gene_id",
+         "gene_name",
+         "feature_type",
+         "_distance",
+         "broad_peak"),
+         colnames(values(fc_gr)));
+      pro_cols <- intersect(
+         colnames(values(fc_gr)),
+         pro_cols1
+      );
+      promoter_df <- as.data.frame(values(fc_gr[iDF_all_hits$Gene])[,pro_cols]);
+      iDF_all_hits[,pro_cols] <- promoter_df;
+      
+      ## Add genome coordinate annotations
+      coord_cols <- c("Chr", "Start", "End", "Length");
+      coord_df <- data.frame(rowData(
+         fc_se[match(iDF_all_hits$Gene, rowData(fc_se)$Geneid),]
+         )[,coord_cols]);
+      iDF_all_hits2 <- insertDFcols(iDF_all_hits,
+         coord_df,
+         colnum=2);
+      
+      txt_ext <- paste0(".stats_mgm",
+         MGM,
+         ifelse(ATAC, "_atac1", ""),
+         ".", iSig, ".txt");
+      txt_file <- file.path(OUTDIR,
+         gsub("[.]fc$|[.]fc[.]txt$",
+            txt_ext,
+            basename(fc_file)));
+      #if (file.exists(txt_file)) {
+      #   printDebug("Output text file already exists:", txt_file);
+      #} else {
+         cat(file="debug_log.txt", txt_file, "\n");
+         writeTable(outfile=txt_file,
+            outdata=iDF_all_hits2);
+         printDebug("Wrote ",
+            formatInt(nrow(iDF_all_hits2)),
+            " rows to: ",
+            txt_file);
+      #}
+   }
+}
+```
+
+
+## Export RData for follow-up analyses
+
+
+```{r, export_rdata, dependson=c("check_reps", "run_limma", "run_limma_mgm4")}
+if (SAVE_RDATA) {
+   fc_dat_file <- file.path(OUTDIR,
+      gsub("[.]fc$|[.]fc[.]txt$",
+         ".RData",
+         fc_file));
+   if (!igrepHas("RData", fc_dat_file)) {
+      fc_dat_file <- paste0(fc_dat_file, ".RData");
+   }
+   save.image(fc_dat_file);
+   printDebug("Saved RData to:",
+      fc_dat_file);
+} else {
+   jamba::printDebug("Skipped saving the RData session, because ",
+      "SAVE_RDATA=",
+      SAVE_RDATA);
+}
+```
+
+
+## Change log
+
+#### 18jul2019
+
+* Added comments to MA-plot of quantile-normalized, batch-adjusted data.
+* Added display of MAD values to the above MA-plot, with note saying
+outliers are not removed.
+* Fixed issue with `genomic_regions` where names like
+`"Promoter(-2000,+200)"` were replaced with `"promoter"`.
+Now it uses the proper name.
+* Note this file saves genome regions to an RData file
+`"hg19_refgene_041619_minimus_exons.genome_regions.RData"`.
+It does not name the file with promoter and TTS ranges, which
+means the ranges are fixed relative to the RData file. In
+future if we want to change the ranges around promoters and TTS,
+we need to add range numbers to the RData filename.
+
+
+#### 27aug2019
+
+* Added step to check for replicates per sample group. When there
+are no replicates, the whole set of singlets are copied into
+a new matrix annotated "Control" to be used to estimate
+variability in limma.
+* Subsequent steps test for success of each limma contrast
+before running each subsequent section.
+
+#### 14nov2019
+
+* Changed maxGroupMean "Mgm4" threshold to be user-configurable
+with environmental variable `MGM`, which defaults to `MGM=4`.
+* The script `run_gokeyATAC.R` was updated to pass the `MGM`
+environmental variable, and includes `_mgm#` in the output file
+and directory only if `MGM` is not 4, preserving previous results.
+
+#### 15nov2019
+
+* Changed output to use environmental variable `OUTDIR`, default `"."`
+which is the current working directory. The script
+`run_gokeyATAC.R` will define `OUTDIR` to use the same subfolder
+where the Rmarkdown html file is created.
+* Added `CACHEDIR` as optional method of defining a specific cache directory,
+the default is the `OUTDIR` with `"cache/"` appended to the end.
+* Fixed several issues where plots were labeled "Mgm4" even when `MGM`
+was not 4.
+* Changed stats output files to check for existing file before writing
+a new file.
+
+#### 20nov2019
+
+* Added new section for peak annotation by genome region. This process
+annotates all peaks using all genes defined in the GTF file. Genome
+regions are defined as promoter, TTS, exon, intron, or intergenic.
+First, all peaks are annotated with any intersecting genome region,
+along with the corresponding gene(s) where applicable. Next, a
+"winner" is chosen among feature_types, in order: promoter, TTS,
+exon, intron. Then, the corresponding gene_name(s) for the
+feature_type_winner are annotated for each peak. Finally, the distance
+to nearest gene, along with the nearest_gene_name are annotated,
+which is mostly interesting for peaks in "intergenic" regions.
+* Added environment variable `ATAC` which should be 0 or 1 (0 by default).
+When ATAC=0 then peaks are not annotated to the nearest ATAC-positive
+promoter region. When ATAC=1, then only gene promoters with an ATAC peak
+overlapping the promoter are used for annotation -- intended to subset
+the total set of all possible genes, to the subset of genes for which
+data support their active expression.
+
+#### 21nov2019
+
+* New optional environmental variable `GTF` with file path to
+the GTF file that should be used when annotating peaks to genes
+and nearest genes. Note that changing this file invalidates the cache,
+causing the whole pipeline to be repeated.
+* The script will now save the stats files even if they previously exist,
+in order to update the peak annotations.
+
+#### 13dec2019
+
+* Add "gene_id" to set of columns retained by genomic_regions,
+and include "gene_id" in subsequent output columns.
+* Change in nearest Mgm4 promoter logic to use TSS of promoters overlapping
+Mgm peaks.
+
+   * take promoters_gr that overlap Mgm4 peaks, call them mgm_promoters_gr
+   * convert mgm_promoters_gr to mgm_tss_gr (adjust back to original TSS position)
+   * determine distance to nearest mgm_tss_gr per fc_gr peak
+   * use distanceToNearest(..., 'select="all"') to return all hits with same distance
+   * use column headers "mgm4_annoTSS_gene_name", "mgm4_annoTSS_gene_id", "mgm4_annoTSS_distance"
+
+#### 02jan2020
+
+* Ideas for naming this tool: The tool stacks layers of peaks, merges
+overlapping peaks, slices the merged peaks by max width, then compares
+peak depth across layers using differential analysis.
+* peak, merge, slice, diff, comp
+* geologic terms: stratum/strata; mesa; slate; mesa; plateau
+* divergent
+
+#### 06jan2020
+
+* Fixed bug in `peak_genes` caused by syntax differences that work with
+`data.frame` and `matrix`, but not `data.table` objects. Also made the
+peak annotation steps markedly faster by only running the step to
+comma-delimit multiple values for the subset of rows that require that
+logic.
+
+#### 03feb2020
+
+* Changed the volcano plots with MGM threshold to use the actual
+`MGM` threshold, previously they used MGM=4 which caused minor
+discrepancies between the reported hits from limma, and the volcano
+plot numbers. This change removes that discrepancy.
+
+#### 17apr2020
+
+* Initial migration to Github.
+* Changed instances of `CellLine` to `Group`.

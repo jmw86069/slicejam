@@ -1,0 +1,39 @@
+Package: slicejam
+Title: Jam Slice ChIP-seq/ATAC-seq peak slice analysis
+Version: 0.0.0.900
+Authors@R: person(given="James M.", family="Ward",
+   email="jmw86069@gmail.com", role=c("aut", "cre"))
+Description: Jam Slice ChIP-seq/ATAC-seq peak slice analysis.
+   Peak count import, normalization, MA-plot data QC, statistical
+   group determination, differential peak analysis, Venn diagrams,
+   volcano plots, heatmaps.
+biocViews:
+   Depends: R (>= 3.6.0)
+Imports: jamba,
+   jamma,
+   colorjam,
+   kableExtra,
+   SummarizedExperiment,
+   splicejam,
+   data.table,
+   matrixStats,
+   extrafont,
+   GenomicFeatures,
+   rtracklayer,
+   methods,
+   yaml,
+   amap,
+   kableExtra,
+   knitr
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+Remotes: github::jmw86069/jamba,
+    github::jmw86069/colorjam,
+    github::jmw86069/jamma,
+    github::jmw86069/splicejam
+URL: http://github.com/jmw86069/slicejam
+BugReports: http://github.com/jmw86069/slicejam/issues
+VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.0.2
