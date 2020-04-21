@@ -136,6 +136,7 @@ suppressPackageStartupMessages(library(extrafont));
 suppressPackageStartupMessages(library(GenomicFeatures));
 suppressPackageStartupMessages(library(rtracklayer));
 suppressPackageStartupMessages(library(methods));
+suppressPackageStartupMessages(library(multienrichjam));
 
 ```
 
@@ -163,9 +164,9 @@ suppressPackageStartupMessages(library(methods));
          underscore `"_"`, or decimal `"."`.
         * Group is converted to factor, whose levels are ordered
          so that several recognized control labels are first:
-         `"Control","ctrl","ctl","veh","blank","ntc"`, followed by
-         the groups in the order they appear as column names in
-         the featureCounts file.
+         `"Control","ctrl","ctl","veh","blank","ntc","Luc"`,
+         followed by the groups in the order they appear as column
+         names in the featureCounts file.
 
 * An R object `SummarizedExperiment` is created, using the columns
 from featureCounts to populate rows, such as
@@ -290,7 +291,8 @@ if (length(fc_colnames) == 0) {
 }
 filenames <- setdiff(colnames(fc_data), fc_colnames);
 
-curation_yaml <- Sys.getenv("CURATION_YAML");
+curation_yaml <- Sys.getenv("CURATION_YAML",
+   "curation.yaml");
 if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curation_yaml)) {
    curationL <- tryCatch({
       yaml::yaml.load(curation_yaml);
@@ -325,10 +327,15 @@ if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curatio
       }
       group_colname <- head(vigrep("^Group$", colnames(sample_df)), 1)
       if (length(group_colname) > 0) {
+         ## Ensure group names have no invalid characters like "-"
+         sample_df[[group_colname]] <- gsub("[- ]+",
+            ".",
+            sample_df[[group_colname]]);
          iGroup <- sample_df[[group_colname]];
          iGroup <- factor(iGroup,
             levels=provigrep(c("UL3", "p2w5", "p4w4",
                "Control|ctrl", "Veh", "NTC", "blank",
+               "^Luc",
                "."),
                unique(iGroup)));
          sample_df[[group_colname]] <- iGroup;
@@ -362,6 +369,9 @@ if (length(curation_yaml) == 0) {
    iGroup <- gsub("^([^-_.]+)[-_.]+([^-_.]+)[-_.].*$",
       "\\2",
       iSamples);
+   iGroup <- gsub("[- ]+",
+      ".",
+      iGroup);
    iGroup <- factor(iGroup,
       levels=provigrep(c("UL3", "p2w5", "p4w4",
          "Control|ctrl|ctl", "Veh", "NTC", "blank",
@@ -674,9 +684,9 @@ printDebug("Using samples:", iSamplesUse);
 
 ```{r, cor_hm, fig.height=12, fig.width=12, dependson=c("norm_quantile", "sample_outliers")}
 ## Define centering control samples
-iControl <- head(levels(Group), 1);
+iControl <- head(levels(iGroup), 1);
 iControlSamples <- intersect(
-   subset(colData(fc_se), Group %in% iControl)$Sample,
+   subset(colData(fc_se), colData(fc_se)[[group_colname]] %in% iControl)$Sample,
    iSamplesUse);
 printDebug("Using control: ", iControl);
 printDebug("Control Samples: ", iControlSamples);
@@ -1152,19 +1162,35 @@ if (file.exists(gtf_gr_file)) {
 
 If genome regions must be defined, they will be defined below:
 
-```{r, define_genome_regions}
+```{r, define_genome_regions_txdb}
 ## If genome_regions is not define, create it
 if (!exists("genome_regions")) {
    printDebug("Defining genome regions from GTF features.");
-   refgene_txdb <- GenomicFeatures::makeTxDbFromGFF(refgene_gtf);
-   
+   txdb_file <- gsub("[.]gtf", ".txdb",
+      ignore.case=TRUE,
+      refgene_gtf);
+   if (file.exists(txdb_file)) {
+      refgene_txdb <- AnnotationDbi::loadDb(txdb_file);
+   } else {
+      refgene_txdb <- GenomicFeatures::makeTxDbFromGFF(refgene_gtf);
+   }
+}
+```
+
+```{r, define_genome_regions_tx2geneDF}
+if (!exists("genome_regions")) {
    ## tx2geneDF
-   tx2geneDF <- unique(makeTx2geneFromGtf(refgene_gtf,
+   system.time(tx2geneDF <- unique(makeTx2geneFromGtf(refgene_gtf,
       geneAttrNames=c("gene_id", "gene_name"),
       txAttrNames=c("transcript_id"),
       geneFeatureType="exon",
-      txFeatureType="exon"));
+      txFeatureType="exon")));
    rownames(tx2geneDF) <- tx2geneDF$transcript_id;
+}
+```
+
+```{r, define_genome_regions_featuresBy}
+if (!exists("genome_regions")) {
 
    ## Exons
    exonsByGene <- exonsBy(refgene_txdb, by="gene");
@@ -1490,6 +1516,7 @@ feature_to_pie <- function
 (x,
  do_pie=TRUE,
  main=NULL,
+ colorSub=NULL,
  ...)
 {
    j <- table(rmNA(x));
@@ -1508,9 +1535,17 @@ feature_to_pie <- function
       main_v <- c(Contrast=main, Hit="", Signal="", PeakSet="");
    }
    j_df[,names(main_v)] <- data.frame(as.list(main_v));
-   names(j) <- paste0(names(j), " (",
+   j_names <- names(j);
+   colorSub <- rmNA(colorSub[j_names]);
+   if (length(colorSub) == length(j_names)) {
+      colorSub <- namevector(rainbowJam(length(j_names)),
+         j_names);
+   }
+   names(j) <- paste0(j_names,
+      " (",
       format(trim=TRUE, big.mark=",", j),
-      "; ", j_pct,
+      "; ",
+      j_pct,
       "%)");
    main <- paste0(main,
       "\n(",
@@ -1535,6 +1570,7 @@ peak_pie_by_region <- function
  iPeaks=NULL,
  do_pie=TRUE,
  main=NULL,
+ colorSub=NULL,
  ...)
 {
    ## Wrapper function for peak-to-region
@@ -1547,6 +1583,7 @@ peak_pie_by_region <- function
          "main:", main);
       j_df <- feature_to_pie(feature_type_winner[k],
          main=main,
+         colorSub=colorSub,
          do_pie=do_pie);
       return(j_df);
    } else {
@@ -1576,6 +1613,7 @@ peak_pie_by_region <- function
                main <- paste(c(iCon1, iHit1, iSig1, PeakSet), collapse="\n");
                j_df <- feature_to_pie(feature_type_winner[k],
                   main=main,
+                  colorSub=colorSub,
                   do_pie=do_pie);
                j_df;
             }))
@@ -1590,13 +1628,17 @@ peak_pie_by_region <- function
 ```{r, peak_region_pies, fig.height=12, fig.width=12}
 if (length(AtacStats) > 0) {
    par("mfrow"=c(3,3), "mar"=c(5,5,6,8));
+   colorSub_pie <- nameVector(rainbowJam(length(unique(feature_type_winner))),
+         unique(feature_type_winner));
    j_df_s <- peak_pie_by_region(AtacStats$statsHitsA,
       PeakSet="All Peaks Tested",
       do_pie=TRUE,
+      colorSub=colorSub_pie,
       feature_type_winner=feature_type_winner);
    if (length(j_df_s) > 0) {
       j_df_all <- peak_pie_by_region(iPeaks=rownames(fc_se),
          do_pie=TRUE,
+         colorSub=colorSub_pie,
          feature_type_winner=feature_type_winner);
       j_df <- rbind(j_df_s, j_df_all);
       
@@ -1622,15 +1664,18 @@ if (length(AtacStatsMgm4) > 0) {
    par("mfrow"=c(3,3), "mar"=c(5,5,6,8));
    j_df_mgm4_s <- peak_pie_by_region(AtacStatsMgm4$statsHitsA,
       PeakSet=paste0("Subset Peaks Mgm", MGM),
+      colorSub=colorSub_pie,
       do_pie=TRUE,
       feature_type_winner=feature_type_winner);
    if (length(j_df_mgm4_s) > 0) {
       j_df_mgm4 <- peak_pie_by_region(iPeaks=iPeaksMgm4,
          do_pie=TRUE,
+         colorSub=colorSub_pie,
          main=paste0("Subset Peaks Mgm", MGM),
          feature_type_winner=feature_type_winner)
       j_df_all <- peak_pie_by_region(iPeaks=iPeaks,
          do_pie=TRUE,
+         colorSub=colorSub_pie,
          main="All Peaks",
          feature_type_winner=feature_type_winner)
       

@@ -24,7 +24,8 @@ Imports: jamba,
    yaml,
    amap,
    kableExtra,
-   knitr
+   knitr,
+   multienrichjam
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
