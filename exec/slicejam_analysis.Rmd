@@ -1985,13 +1985,13 @@ retrieve the Entrez gene description, using the R package
 
 ```{r, add_gene_names}
 if (suppressPackageStartupMessages(require(genejam))) {
-   genedf3 <- NULL;
    trim_multigenedesc <- function(genedf3, max_genes=4){
       multigrep <- paste0("^(",
          paste(rep("[^;]+", max_genes), collapse=";"),
-         ";.+$");
+         ");.+$");
       multirows <- grepl(multigrep, genedf3$SYMBOL);
       if (any(multirows)) {
+         jamba::printDebug(c("   Trimming ", formatInt(sum(multirows)), " multi-gene rows."), sep="");
          genedf3$GENENAME <- gsub(multigrep, "\\1", genedf3$GENENAME);
          genedf3$SYMBOL <- gsub(multigrep, "\\1", genedf3$SYMBOL);
       }
@@ -2017,6 +2017,7 @@ if (suppressPackageStartupMessages(require(genejam))) {
          }
          genedf2 <- genejam::freshenGenes(genedf1,
             try_list=c("SYMBOL2EG", "ALIAS2EG"),
+            sep=";",
             final=c("SYMBOL", "GENENAME"))
          genedf3 <- data.frame(check.names=FALSE,
             genedf1,
