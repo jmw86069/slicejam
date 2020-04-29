@@ -1532,7 +1532,7 @@ feature_to_pie <- function
    j_names <- names(j);
    colorSub <- rmNA(colorSub[j_names]);
    if (length(colorSub) == length(j_names)) {
-      colorSub <- namevector(rainbowJam(length(j_names)),
+      colorSub <- nameVector(rainbowJam(length(j_names)),
          j_names);
    }
    names(j) <- paste0(j_names,
