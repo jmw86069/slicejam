@@ -26,13 +26,16 @@ Imports: jamba,
    kableExtra,
    knitr,
    multienrichjam
+Suggests:
+   genejam
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
 Remotes: github::jmw86069/jamba,
     github::jmw86069/colorjam,
     github::jmw86069/jamma,
-    github::jmw86069/splicejam
+    github::jmw86069/splicejam,
+    github::jmw86069/genejam
 URL: http://github.com/jmw86069/slicejam
 BugReports: http://github.com/jmw86069/slicejam/issues
 VignetteBuilder: knitr

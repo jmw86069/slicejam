@@ -1977,6 +1977,80 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
 }
 ```
 
+### Annotate peaks with full gene name
+
+This section uses the gene symbol or Entrez Gene ID to
+retrieve the Entrez gene description, using the R package
+`"genejam"` (if available).
+
+```{r, add_gene_names}
+if (suppressPackageStartupMessages(require(genejam))) {
+   genedf3 <- NULL;
+   trim_multigenedesc <- function(genedf3, max_genes=4){
+      multigrep <- paste0("^(",
+         paste(rep("[^;]+", max_genes), collapse=";"),
+         ";.+$");
+      multirows <- grepl(multigrep, genedf3$SYMBOL);
+      if (any(multirows)) {
+         genedf3$GENENAME <- gsub(multigrep, "\\1", genedf3$GENENAME);
+         genedf3$SYMBOL <- gsub(multigrep, "\\1", genedf3$SYMBOL);
+      }
+      return(genedf3);
+   }
+   if (igrepHas("gene_id", colnames(values(fc_gr)))) {
+      genecols <- head(rev(vigrep("gene_id", colnames(values(fc_gr)))), 1);
+      for (genecol in genecols) {
+         genenamecol <- gsub("gene_id", "gene_name", genecol);
+         genedescol <- gsub("gene_id", "gene_description", genecol);
+         jamba::printDebug(c("Converting from '", genecol, "' to '", genedescol, "'"), sep="");
+         genedf1 <- genejam::freshenGenes(data.frame(gene_id=values(fc_gr)[[genecol]]),
+            try_list=c("SYMBOL"),
+            final=NULL);
+         if (genenamecol %in% colnames(values(fc_gr))) {
+            jamba::printDebug(c("   Including values from '", genenamecol, "'"), sep="");
+            genedf1[,genenamecol] <- values(fc_gr)[[genenamecol]];
+            genedf1 <- renameColumn(genedf1[,c("found",genenamecol),drop=FALSE],
+               from="found", to="gene_id_found");
+         } else {
+            genedf1 <- renameColumn(genedf1[,"found",drop=FALSE],
+               from="found", to="gene_id_found");
+         }
+         genedf2 <- genejam::freshenGenes(genedf1,
+            try_list=c("SYMBOL2EG", "ALIAS2EG"),
+            final=c("SYMBOL", "GENENAME"))
+         genedf3 <- data.frame(check.names=FALSE,
+            genedf1,
+            genedf2[,c("intermediate", "SYMBOL", "GENENAME"),drop=FALSE]);
+         genedf3 <- trim_multigenedesc(genedf3, 4);
+         if (any(nchar(genedf3$GENENAME) > 0)) {
+            values(fc_gr)[[genedescol]] <- genedf3$GENENAME;
+         } else {
+            jamba::printDebug("   No gene descriptions were found for the input data.", fgText="red2");
+         }
+      }
+   } else if (igrepHas("gene_name", colnames(values(fc_gr)))) {
+      genecols <- head(rev(vigrep("gene_name", colnames(values(fc_gr)))), 1);
+      for (genecol in genecols) {
+         genedescol <- gsub("gene_name", "gene_description", genecol);
+         jamba::printDebug(c("Converting from '", genecol, "' to '", genedescol, "'"), sep="");
+         genedf2 <- genejam::freshenGenes(data.frame(gene_id=values(fc_gr)[[genecol]]),
+            try_list=c("SYMBOL2EG", "ALIAS2EG"),
+            sep=";",
+            final=c("SYMBOL", "GENENAME"))
+         genedf3 <- data.frame(check.names=FALSE,
+            genedf1,
+            genedf2[,c("intermediate", "SYMBOL", "GENENAME"),drop=FALSE]);
+         genedf3 <- trim_multigenedesc(genedf3, 4);
+         if (any(nchar(genedf3$GENENAME) > 0)) {
+            values(fc_gr)[[genedescol]] <- genedf3$GENENAME;
+         } else {
+            jamba::printDebug("   No gene descriptions were found for the input data.", fgText="red2");
+         }
+      }
+   }
+}
+```
+
 
 ### Export stats results for hits (all peaks)
 
