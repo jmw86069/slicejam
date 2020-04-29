@@ -935,7 +935,7 @@ if (length(MGM) > 1) {
 }
 ```
 
-The max group mean threshold is: **`r cat(MGM)`**
+The max group mean threshold is: **`{r cat(MGM)}`**
 
 ```{r, run_limma_mgm4, dependson=c("stats_design","run_limma","mgm_arg")}
 ## Use the lmFit1 coefficients directly, which ensures
@@ -1026,7 +1026,7 @@ if (length(AtacStats) > 0) {
 
 Volcano plots below were created using the limma results
 after subsetting peaks for max group mean >= 
-**`r cat(MGM)`**.
+**`{r cat(MGM)}`**.
 
 ```{r, volcano_plots_mgm4, fig.height=12, fig.width=12, dependson=c("run_limma_mgm4")}
 if (length(AtacStatsMgm4) > 0) {
@@ -1308,7 +1308,9 @@ values(genome_regions_exp)[,"gene_feature_type"] <- pasteByRow(
 ## ~20 seconds, substantially faster than annotateGRfromGR()
 printDebug("Annotating peaks by genome_regions");
 system.time({
-   fco <- findOverlaps(fc_gr, genome_regions_exp);
+   fco <- GenomicRanges::findOverlaps(fc_gr,
+      ignore.strand=TRUE,
+      genome_regions_exp);
    grdt <- data.table::data.table(
       fc=values(fc_gr[queryHits(fco)])$Gene,
       gene_name=values(genome_regions_exp[subjectHits(fco)])$gene_name,
@@ -1325,12 +1327,13 @@ system.time({
       "feature_type", 
       "gene_feature_type");
    grd_vals <- lapply(nameVector(grd_colnames), function(i){
+      #printDebug(i);
       icols <- c("fc", i);
-      #printDebug(i, ": ", icols);
       idt <- grdt[, ..icols];
       ## expand comma-delimited entries
       grdt0ft <- unique(mixedSortDF(idt, byCols=1:2)[,c(1,2)]);
-      grv <- cPaste(split(as.character(grdt0ft[[2]]), grdt0ft[[1]]));
+      grv <- unstrsplit(CharacterList(split(as.character(grdt0ft[[2]]), grdt0ft[[1]])), sep=",");
+      #grv <- cPaste(CharacterList(split(as.character(grdt0ft[[2]]), grdt0ft[[1]])), verbose=TRUE);
       grv;
    });
    ## Add each column to fc_gr
@@ -1376,14 +1379,19 @@ system.time({
    ## peak_089268
    for (i in c("feature_type", "gene_name", "gene_id")) {
       inewcolname <- paste0(i, "_winner");
-      printDebug(i, ", ", inewcolname);
+      #printDebug(i, ", ", inewcolname);
       ikeepcolnames <- c("fc", i);
       grdt0_hasbestft_sub <- unique(grdt0_hasbestft[, ..ikeepcolnames]);
       if (anyDuplicated(grdt0_hasbestft_sub[["fc"]])) {
          ## split only duplicate entries
          fcdupes <- is_duplicate(grdt0_hasbestft_sub[["fc"]]);
-         grdt0_bestvalue_dupe <- cPaste(split(grdt0_hasbestft_sub[[i]][fcdupes],
-            grdt0_hasbestft_sub[["fc"]][fcdupes]));
+         #grdt0_bestvalue_dupe <- cPaste(split(grdt0_hasbestft_sub[[i]][fcdupes],
+         #   grdt0_hasbestft_sub[["fc"]][fcdupes]));
+         grdt0_bestvalue_dupe <- unstrsplit(
+            sep=",",
+            CharacterList(
+               split(grdt0_hasbestft_sub[[i]][fcdupes],
+                  grdt0_hasbestft_sub[["fc"]][fcdupes])));
          grdt0_bestvalue_nondupe <- nameVector(as.character(grdt0_hasbestft_sub[[i]][!fcdupes]),
             grdt0_hasbestft_sub[["fc"]][!fcdupes]);
          grdt0_bestvalue <- c(grdt0_bestvalue_dupe,
@@ -1405,23 +1413,9 @@ system.time({
    }
 });
 
-## For fun make an logical matrix of feature_type
-fc_typem <- as.data.frame(lapply(nameVector(c("Promoter", "TTS", "exon", "intron", "intergenic")), function(i){
-   j <- grepl(i, values(fc_gr)$feature_type);
-   names(j) <- values(fc_gr)$Gene;
-   j;
-}));
-#m1 <- as.matrix(fc_typem);
-#> t(m1) %*% (m1)
-#           Promoter  TTS  exon intron intergenic
-#Promoter      10951 1155  2754   3263          0
-#TTS            1155 5972  3811   2398          0
-#exon           2754 3811 16191  12770          0
-#intron         3263 2398 12770  72976          0
-#intergenic        0    0     0      0     208245
-
 ## gene distance analysis
 fc_gr_genedist <- GenomicRanges::distanceToNearest(fc_gr,
+   ignore.strand=TRUE,
    genome_regions,
    select="all");
 fc_gr_genedist_df <- data.frame(
@@ -1433,13 +1427,18 @@ fc_gr_genedist_df <- data.frame(
       to=c("nearest_gene_name", "nearest_gene_id"))
 )
 for (i in c("nearest_gene_name", "nearest_gene_id", "nearest_gene_distance")) {
-   printDebug(i);
+   #printDebug(i);
    fc_gr_genedist_df1 <- unique(fc_gr_genedist_df[,c("Gene", i)]);
    if (igrepHas("_distance", i)) {
       fc_gr_genedist_df1vals <- nameVector(fc_gr_genedist_df1[,c(i, "Gene")]);
       values(fc_gr)[,i] <- c(NA, 0)[1];
    } else {
-      fc_gr_genedist_df1vals <- cPaste(split(fc_gr_genedist_df1[[i]], fc_gr_genedist_df1[["Gene"]]))
+      #fc_gr_genedist_df1vals <- cPaste(split(fc_gr_genedist_df1[[i]], fc_gr_genedist_df1[["Gene"]]))
+      fc_gr_genedist_df1vals <- unstrsplit(sep=",",
+         CharacterList(
+            split(fc_gr_genedist_df1[[i]], fc_gr_genedist_df1[["Gene"]])
+         )
+      )
       values(fc_gr)[,i] <- c(NA, "")[1];
    }
    imatch <- match(names(fc_gr_genedist_df1vals), values(fc_gr)$Gene);
@@ -1451,17 +1450,6 @@ for (i in c("nearest_gene_name", "nearest_gene_id", "nearest_gene_distance")) {
       }
    }
 }
-if (1 == 2) {
-   zero_dist <- which(values(fc_gr_genedist)$distance == 0);
-   nonzero_dist <- which(values(fc_gr_genedist)$distance > 0);
-   values(fc_gr)[,"nearest_gene_name"] <- values(fc_gr)[,"gene_name"];
-   nonzero_q <- queryHits(fc_gr_genedist[nonzero_dist]);
-   nonzero_s <- subjectHits(fc_gr_genedist[nonzero_dist]);
-   values(fc_gr[nonzero_q])[,"nearest_gene_name"] <- values(genome_regions[nonzero_s])$gene_name;
-   values(fc_gr)[,"nearest_gene_distance"] <- c(NA, 0)[1];
-   values(fc_gr[queryHits(fc_gr_genedist)])[,"nearest_gene_distance"] <- values(fc_gr_genedist)$distance;
-}
-
 
 feature_type_winner <- values(fc_gr)$feature_type_winner;
 names(feature_type_winner) <- values(fc_gr)$Gene;
@@ -1628,7 +1616,8 @@ peak_pie_by_region <- function
 ```{r, peak_region_pies, fig.height=12, fig.width=12}
 if (length(AtacStats) > 0) {
    par("mfrow"=c(3,3), "mar"=c(5,5,6,8));
-   colorSub_pie <- nameVector(rainbowJam(length(unique(feature_type_winner))),
+   colorSub_pie <- nameVector(
+      rainbowJam(length(unique(feature_type_winner))),
          unique(feature_type_winner));
    j_df_s <- peak_pie_by_region(AtacStats$statsHitsA,
       PeakSet="All Peaks Tested",
@@ -1656,7 +1645,7 @@ if (length(AtacStats) > 0) {
 #### Pie chart (subset peaks)
 
 The pie charts below reflect the peaks after filtering
-for the max group mean threshold: **`r cat(MGM)`**
+for the max group mean threshold: **`{r cat(MGM)}`**
 
 
 ```{r, peak_region_pies_mgm4, fig.height=12, fig.width=12}
@@ -1718,7 +1707,7 @@ values(fc_gr)$broad_peak_number <- makeNames(
    doPadInteger=TRUE,
    renameOnes=TRUE);
 fc_gr_bp_ct <- table(values(fc_gr)$broad_peak);
-values(fc_gr)$num_slices <- fc_gr_bp_ct[values(fc_gr)$broad_peak];
+values(fc_gr)$num_slices <- as.vector(fc_gr_bp_ct[values(fc_gr)$broad_peak]);
 rowData(fc_se)$broad_peak <- values(fc_gr)$broad_peak;
 rowData(fc_se)$broad_peak_number <- values(fc_gr)$broad_peak_number;
 rowData(fc_se)$broad_peak_slices <- fc_gr_bp_ct[values(fc_gr)$broad_peak];
@@ -1944,7 +1933,9 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
       ## nearest mgm_annoTSS distance
       fc_gr_dist <- GenomicRanges::distanceToNearest(fc_gr,
          ignore.strand=TRUE,
+         select="all",
          mgm_tss_gr);
+      #220020
       ## Add comma-delimited values per column as needed
       genecol1 <- head(provigrep(c("^Geneid", "^Gene"), colnames(values(fc_gr))), 1);
       fc_gr_dist_df <- renameColumn(
@@ -1987,12 +1978,63 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
 ```
 
 
-#### Export stats results for hits (all peaks)
+### Export stats results for hits (all peaks)
 
 Statistical results are saved in text file for the full set
 of peaks.
 Look in the folder defined by OUTDIR: **`{r cat(OUTDIR)}`**.
 
+```{r, export_beds}
+statsdf2bed <- function
+(statsdf,
+ type=c("all", "hits"),
+ ...)
+{
+   ## This function converts Stats data.frame to BED format
+   ## using the BED name field to encode additional info
+   type <- match.arg(type);
+   
+   hit_cols <- vigrep("^hit ", colnames(statsdf));
+   hit_cols_names <- gsub("^.+ ", "", hit_cols);
+   hit_cols_names2 <- gsub("_v2", "", makeNames(hit_cols_names));
+   names(hit_cols) <- hit_cols_names2;
+   hit_cols_use <- hit_cols[unvigrep("_v[0-9]+$", hit_cols_names2)];
+   hits_l <- lapply(hit_cols_use, function(i){statsdf[[i]] != 0})
+   hits_v <- Reduce("|", hits_l);
+   
+   ## Optionally subset for stats hits
+   if ("hits" %in% type) {
+      statsdf <- statsdf[hits_v,,drop=FALSE];
+   }
+   
+   hits_im <- as.matrix(statsdf[,hit_cols_use,drop=FALSE]);
+   hits_score <- rowSums(abs(hits_im));
+   ## Make BED name
+   hits_vl <- lapply(nameVectorN(hit_cols_use), function(i){
+      j <- statsdf[[hit_cols[i]]];
+      ifelse(j == 0,
+         "",
+         paste0(j, "_", i))
+   });
+   ## _annoTSS_gene_name
+   mgmpg <- paste0("mgm", MGM, "_annoTSS_gene_name");
+   mgmpgid <- paste0("mgm", MGM, "_annoTSS_gene_id");
+   mgmpd <- paste0("mgm", MGM, "_annoTSS_distance");
+
+   hits_vm <- do.call(cbind, c(
+      lapply(nameVector(c("Gene", mgmpg, mgmpd)), function(i){
+         rmNA(naValue="", statsdf[[i]])
+      }),
+      hits_vl
+   ));
+   hits_label <- pasteByRow(hits_vm, sep="|");
+   statsdf$label <- hits_label;
+   statsdf$score <- hits_score;
+   statsdf$strand <- "+";
+   statsbed <- statsdf[,c("Chr", "Start", "End", "label", "strand", "score"),drop=FALSE];
+   return(statsbed);
+}
+```
 
 ```{r, stats_df, dependson=c("run_limma")}
 if (length(AtacStats) > 0) {
@@ -2006,11 +2048,12 @@ if (length(AtacStats) > 0) {
       iDF_all_hits <- iDF_all;
       
       ## Add nearest promoter df
-      pro_cols1 <- provigrep(c("gene_id",
-         "gene_name",
-         "feature_type",
+      pro_cols1 <- provigrep(c("^gene_id",
+         "^gene_name",
+         "feature_type($|_winner)",
+         "_gene",
          "_distance",
-         "broad_peak"),
+         "broad_peak|num_slices"),
          colnames(values(fc_gr)));
       pro_cols <- intersect(
          colnames(values(fc_gr)),
@@ -2018,7 +2061,7 @@ if (length(AtacStats) > 0) {
       );
       if (length(pro_cols) > 0) {
          idf_match <- match(iDF_all_hits$Gene, values(fc_gr)$Gene);
-         promoter_df <- as.data.frame(values(fc_gr[idf_match])[,pro_cols]);
+         promoter_df <- as.data.frame(values(fc_gr[idf_match,pro_cols]));
          iDF_all_hits[,pro_cols] <- promoter_df;
       }
       
@@ -2038,27 +2081,42 @@ if (length(AtacStats) > 0) {
          gsub("[.]fc$|[.]fc[.]txt$",
             txt_ext,
             basename(fc_file)));
-      #if (file.exists(txt_file)) {
-      #   printDebug("Output text file already exists:", txt_file);
-      #} else {
-         #cat(file="debug_log.txt", txt_file, "\n");
-         writeTable(outfile=txt_file,
-            outdata=iDF_all_hits2);
-         printDebug("Wrote ",
-            formatInt(nrow(iDF_all_hits2)),
-            " rows to: ",
-            txt_file);
-      #}
+
+      data.table::fwrite(
+         x=iDF_all_hits2,
+         file=txt_file,
+         sep="\t",
+         col.names=TRUE);
+      printDebug("Wrote ",
+         formatInt(nrow(iDF_all_hits2)),
+         " rows to: ",
+         txt_file);
+
+      ## Save all peaks in BED format
+      statsbed <- statsdf2bed(iDF_all_hits2);
+      bed_ext <- paste0(".stats_nomgm",
+         ifelse(ATAC, "_atac1", ""),
+         ".", iSig, ".bed");
+      bed_file <- file.path(OUTDIR,
+         gsub("[.]fc$|[.]fc[.]txt$",
+            bed_ext,
+            basename(fc_file)));
+      data.table::fwrite(
+         x=statsbed,
+         file=bed_file,
+         sep="\t",
+         col.names=FALSE);
    }
 }
 ```
 
-#### Export stats results for hits (subset)
+### Export stats results for hits (subset)
 
 Statistical results are saved in text file for the subset
 of peaks with max group mean >= **`{r cat(MGM)}`**.
 Look in the folder defined by OUTDIR: **`{r cat(OUTDIR)}`**.
 
+A BED file is also saved during this step.
 
 ```{r, stats_df_mgm4, dependson=c("run_limma_mgm4")}
 if (length(AtacStatsMgm4) > 0) {
@@ -2102,20 +2160,59 @@ if (length(AtacStatsMgm4) > 0) {
          gsub("[.]fc$|[.]fc[.]txt$",
             txt_ext,
             basename(fc_file)));
-      #if (file.exists(txt_file)) {
-      #   printDebug("Output text file already exists:", txt_file);
-      #} else {
-         cat(file="debug_log.txt", txt_file, "\n");
-         writeTable(outfile=txt_file,
-            outdata=iDF_all_hits2);
-         printDebug("Wrote ",
-            formatInt(nrow(iDF_all_hits2)),
-            " rows to: ",
-            txt_file);
-      #}
+      
+      cat(file="debug_log.txt", txt_file, "\n");
+      writeTable(outfile=txt_file,
+         outdata=iDF_all_hits2);
+      printDebug("Wrote ",
+         formatInt(nrow(iDF_all_hits2)),
+         " rows to: ",
+         txt_file);
+      
+      ## Save all peaks in BED format
+      statsbed <- statsdf2bed(iDF_all_hits2);
+      bed_ext <- paste0(".stats_mgm",
+         MGM,
+         ifelse(ATAC, "_atac1", ""),
+         ".", iSig, ".bed");
+      bed_file <- file.path(OUTDIR,
+         gsub("[.]fc$|[.]fc[.]txt$",
+            bed_ext,
+            basename(fc_file)));
+      data.table::fwrite(
+         x=statsbed,
+         file=bed_file,
+         sep="\t",
+         col.names=FALSE);
+      
+      ## Save all peaks in BED format
+      statsbed <- statsdf2bed(iDF_all_hits2, type="hits");
+      bed_ext <- paste0(".statshits_mgm",
+         MGM,
+         ifelse(ATAC, "_atac1", ""),
+         ".", iSig, ".bed");
+      bed_file <- file.path(OUTDIR,
+         gsub("[.]fc$|[.]fc[.]txt$",
+            bed_ext,
+            basename(fc_file)));
+      data.table::fwrite(
+         x=statsbed,
+         file=bed_file,
+         sep="\t",
+         col.names=FALSE);
+
    }
 }
 ```
+
+### Export interesting BED files
+
+Useful BED files are exported:
+
+1. BED file with all peaks.
+2. BED file with mgmX peaks.
+3. BED file with differential peaks.
+
 
 
 ## Export RData for follow-up analyses
@@ -2227,7 +2324,8 @@ Mgm peaks.
    * take promoters_gr that overlap Mgm4 peaks, call them mgm_promoters_gr
    * convert mgm_promoters_gr to mgm_tss_gr (adjust back to original TSS position)
    * determine distance to nearest mgm_tss_gr per fc_gr peak
-   * use distanceToNearest(..., 'select="all"') to return all hits with same distance
+   * use `distanceToNearest(..., 'select="all"')`
+   to return all hits with same distance
    * use column headers "mgm4_annoTSS_gene_name", "mgm4_annoTSS_gene_id", "mgm4_annoTSS_distance"
 
 #### 02jan2020
@@ -2258,3 +2356,12 @@ plot numbers. This change removes that discrepancy.
 
 * Initial migration to Github.
 * Changed instances of `CellLine` to `Group`.
+
+#### 29apr2020
+
+* use `distanceToNearest(..., 'select="all"', ignore.strand=TRUE)`
+to return all hits with same distance, and to return hits from either strand
+* use `subsetByOverlaps(..., ignore.strand=TRUE)` to return overlaps
+from either strand.
+* use `findOverlaps(..., ignore.strand=TRUE)` to return overlaps
+from either strand.
