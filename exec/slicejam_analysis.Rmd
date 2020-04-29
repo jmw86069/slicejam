@@ -1903,13 +1903,16 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
    ## - all cases, nearest mgm4 promoter, and its gene_name
    ## - distance to nearest mgm4 promoter
    
-   promoters_gr <- subset(genome_regions, grepl("promoter", ignore.case=TRUE, feature_type));
+   promoters_gr <- subset(genome_regions,
+      grepl("promoter", 
+         ignore.case=TRUE, 
+         feature_type));
    #values(promoters_gr)[,"gene_strand"] <- as.character(strand(promoters_gr));
    
    promoter2tss <- function
    (gr,
-      upstream=2000,
-      downstream=200)
+    upstream=2000,
+    downstream=200)
    {
       ## Purpose is to convert coordinates of promoters back to original TSS
       gr2pos <- strand(gr) %in% "+";
@@ -1927,8 +1930,9 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
    downstream <- 200;
    
    tryCatch({
-      mgm_promoter_gr <- subsetByOverlaps(promoters_gr,
-         fc_gr[iPeaksMgm4]);
+      mgm_promoter_gr <- IRanges::subsetByOverlaps(promoters_gr,
+         fc_gr[iPeaksMgm4],
+         ignore.strand=TRUE);
       mgm_tss_gr <- promoter2tss(mgm_promoter_gr[,c("gene_name", "gene_id")],
          upstream=upstream,
          downstream=downstream);
@@ -1939,26 +1943,31 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
       
       ## nearest mgm_annoTSS distance
       fc_gr_dist <- GenomicRanges::distanceToNearest(fc_gr,
+         ignore.strand=TRUE,
          mgm_tss_gr);
       ## Add comma-delimited values per column as needed
-      fc_gr_dist_df <- data.frame(
-         as.data.frame(values(fc_gr[queryHits(fc_gr_dist)])[,c("Gene")]),
-         gene_distance=values(fc_gr_dist)$distance,
-         renameColumn(
-            as.data.frame(values(genome_regions[subjectHits(fc_gr_dist)])[,c("gene_name", "gene_id")]),
-            from=c("gene_name", "gene_id", "gene_distance"),
-            to=c(mgmpg, mgmpgid, mgmpd))
+      genecol1 <- head(provigrep(c("^Geneid", "^Gene"), colnames(values(fc_gr))), 1);
+      fc_gr_dist_df <- renameColumn(
+         data.frame(
+            as.data.frame(values(fc_gr[queryHits(fc_gr_dist)])[,genecol1,drop=FALSE]),
+            gene_distance=values(fc_gr_dist)$distance,
+            as.data.frame(values(mgm_tss_gr[subjectHits(fc_gr_dist)])[,c("gene_name", "gene_id"),drop=FALSE])
+         ),
+         from=c("gene_name", "gene_id", "gene_distance"),
+         to=c(mgmpg, mgmpgid, mgmpd)
       )
       for (i in c(mgmpg, mgmpgid, mgmpd)) {
-         fc_gr_dist_df1 <- unique(fc_gr_dist_df[,c("Gene", i)]);
+         printDebug(i);
+         fc_gr_dist_df1 <- unique(fc_gr_dist_df[,c(genecol1, i),drop=FALSE]);
          if (igrepHas("_distance", i)) {
-            fc_gr_dist_df1vals <- nameVector(fc_gr_dist_df1[,c(i, "Gene")]);
+            fc_gr_dist_df1vals <- nameVector(fc_gr_dist_df1[,c(i, genecol1),drop=FALSE]);
             values(fc_gr)[,i] <- c(NA, 0)[1];
          } else {
-            fc_gr_dist_df1vals <- cPaste(split(fc_gr_dist_df1[[i]], fc_gr_dist_df1[["Gene"]]))
-            values(fc_gr)[,i] <- c(NA, "")[1];
+            fc_gr_dist_df1vals <- cPaste(split(fc_gr_dist_df1[[i]], fc_gr_dist_df1[[genecol1]]))
+            values(fc_gr)[,i] <- head(c(NA, ""), 1);
          }
-         imatch <- match(names(fc_gr_dist_df1vals), values(fc_gr)$Gene);
+         imatch <- match(names(fc_gr_dist_df1vals),
+            values(fc_gr)[[genecol1]]);
          if (length(imatch) > 0) {
             if (igrepHas("_distance", i)) {
                values(fc_gr)[imatch,i] <- fc_gr_dist_df1vals;
