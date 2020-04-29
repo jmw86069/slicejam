@@ -8,6 +8,10 @@
 ##
 ## GTF=genome.gtf ATAC=1 FC_FILE=071419_2124_38to100_NoY_NoM_NoProblems.fc.txt CURATION_YAML=curation.yaml DRYRUN=1 Rscript run_gokeyATAC.R
 ##
+## GTF="genome.gtf" # the GTF file with gene-exon features
+##
+## GTFNAME="genome_label" # optional label used in place of GTF file stem
+##
 ## MGM defines an optional maxGroupMean threshold, default MGM=4.
 ##
 ## ATAC=1 defines ATAC mode which calls active promoters that directly
@@ -40,7 +44,7 @@ if (length(MGM) == 0 || nchar(MGM) == 0) {
 }
 
 GTF <- Sys.getenv("GTF");
-if (length(GTF) > 0 || nchar(GTF) > 0) {
+if (length(GTF) > 0 && nchar(GTF) > 0) {
    GTFNAME <- Sys.getenv("GTFNAME");
    if (length(GTFNAME) == 0 || nchar(GTFNAME) == 0) {
       GTFNAME <- paste0("_",
@@ -50,6 +54,7 @@ if (length(GTF) > 0 || nchar(GTF) > 0) {
    }
    gtf_stem <- paste0("_gtf", GTFNAME);
 } else {
+   stop("GTF must be supplied.");
    gtf_stem <- "";
 }
 
