@@ -295,7 +295,11 @@ curation_yaml <- Sys.getenv("CURATION_YAML",
    "curation.yaml");
 if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curation_yaml)) {
    curationL <- tryCatch({
-      yaml::yaml.load(curation_yaml);
+      if (length(curation_yaml) == 1 && file.exists(curation_yaml)) {
+         yaml::yaml.load(readLines(curation_yaml));
+      } else {
+         yaml::yaml.load(curation_yaml);
+      }
    }, error=function(e){
       jamba::printDebug("Error: ",
          c("curation_yaml file '",
@@ -306,7 +310,7 @@ if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curatio
       list();
    });
    if (length(curationL) > 0) {
-      sample_df <- curateVtoDF(filenames, curationL);
+      sample_df <- splicejam::curateVtoDF(filenames, curationL);
       sample_colname <- head(vigrep("^sample[s]*$", colnames(sample_df)), 1)
       if (length(sample_colname) > 0) {
          iSamples <- jamba::makeNames(sample_df[[sample_colname]]);
@@ -315,6 +319,7 @@ if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curatio
             c("No '","Sample","' column was recognized."),
             sep="",
             fgText=c("red", "dodgerblue"));
+         stop("No Sample column was recognized.");
       }
       run_colname <- head(vigrep("^run$", colnames(sample_df)), 1)
       if (length(run_colname) > 0) {
@@ -344,6 +349,7 @@ if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curatio
             c("No '","Group","' column was recognized."),
             sep="",
             fgText=c("red", "dodgerblue"));
+         stop("No Group column was recognized.");
       }
       filename_colname <- head(vigrep("^filename$", colnames(sample_df)), 1);
       if (length(filename_colname) == 0) {
