@@ -1,3 +1,16 @@
+# slicejam 0.0.2.900
+
+## enhancements
+
+* `GROUPCHECK=1` environment variable will optionally export
+only the sample group information and stop before performing
+any data analysis.
+* BED files are exported: all peaks; MGM-filtered peaks; and MGM-filtered
+differential peaks.
+* Added `feature_type_winner` to the BED output name.
+* Created `"how_to_slicejam.md"` to describe how to run the workflow
+using Rscript along with `"run_slicejam.R"`.
+
 # slicejam 0.0.1.900
 
 ## bug fixes

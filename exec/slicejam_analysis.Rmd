@@ -49,11 +49,21 @@ if (length(ATAC) == 0 || nchar(ATAC) == 0 || is.na(ATAC) || ATAC %in% c(0, "0", 
 } else {
    ATAC <- TRUE;
 }
+GROUPCHECK <- Sys.getenv("GROUPCHECK");
+if (length(GROUPCHECK) == 0 ||
+      nchar(GROUPCHECK) == 0 || 
+      is.na(GROUPCHECK) || 
+      GROUPCHECK %in% c(0, "0", "F", "NA", "N", "n")) {
+   GROUPCHECK <- FALSE;
+} else {
+   GROUPCHECK <- TRUE;
+}
 GTF <- Sys.getenv("GTF");
 if (length(GTF) == 0 || nchar(GTF) == 0 || !file.exists(GTF)) {
-   GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/EA_Jul052017_RNAseq/hg19_refgene_041619_minimus_exons.gtf";
-   GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Copied_Intersections/110519_ATAC_broadpeak/To_James/hg19_refgene_041619_minimus_exons_v2.gtf";
-   GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Adelman/Scripts/fetch_refGene_gtf/test/hg19_121619_genes.gtf"; # 20dec2019
+   #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/EA_Jul052017_RNAseq/hg19_refgene_041619_minimus_exons.gtf";
+   #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Copied_Intersections/110519_ATAC_broadpeak/To_James/hg19_refgene_041619_minimus_exons_v2.gtf";
+   #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Adelman/Scripts/fetch_refGene_gtf/test/hg19_121619_genes.gtf"; # 20dec2019
+   stop("The GTF environment variable is required.");
 }
 ```
 
@@ -358,7 +368,7 @@ if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curatio
       }
       rownames(sample_df) <- sample_df[[sample_colname]];
       knitr::kable(sample_df,
-         caption="Sample Groups Defined by curation_yaml");
+         caption="Sample Groups defined by curation.yaml");
       if (any(!sapply(c("iSamples", "Run", "iGroup"), exists))) {
          stop("One or more of iSamples,Run,Group could not be defined.");
       }
@@ -396,6 +406,24 @@ if (length(curation_yaml) == 0) {
       Run=Run,
       row.names=iSamples
    );
+   knitr::kable(sample_df,
+      caption="Sample Groups defined by basic rules (not curation.yaml)");
+}
+
+## Optional GROUPCHECK which exits here to allow reviewing the sample grouping
+if (GROUPCHECK) {
+   txt_ext <- paste0(".curated_samples.txt");
+   sample_txt_file <- file.path(OUTDIR,
+      gsub("[.]fc$|[.]fc[.]txt$",
+         txt_ext,
+         basename(fc_file)));
+   data.table::fwrite(
+      x=sample_df,
+      file=sample_txt_file,
+      sep="\t",
+      col.names=TRUE);
+   stop(paste0("Curated sample data for review: '",
+      sample_txt_file, "'"));
 }
 
 ## Rename featureCounts columns to match iSamples
@@ -2102,8 +2130,12 @@ statsdf2bed <- function
    mgmpgid <- paste0("mgm", MGM, "_annoTSS_gene_id");
    mgmpd <- paste0("mgm", MGM, "_annoTSS_distance");
 
+   statsdf$ft_winner <- gsub("[ ()].*$",
+      "", 
+      statsdf$feature_type_winner);
+
    hits_vm <- do.call(cbind, c(
-      lapply(nameVector(c("Gene", mgmpg, mgmpd)), function(i){
+      lapply(nameVector(c("Gene", "ft_winner", mgmpg, mgmpd)), function(i){
          rmNA(naValue="", statsdf[[i]])
       }),
       hits_vl
@@ -2286,13 +2318,6 @@ if (length(AtacStatsMgm4) > 0) {
 }
 ```
 
-### Export interesting BED files
-
-Useful BED files are exported:
-
-1. BED file with all peaks.
-2. BED file with mgmX peaks.
-3. BED file with differential peaks.
 
 
 
@@ -2446,3 +2471,9 @@ to return all hits with same distance, and to return hits from either strand
 from either strand.
 * use `findOverlaps(..., ignore.strand=TRUE)` to return overlaps
 from either strand.
+* Export BED files for all peaks, MGM-filtered peaks, and MGM peak hits.
+* Enable use of `"curation.yaml"` file to convert featureCounts column
+names to Sample, Group, Run columns used for sample grouping
+and batch adjustment.
+* Added optional GROUPCHECK which allows reviewing the sample grouping
+without running the rest of the pipeline.
