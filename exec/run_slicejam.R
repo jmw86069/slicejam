@@ -53,6 +53,7 @@ if (length(GTF) > 0 && nchar(GTF) > 0) {
                gsub("[.][^.]+$", "", basename(GTF)))));
    }
    gtf_stem <- paste0("_gtf", GTFNAME);
+   Sys.setenv(GTFNAME=GTFNAME);
 } else {
    stop("GTF must be supplied.");
    gtf_stem <- "";
@@ -104,6 +105,8 @@ jamba::printDebug("knit_root_dir:", knit_root_dir);
 jamba::printDebug("cache_dir:    ", cache_dir);
 jamba::printDebug("fc_file path: ", fc_filepath);
 jamba::printDebug("CURATION_YAML:", CURATION_YAML);
+jamba::printDebug("GTF:          ", GTF);
+jamba::printDebug("GTFNAME:      ", GTFNAME);
 Sys.setenv(FC_FILE=fc_filepath);
 Sys.setenv(CACHEDIR=cache_dir);
 

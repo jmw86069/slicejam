@@ -59,11 +59,14 @@ if (length(GROUPCHECK) == 0 ||
    GROUPCHECK <- TRUE;
 }
 GTF <- Sys.getenv("GTF");
-if (length(GTF) == 0 || nchar(GTF) == 0 || !file.exists(GTF)) {
+if (length(GTF) == 0 || nchar(GTF) == 0) {
    #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/EA_Jul052017_RNAseq/hg19_refgene_041619_minimus_exons.gtf";
    #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Copied_Intersections/110519_ATAC_broadpeak/To_James/hg19_refgene_041619_minimus_exons_v2.gtf";
    #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Adelman/Scripts/fetch_refGene_gtf/test/hg19_121619_genes.gtf"; # 20dec2019
    stop("The GTF environment variable is required.");
+}
+if (!file.exists(GTF)) {
+   stop(paste0("The GTF was not found:", GTF));
 }
 ```
 
