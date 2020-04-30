@@ -45,6 +45,9 @@ if (length(MGM) == 0 || nchar(MGM) == 0) {
 
 GTF <- Sys.getenv("GTF");
 if (length(GTF) > 0 && nchar(GTF) > 0) {
+   if (!file.exists(GTF)) {
+      stop(paste0("GTF file not found:", GTF));
+   }
    GTFNAME <- Sys.getenv("GTFNAME");
    if (length(GTFNAME) == 0 || nchar(GTFNAME) == 0) {
       GTFNAME <- paste0("_",
