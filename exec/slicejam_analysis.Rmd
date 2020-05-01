@@ -2148,7 +2148,7 @@ statsdf2bed <- function
    statsdf$label <- hits_label;
    statsdf$score <- hits_score;
    statsdf$strand <- "+";
-   statsbed <- statsdf[,c("Chr", "Start", "End", "label", "strand", "score"),drop=FALSE];
+   statsbed <- statsdf[,c("Chr", "Start", "End", "label", "score", "strand"),drop=FALSE];
    return(statsbed);
 }
 ```
@@ -2218,9 +2218,21 @@ if (length(AtacStats) > 0) {
          gsub("[.]fc$|[.]fc[.]txt$",
             bed_ext,
             basename(fc_file)));
+      ## Add track header line
+      trackname <- paste0(
+         format(Sys.time(), "%Y%m%d%H%M"),
+         "all");
+      trackline <- paste0('track name=',
+         trackname,
+         ' description="',
+         format(Sys.time(), "%Y%m%d%H%M"),
+         ' all peaks"');
+      writeLines(text=trackline,
+         con=statsbed);
       data.table::fwrite(
          x=statsbed,
          file=bed_file,
+         append=TRUE,
          sep="\t",
          col.names=FALSE);
    }
@@ -2299,15 +2311,27 @@ if (length(AtacStatsMgm4) > 0) {
          gsub("[.]fc$|[.]fc[.]txt$",
             bed_ext,
             basename(fc_file)));
+      ## Add track header line
+      trackname <- paste0(
+         format(Sys.time(), "%Y%m%d%H%M"),
+         "mgm");
+      trackline <- paste0('track name=',
+         trackname,
+         ' description="',
+         format(Sys.time(), "%Y%m%d%H%M"),
+         ' mgm', MGM, ' peaks"');
+      writeLines(text=trackline,
+         con=statsbed);
       data.table::fwrite(
          x=statsbed,
          file=bed_file,
+         append=TRUE,
          sep="\t",
          col.names=FALSE);
       
       ## Save all peaks in BED format
       statsbed <- statsdf2bed(iDF_all_hits2, type="hits");
-      bed_ext <- paste0(".statshits_mgm",
+      bed_ext <- paste0(".stathits_mgm",
          MGM,
          ifelse(ATAC, "_atac1", ""),
          ".", iSig, ".bed");
@@ -2315,9 +2339,21 @@ if (length(AtacStatsMgm4) > 0) {
          gsub("[.]fc$|[.]fc[.]txt$",
             bed_ext,
             basename(fc_file)));
+      ## Add track header line
+      trackname <- paste0(
+         format(Sys.time(), "%Y%m%d%H%M"),
+         "hit");
+      trackline <- paste0('track name=',
+         trackname,
+         ' description="',
+         format(Sys.time(), "%Y%m%d%H%M"),
+         ' mgm', MGM, ' hits"');
+      writeLines(text=trackline,
+         con=statsbed);
       data.table::fwrite(
          x=statsbed,
          file=bed_file,
+         append=TRUE,
          sep="\t",
          col.names=FALSE);
 

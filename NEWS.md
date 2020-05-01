@@ -1,3 +1,14 @@
+# slicejam 0.0.3.900
+
+## enhancements
+
+* BED format actually matches BED format (doh)
+* BED files include a track header line, but since the track name
+can only be 15 characters, 12 character are taken by year, month, day,
+hour, minute.
+* Renamed output bed from from "statshits" to "stathits" avoiding
+embarrassing unintended substrings.
+
 # slicejam 0.0.2.900
 
 ## enhancements
