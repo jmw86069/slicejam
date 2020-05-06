@@ -379,7 +379,7 @@ if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curatio
       curation_yaml <- NULL;
    }
 }
-if (length(curation_yaml) == 0) {
+if (length(curation_yaml) == 0 || !exists("sample_df")) {
    iSamples <- gsub("[-_.](v[0-9]|Coord|DeDup|dudup|cutadapt|sickle|sanger|trim|bam|fastq|fq).*$",
       ignore.case=TRUE,
       "",
@@ -867,7 +867,7 @@ if (denovo_controls) {
    }
 }
 
-color_sub_im <- c(`1`="#2222AA", `0`="white", `-1`="#BB5555");
+color_sub_im <- c(`-1`="#2222AA", `0`="white", `1`="#BB5555");
 
 kable_coloring(
    colorSub=color_sub_im,

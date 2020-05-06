@@ -1,3 +1,12 @@
+# slicejam 0.0.4.900
+
+## enhancements
+
+* `slicejam_analysis.Rmd` does better at checking for `curation_yaml`
+and properly falling back to manual parsing when the yaml step fails.
+* Colors for the design and contrast matrix tables were changed to
+`-1="blue"` and `1="red"`, they got switched at some point.
+
 # slicejam 0.0.3.900
 
 ## enhancements
