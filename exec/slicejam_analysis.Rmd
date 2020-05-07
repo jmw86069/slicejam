@@ -218,7 +218,7 @@ from featureCounts to populate rows, such as
    
    * Use quantile-normalized, batch-adjusted counts.
    * Apply cutoffs: maxGroupMean >= 4; fold change >= 1.5; adjusted P-value <= 0.05
-   * Apply secondary max group mean filtering with MGM=**`r cat(MGM)`**, to
+   * Apply secondary max group mean filtering with MGM=**`r MGM`**, to
    reduce the number of peaks used for statistical testing
    * Apply cutoffs: maxGroupMean >= 4; fold change >= 1.5; adjusted P-value <= 0.05
 
@@ -972,7 +972,7 @@ if (length(MGM) > 1) {
 }
 ```
 
-The max group mean threshold is: **`r cat(MGM)`**
+The max group mean threshold is: **`r MGM`**
 
 ```{r, run_limma_mgm4, dependson=c("stats_design","run_limma","mgm_arg")}
 ## Use the lmFit1 coefficients directly, which ensures
@@ -1063,7 +1063,7 @@ if (length(AtacStats) > 0) {
 
 Volcano plots below were created using the limma results
 after subsetting peaks for max group mean >= 
-**`r cat(MGM)`**.
+**`r MGM`**.
 
 ```{r, volcano_plots_mgm4, fig.height=12, fig.width=12, dependson=c("run_limma_mgm4")}
 if (length(AtacStatsMgm4) > 0) {
@@ -1161,7 +1161,8 @@ derived from the gene-transcript-exon features.
 
 The GTF file:
 
-**```{r jamba::printDebug(unlist(strsplit(GTF, "/")), collapse="/", sep="")}```**
+`r jamba::printDebug(unlist(strsplit(GTF, "/")), collapse="/", sep="")`
+**`r GTF`**
 
 is renamed to have file extension:
 
@@ -1509,21 +1510,13 @@ m1_counts <- (t(m1) %*% (m1));
 color_sub_imct <- colorjam::vals2colorLevels(
    nameVector(sort(unique(as.vector(m1_counts)))),
    lens=10);
-m1k <- kable_coloring(as.data.frame(m1_counts),
+kable_coloring(as.data.frame(m1_counts),
    colorSub=color_sub_imct,
    color_cells=TRUE,
    row.names=TRUE) %>%
    kable_styling(bootstrap_options=c("striped","bordered")) %>%
    row_spec(0, background="#DDDDDD", color="#333333", bold=TRUE) %>%
    column_spec(1, background="#DDDDDD", color="#333333", bold=TRUE)
-print(m1k)
-
-#           Promoter  TTS  exon intron intergenic
-#Promoter      10951 1155  2754   3263          0
-#TTS            1155 5972  3811   2398          0
-#exon           2754 3811 16191  12770          0
-#intron         3263 2398 12770  72976          0
-#intergenic        0    0     0      0     208245
 
 ```
 
@@ -1683,7 +1676,7 @@ if (length(AtacStats) > 0) {
 #### Pie chart (subset peaks)
 
 The pie charts below reflect the peaks after filtering
-for the max group mean threshold: **`r cat(MGM)`**
+for the max group mean threshold: **`r MGM`**
 
 
 ```{r, peak_region_pies_mgm4, fig.height=12, fig.width=12}
@@ -1896,9 +1889,9 @@ if (length(AtacStatsMgm4) > 0) {
 
 ### Peak to ATAC-promoter analysis (optional)
 
-**`r jamba::printDebug("ATAC:", ATAC)`**
+**`r paste0("ATAC=", ATAC)`**
 
-**```{r if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {cat("ATAC-mode is enabled.")} else {cat("ATAC-mode is disabled."}}```**
+**`r if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {("ATAC-mode is enabled.")} else {("ATAC-mode is disabled."}`**
 
 This workflow is enabled only when environment variable `ATAC=1`,
 and when stats have been performed, and when the max group mean
@@ -2095,7 +2088,7 @@ if (suppressPackageStartupMessages(require(genejam))) {
 
 Statistical results are saved in text file for the full set
 of peaks.
-Look in the folder defined by OUTDIR: **`r cat(OUTDIR)`**.
+Look in the folder defined by OUTDIR: **`r OUTDIR`**.
 
 ```{r, export_beds}
 statsdf2bed <- function
@@ -2242,8 +2235,8 @@ if (length(AtacStats) > 0) {
 ### Export stats results for hits (subset)
 
 Statistical results are saved in text file for the subset
-of peaks with max group mean >= **`r cat(MGM)`**.
-Look in the folder defined by OUTDIR: **`r cat(OUTDIR)`**.
+of peaks with max group mean >= **`r MGM`**.
+Look in the folder defined by OUTDIR: **`r OUTDIR`**.
 
 A BED file is also saved during this step.
 

@@ -1,4 +1,12 @@
-# slicejam 0.0.4.900
+# slicejam 0.0.5.900
+
+## enhancements
+
+* `slicejam_analysis.Rmd` updated to fix numerous small text formatting
+issues; fixed output of inline R code (`r cat(X)` does not work,
+but `r X` does work, go figure). Fixed incidence matrix kable output
+(`print(kable_coloring(...))` does not work, but `kable_coloring(...)`
+does.
 
 ## enhancements
 
