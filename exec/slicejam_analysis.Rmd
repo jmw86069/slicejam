@@ -566,7 +566,7 @@ blank_pos <- unlist(lapply(1:nrow(Group_ctm), function(i){
 ```{r, ma_raw_global, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
 jp_raw <- jammaplot(
    noiseFloor(iMatrix[,iSamples,drop=FALSE],
-      minimum=4,
+      minimum=1,
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
@@ -576,6 +576,7 @@ jp_raw <- jammaplot(
    subtitle=Run[iSamples],
    subtitleBoxColor=run_colors1[iSamples],
    useMean=TRUE,
+   ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
 )
 ```
@@ -585,7 +586,7 @@ jp_raw <- jammaplot(
 ```{r, ma_raw_run, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
 jp_raw_run <- jammaplot(
    noiseFloor(iMatrix[,iSamples,drop=FALSE],
-      minimum=4,
+      minimum=1,
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
@@ -596,6 +597,7 @@ jp_raw_run <- jammaplot(
    subtitle=paste0("by ", Run[iSamples]),
    subtitleBoxColor=run_colors1[iSamples],
    useMean=TRUE,
+   ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
 )
 ```
@@ -605,7 +607,7 @@ jp_raw_run <- jammaplot(
 ```{r, ma_q_global, fig.height=10, fig.width=14, dependson=c("norm_quantile", "ma_layout")}
 jp_q <- jammaplot(
    noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
-      minimum=4,
+      minimum=1,
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
@@ -617,6 +619,7 @@ jp_q <- jammaplot(
    useMean=TRUE,
    displayMAD=TRUE,
    outlierMAD=2,
+   ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
 )
 ```
@@ -626,7 +629,7 @@ jp_q <- jammaplot(
 ```{r, ma_q_run, fig.height=10, fig.width=14, dependson=c("norm_quantile", "ma_layout")}
 jp_q_run <- jammaplot(
    noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
-      minimum=4,
+      minimum=1,
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
@@ -639,6 +642,7 @@ jp_q_run <- jammaplot(
    useMean=TRUE,
    displayMAD=TRUE,
    outlierMAD=2,
+   ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
 )
 ```
@@ -653,7 +657,7 @@ grouprun_ct <- tcount(pasteByRow(colData(fc_se[,iSamples])[,c(group_colname,run_
 if (any(grouprun_ct > 1)) {
    jp_q_group_run <- jammaplot(
       noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
-         minimum=4,
+         minimum=1,
          newValue=NA),
       ncol=ma_ncol,
       blankPlotPos=blank_pos,
@@ -668,6 +672,7 @@ if (any(grouprun_ct > 1)) {
       useMean=TRUE,
       displayMAD=TRUE,
       outlierMAD=2,
+      ablineV=MGM,
       titleBoxColor=color_sub1[iSamples]
    )
 }
@@ -687,7 +692,7 @@ downstream statistical comparisons.**
 ```{r, ma_q_b_run, fig.height=10, fig.width=14, dependson=c("batch_adjust_run", "ma_layout")}
 jp_q_b_run <- jammaplot(
    noiseFloor(iMatrixQB[,iSamples,drop=FALSE],
-      minimum=4,
+      minimum=1,
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
@@ -699,6 +704,7 @@ jp_q_b_run <- jammaplot(
    useMean=TRUE,
    displayMAD=TRUE,
    outlierMAD=1.951,
+   ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
 )
 ```

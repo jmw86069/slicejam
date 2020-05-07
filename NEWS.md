@@ -8,6 +8,16 @@ but `r X` does work, go figure). Fixed incidence matrix kable output
 (`print(kable_coloring(...))` does not work, but `kable_coloring(...)`
 does.
 
+## changes to existing analysis steps
+
+* The MA-plots created by `jamma::jammaplot()` now use x-axis
+minimum `1` instead of previous x-axis `4` -- the previous value
+reflected typical lowest max group mean (MGM) value `4`, and
+helped visually focus on data above this threshold. The new baseline
+avoids noise near zero (x-axis `2` in log2(1+x) space refers to 3
+read counts). Also, a vertical line is drawn on each plot showing
+the current MGM threshold.
+
 ## enhancements
 
 * `slicejam_analysis.Rmd` does better at checking for `curation_yaml`
