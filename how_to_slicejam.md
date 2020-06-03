@@ -34,8 +34,8 @@
 `rmarkdown::render()` in the proper way.
 2. Define environment variables for your workflow:
 
-   * `FC_FILE` - the featureCounts `.fc` input file
    * `DRYRUN` - use `DRYRUN=1` to run dry-run mode, `DRYRUN=0` to run the full analysis
+   * `FC_FILE` - the featureCounts `.fc` input file
    * `GTF` - file path to the GTF file
    * `GTFNAME` - optional label to use for the GTF file
    * `MGM` - max group mean value, usually `MGM=4` or higher, where `4`
@@ -43,33 +43,116 @@
    means 15 or more normalized counts in at least one sample group mean.
    * `CURATION_YAML` - path to a `"curation.yaml"` file, to convert
    featureCounts column names to sample groups.
-   * `ATAC` - if your data contains ATAC-seq peaks use `ATAC=1`; otherwise `ATAC=0`
+   * `GROUPCHECK` - use `GROUPCHECK=1` to run the pipeline only to print
+   out the sample groups defined by `curation.yaml`. This option lets you
+   verify the sample groups before the analysis.
+   * `ATAC` - if your data contains ATAC-seq peaks use `ATAC=1` for ATAC-mode;
+   otherwise `ATAC=0`. ATAC-mode annotates peaks using a subset
+   of TSSes with overlapping promoter ATAC MGM-filtered peaks. These
+   TSSes are "active promoter TSSes" and represent TSSes observed to be
+   active in the given cell type.
 
 3. Call `Rscript run_slicejam.R`.
 
    * If using a linux/Mac machine, make sure to `export` environment variables,
    for example `export DRYRUN=1`.
 
+
+### Examples calling `run_slicejam.R`:
+
+> The examples below use back-slash `\` to split the command across
+multiple lines. You can also run the command on one line after removing
+the back-slashes.
+
+#### 1a. Call `run_slicejam.R` with GROUPCHECK=1 to verify the `curation.yaml`:
+
+```
+DRYRUN=0 \
+   GROUPCHECK=1 \
+   GTF=hg19_gencode.gtf \
+   FC_FILE=071419_2124_38to100_NoY_NoM_NoProblems.fc \
+   CURATION_YAML=curation.yaml \
+   Rscript run_gokeyATAC.R
+```
+
+#### 2a. Call `run_slicejam.R` for non-ATAC data, in DRYRUN mode to check output:
+
+```
+DRYRUN=1 \
+   GTF=hg19_gencode.gtf \
+   FC_FILE=071419_2124_38to100_NoY_NoM_NoProblems.fc \
+   CURATION_YAML=curation.yaml \
+   Rscript run_gokeyATAC.R
+```
+
+#### 2b. Call `run_slicejam.R` for non-ATAC data, with DRYRUN mode off, to run the pipeline:
+
+```
+DRYRUN=0 \
+   GTF=hg19_gencode.gtf \
+   FC_FILE=071419_2124_38to100_NoY_NoM_NoProblems.fc \
+   CURATION_YAML=curation.yaml \
+   Rscript run_gokeyATAC.R
+```
+
+#### 3a. Call `run_slicejam.R` with ATAC-mode on, in DRYRUN mode to check output:
+
+```
+DRYRUN=1 \
+   GTF=hg19_gencode.gtf \
+   ATAC=1 \
+   FC_FILE=071419_2124_38to100_NoY_NoM_NoProblems.fc \
+   CURATION_YAML=curation.yaml \
+   Rscript run_gokeyATAC.R
+```
+
+#### 3b. Call `run_slicejam.R` with ATAC-mode on, with DRYRUN mode off, to run the pipeline:
+
+```
+DRYRUN=0 \
+   GTF=hg19_gencode.gtf \
+   ATAC=1 \
+   FC_FILE=071419_2124_38to100_NoY_NoM_NoProblems.fc \
+   CURATION_YAML=curation.yaml \
+   Rscript run_gokeyATAC.R
+```
+
+
 ## By-products of Rmarkdown output
 
-1. The Rmarkdown file is used to produce an HTML summary report of the analysis.
-2. The HTML output does not contain the images, but points to a sub-folder.
-The intent was to allow re-using the images directly, also to save a PNG and
-PDF format at the same time. The PDF format preserves detail even when resized,
-the PNG format is composed of image pixels that do not scale well.
-3. A subfolder is created which contains text `.txt` stats files, and BED `.bed`
-peak files.
-4. A subfolder is created which contains a cache folder, used for Rmarkdown
-caching in a specific way to prevent sharing this cache with other analysis
-runs.
+1. The Rmarkdown file is used to produce an HTML summary
+report of the analysis.
+2. The HTML output includes links to the images, which are stored in
+a separate subfolder.
 
-   * Typically, Rmarkdown creates a cache subfolder based upon the source
-   Rmarkdown file, therefore all analyses that use the same Rmarkdown file
-   also share the same cache folder -- which is not good for this workflow.
-   In that scenario, no cache files will ever be re-used.
+   * The images are not embedded inside the HTML, so to view the HTML
+   file on another computer, copy the HTML file, and copy the subfolder
+   that ends with `"_files"`.
+   * The images are stored separately so they can be viewed directly.
+   * All images are saved in PNG and PDF format. The PDF format preserves
+   details in the plot without pixelation.
+
+3. A subfolder is created that ends with `"_analysis"`, whose name
+is derived from the input parameters.
+
+   * The format of the folder name: `Peak_File`_`mgm4`_`GTF_name`_`files`
+   * This folder contains text `.txt` stats files with all statistical
+   contrasts. There is one `.txt` file with `nomgm` in the name that
+   contains all peaks; and one file with `mgm4` in the name that
+   contains only the peaks that met the MGM threshold.
+   * This folder also contains BED `.bed` files representing:
+   
+      * all peaks: `_stats_nomgm_` is in the BED file name.
+      * all mgm peaks: `_stats_mgm4_` is in the BED file name.
+      * all differential mgm peaks: `_stathits_mgm4_` in the BED file name.
+
+4. A subfolder is created which contains a `"cache"` subfolder,
+used by Rmarkdown to retain data during processing. If the analysis
+is ever interrupted, it can be re-run and it will pick up where it
+left off.
 
 
-## How to create a curation.yaml file
+## How to create a `curation.yaml` file
 
 An important and useful part of the workflow is converting column
 names in the featureCounts `.fc` file into useful sample grouping.
@@ -120,7 +203,8 @@ numbers.
 * Similarly, `"NOV215_UL3_blahblah_v2.bam"` is converted to `"UL3_blahblah_v2"`.
 
 There can be multiple rules per column if necessary. Rules can be simpler,
-for example.
+for example instead of regular expressions, they can include exact
+text strings:
 
       Group:
       - - p2w5
@@ -131,12 +215,32 @@ for example.
         - UL3
 
 There are three rules, and in each case the pattern match is also used
-as the replacement. This technique is effective for curating inconsistencies,
-for example:
+as the replacement.
+Whenever it sees `"p2w5"` anywhere in the input,
+it puts `"p2w5"` in the `"Group"` column.
+Whenever it sees `"p4w4"`, it puts `"p4w4"` in the `"Group"` column.
+Whenever it sees `"UL3"`, it puts `"UL3"` in the `"Group"` column.
+Everything else is left as-is without change, and is placed into the
+`"Group"` column.
+
+This technique is effective for curating inconsistencies,
+for example we can recognize `"p2w5DEX"` and `"p2w5_DEX"`:
 
       Group:
       - - p2w5DEX
         - p2w5_dex
       - - p2w5_DEX
         - p2w5_dex
+
+Most importantly, use the option `GROUPCHECK=1` to run only the
+steps that `curation.yaml` steps, to verify that the output is
+what you intended. When `GROUPCHECK=1` the Rmarkdown will
+save a file with extension `".curated_samples.txt"` that
+contains a table with the featureCounts `.fc` column headers,
+and the results of the `"curation.yaml"` output.
+
+
+## How to interpret the HTML report
+
+
 
