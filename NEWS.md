@@ -1,3 +1,16 @@
+# slicejam 0.0.6.900
+
+## enhancements
+
+* `how_to_slicejam.md` was updated with much more comprehensive
+documentation of the workflow, including how to create `"curation.yaml"`,
+and quick start guide to run the pipeline.
+* `TODO.md` was organized with more current set of ideas:
+annotate BroadPeaks to help filter for multi-slice hits from
+the same BroadPeak; user-defined "Problem_Regions.bed" to filter
+problem peak slices before normalization (e.g. centromeres,
+repeats, etc.)
+
 # slicejam 0.0.5.900
 
 ## enhancements
