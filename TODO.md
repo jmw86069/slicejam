@@ -2,6 +2,16 @@
 
 ## Enhancements
 
+1. Change grouping input to "three-column style"
+
+         Pattern            Batch         Group
+         NOV14_p2w5_VEH     NOV14         p2w5_Veh
+         NOV14_p4w4_VEH     NOV14         p4w4_Veh
+         NOV14_UL3_VEH      NOV14         UL3_Veh
+         NS644_UL3VEH       NS644         UL3_Veh
+         NS50644_UL3VEH     NS50644       UL3_Veh
+         NS644_p2w5VEH.     NS644         p2w5_Veh
+
 1. Allow "Problem_Regions.bed" as optional input.
 
    * Peak slices are flagged when they overlap Problem_Regions
