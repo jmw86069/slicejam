@@ -92,51 +92,161 @@
 #'    are made.
 #' @param ... additional arguments are passed to `jamba::makeNames()`.
 #' 
+#' @examples
+#' x <- c("NS573_UL3-DexGR_dedup_Single_Fragment_namesort.bam",
+#'    "NS573_UL3-VehGR_dedup_Single_Fragment_namesort.bam",
+#'    "NS755_UL3-Dex-GR_dedup_SingleFragment_Coordsort.bam",
+#'    "NS755_UL3-EtOH-GR_dedup_SingleFragment_Coordsort.bam");
+#' 
+#' df <- data.frame(
+#'    Pattern=c("NS573_UL3-DexGR","NS573_UL3-VehGR","NS755_UL3-Dex-GR","NS755_UL3-EtOH-GR"),
+#'    Group=c("UL3_DexGR","UL3_VehGR","UL3_DexGR","UL3_VehGR"),
+#'    Batch=c("NS573","NS573","NS755","NS755"),
+#'    Label=c("UL3_DexGR_NS573","UL3_VehGR_NS573","UL3_DexGR_NS755","UL3_VehGR_NS755")
+#' )
+#' df;
+#' curate_to_df_by_pattern(x=x, df=df, verbose=TRUE)
+#' 
+#' curate_to_df_by_pattern(x=x, df=df[,1:3])
+#' 
 #' @export
 curate_to_df_by_pattern <- function
 (x,
  df,
  pattern_colname="pattern",
  group_colname="group",
- id_colname="sample",
+ id_colname=c("label", "sample"),
  input_colname="filename",
  suffix="_rep",
  renameOnes=TRUE,
  colname_hook=jamba::ucfirst,
+ sep="_",
+ verbose=FALSE,
  ...)
 {
    ## Match pattern with input vector x
-   x_match_l <- jamba::provigrep(df[[pattern_colname]], x, returnType="list");
+   pattern_colname <- head(jamba::rmNA(colnames(df)[match(tolower(pattern_colname), 
+      tolower(colnames(df)))]), 1);
+   if (length(pattern_colname) == 0) {
+      pattern_colname <- head(colnames(df), 1);
+   }
+   group_colname <- jamba::rmNA(colnames(df)[match(tolower(group_colname), 
+      tolower(colnames(df)))]);
+   id_colname <- head(jamba::rmNA(colnames(df)[match(tolower(id_colname),
+      tolower(colnames(df)))]), 1);
+   if (length(input_colname) != 1 || any(nchar(input_colname) == 0)) {
+      input_colname <- "x";
+   }
+   if (verbose) {
+      jamba::printDebug("curate_to_df_by_pattern(): ",
+         "pattern_colname:",
+         pattern_colname);
+      jamba::printDebug("curate_to_df_by_pattern(): ",
+         "group_colname:",
+         group_colname);
+      jamba::printDebug("curate_to_df_by_pattern(): ",
+         "id_colname:",
+         id_colname);
+      jamba::printDebug("curate_to_df_by_pattern(): ",
+         "input_colname:",
+         input_colname);
+   }
+   x_match_l <- jamba::provigrep(df[[pattern_colname]],
+      x,
+      returnType="list");
    x_names <- rep(names(x_match_l),
       lengths(x_match_l));
    imatch <- match(x_names,
       df[[pattern_colname]]);
    df_new <- data.frame(check.names=FALSE,
       df[imatch,,drop=FALSE]);
-   
-   if (length(group_colname) > 0 && 
-         length(id_colname) > 0 &&
-         group_colname %in% colnames(df)) {
-      group_values <- df[imatch, group_colname];
-      id_values <- jamba::makeNames(group_values,
-         suffix=suffix,
-         renameOnes=renameOnes,
-         ...);
-      df_new[[id_colname]] <- id_values;
-      rownames(df_new) <- id_values;
-   } else {
-      rownames(df_new) <- jamba::makeNames(df_new[[pattern_colname]],
-         suffix=suffix,
-         renameOnes=renameOnes,
-         ...);
-   }
-   if (length(input_colname) != 1 || any(nchar(input_colname) == 0)) {
-      input_colname <- "x";
-   }
    df_new[[input_colname]] <- unlist(x_match_l);
+   
+   if (length(id_colname) == 0) {
+      if (length(group_colname) > 0 &&
+            group_colname %in% colnames(df)) {
+         label_colnames <- setdiff(colnames(df),
+            pattern_colname);
+         group_values <- jamba::pasteByRow(df[imatch, label_colnames, drop=FALSE],
+            sep=sep,
+            ...);
+         id_values <- jamba::makeNames(group_values,
+            suffix=suffix,
+            renameOnes=renameOnes,
+            ...);
+         id_colname <- "label";
+         df_new[[id_colname]] <- id_values;
+         rownames(df_new) <- id_values;
+      } else {
+         id_colname <- input_colname;
+         rownames(df_new) <- jamba::makeNames(df_new[[input_colname]],
+            suffix=suffix,
+            renameOnes=renameOnes,
+            ...);
+      }
+   } else {
+      id_values <- jamba::pasteByRow(df[imatch, id_colname, drop=FALSE],
+         sep=sep,
+         ...);
+      rownames(df_new) <- id_values;
+   }
+   df_colnames <- unique(c(
+      setdiff(colnames(df_new), input_colname),
+      input_colname));
+   df_new <- df_new[, df_colnames, drop=FALSE];
    if (length(colname_hook) > 0 && is.function(colname_hook)) {
       colnames(df_new) <- colname_hook(colnames(df_new));
    }
    df_new;
 }
 
+#' Import featureCounts file
+#' 
+#' @export
+import_featurecounts <- function
+(file,
+ verbose=FALSE,
+ rowid_colname="Geneid",
+ ...)
+{
+   if (!file.exists(file)) {
+      stop(paste0("File does not exist:",
+         file));
+   }
+   if (length(file) > 1) {
+      if (length(names(file)) == 0) {
+         names(file) <- jamba::makeNames(file);
+      }
+      fc_datas <- lapply(file, function(i){
+         import_featurecounts(file=i,
+            verbose=verbose,
+            ...);
+      })
+   }
+   fc_data <- data.table::fread(
+      file,
+      data.table=FALSE,
+      skip=rowid_colname);
+
+   ## Rename first column
+   #fc_data[,"Geneid"] <- paste0("peak_",
+   #   jamba::padInteger(seq_len((nrow(fc_data)))));
+   #rownames(fc_data) <- fc_data[,"Geneid"];
+   
+   ## Recognize featureCounts columns
+   fc_colnames <- intersect(
+      c(rowid_colname,
+         "Chr",
+         "Start",
+         "End",
+         "Strand",
+         "Length"),
+      colnames(fc_data));
+
+   ## Recognize counts columns as all other colnames
+   filenames <- setdiff(colnames(fc_data),
+      fc_colnames);
+   attr(fc_data, "fc_columns") <- fc_columns;
+   attr(fc_data, "filenames") <- filenames;
+   return(fc_data);
+}

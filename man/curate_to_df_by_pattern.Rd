@@ -9,11 +9,13 @@ curate_to_df_by_pattern(
   df,
   pattern_colname = "pattern",
   group_colname = "group",
-  id_colname = "sample",
+  id_colname = c("label", "sample"),
   input_colname = "filename",
   suffix = "_rep",
   renameOnes = TRUE,
   colname_hook = jamba::ucfirst,
+  sep = "_",
+  verbose = FALSE,
   ...
 )
 }
@@ -112,5 +114,21 @@ axis(3,
    at=c(1,2,3,4,6.5),
    labels=colnames(df_new));
 par(opar);
+
+x <- c("NS573_UL3-DexGR_dedup_Single_Fragment_namesort.bam",
+   "NS573_UL3-VehGR_dedup_Single_Fragment_namesort.bam",
+   "NS755_UL3-Dex-GR_dedup_SingleFragment_Coordsort.bam",
+   "NS755_UL3-EtOH-GR_dedup_SingleFragment_Coordsort.bam");
+
+df <- data.frame(
+   Pattern=c("NS573_UL3-DexGR","NS573_UL3-VehGR","NS755_UL3-Dex-GR","NS755_UL3-EtOH-GR"),
+   Group=c("UL3_DexGR","UL3_VehGR","UL3_DexGR","UL3_VehGR"),
+   Batch=c("NS573","NS573","NS755","NS755"),
+   Label=c("UL3_DexGR_NS573","UL3_VehGR_NS573","UL3_DexGR_NS755","UL3_VehGR_NS755")
+)
+df;
+curate_to_df_by_pattern(x=x, df=df, verbose=TRUE)
+
+curate_to_df_by_pattern(x=x, df=df[,1:3])
 
 }

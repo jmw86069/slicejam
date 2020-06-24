@@ -93,7 +93,9 @@ knitr::opts_chunk$set(cache=TRUE,
       packageVersion("jamba"),
       packageVersion("jamma"),
       packageVersion("splicejam"),
+      packageVersion("slicejam"),
       paste0("FC_FILE:", Sys.getenv("FC_FILE")),
+      paste0("CURATION_TXT:", Sys.getenv("CURATION_TXT")),
       paste0("GTF:", Sys.getenv("GTF"))
    )
 );
@@ -143,6 +145,7 @@ suppressPackageStartupMessages(library(SummarizedExperiment));
 suppressPackageStartupMessages(library(colorjam));
 suppressPackageStartupMessages(library(jamma));
 suppressPackageStartupMessages(library(splicejam));
+suppressPackageStartupMessages(library(slicejam));
 suppressPackageStartupMessages(library(data.table));
 suppressPackageStartupMessages(library(matrixStats));
 suppressPackageStartupMessages(library(extrafont));
@@ -278,233 +281,147 @@ file in the current working directory.
 fc_env <- Sys.getenv("FC_FILE");
 if (nchar(fc_env) > 0) {
    if (!file.exists(fc_env)) {
-      stop(paste0("FC_FILE does not exists as a file:", fc_env,
+      stop(paste0("FC_FILE does not exist as a file:", fc_env,
          " in working directory:", getwd()));
    }
    fc_file <- fc_env;
 } else {
    fc_file <- head(list.files(pattern="[.]fc$"), 1);
 }
-printDebug("Using fc_file:", fc_file);
+printDebug("Using fc_file:",
+   fc_file);
 
 ## Import
-fc_data <- data.frame(check.names=FALSE,
-   stringsAsFactors=FALSE,
-   data.table::fread(fc_file, skip="Geneid"));
-## Add zero-padding to peak numbers
-fc_data[,"Geneid"] <- paste0("peak_",
-   jamba::padInteger(seq_len((nrow(fc_data)))));
-rownames(fc_data) <- fc_data[,"Geneid"];
+fc_data <- import_featurecounts(fc_file);
+
+## Add zero-padding to peak labels
+fc_data[,1] <- paste0("peak_",
+   jamba::padInteger(seq_len(nrow(fc_data))));
+rownames(fc_data) <- fc_data[,1];
 
 # featureCounts colnames
-fc_colnames <- intersect(c("Geneid","Chr","Start","End","Strand","Length"),
-   colnames(fc_data));
+fc_colnames <- attr(fc_data, "fc_colnames");
+filenames <- attr(fc_data, "filenames");
 if (length(fc_colnames) == 0) {
-   stop(paste0("None of the featureCounts colnames were detected: ", cPaste(fc_colnames)));
+   stop(paste0("None of the featureCounts colnames were detected: ",
+      jamba::cPaste(fc_colnames)));
 }
-filenames <- setdiff(colnames(fc_data), fc_colnames);
 
-curation_yaml <- Sys.getenv("CURATION_YAML",
-   "curation.yaml");
 curation_txt <- Sys.getenv("CURATION_TXT",
    "curation.txt");
 
-## First use curation_txt if that file exists
-if (length(curation_txt) > 0 && nchar(curation_txt) > 0 && file.exists(curation_txt)) {
-   curation_df <- data.frame(check.names=FALSE,
-      data.table::fread(curation_txt,
-         sep="\t"));
-   sample_df <- curate_to_df_by_pattern(x=filenames,
-      input_colname="Filename",
-      df=curation_df);
-   sample_colname <- head(jamba::vigrep("^sample[s]*(id|)$",
-      colnames(sample_df)), 1)
-   if (length(sample_colname) > 0) {
-      iSamples <- jamba::makeNames(sample_df[[sample_colname]]);
-   } else {
-      jamba::printDebug("Error:",
-         c("No '","Sample","' column was recognized."),
-         sep="",
-         fgText=c("red", "dodgerblue"));
-      stop("No Sample column was recognized.");
-   }
-   run_colname <- head(jamba::provigrep(c("^batch$", "^run$"),
-      colnames(sample_df)), 1);
-   if (length(run_colname) > 0) {
-      Run <- sample_df[[run_colname]];
-   } else {
-      jamba::printDebug("Error: ",
-         c("No '","Run","' or '","Batch","' column was recognized."),
-         sep="",
-         fgText=c("red", "dodgerblue"));
-   }
-   group_colname <- head(jamba::provigrep(c("^Group$", "group$"),
-      colnames(sample_df)), 1);
-   if (length(group_colname) > 0) {
-      ## Ensure group names have no invalid characters like "-"
-      sample_df[[group_colname]] <- gsub("[- ]+",
-         ".",
-         sample_df[[group_colname]]);
-      iGroup <- sample_df[[group_colname]];
-      iGroup <- factor(iGroup,
-         levels=provigrep(c(
-            "UL3", "p2w5", "p4w4",
-            "^Contr|^ctrl|^cntr",
-            "^veh", "NTC", "blank",
-            "^notr", "^nont", "^untr",
-            "^luc", "WT", "wildtype", "^norm", "^healthy",
-            "."),
-            jamba::mixedSort(unique(iGroup)))
-         );
-      sample_df[[group_colname]] <- iGroup;
-   } else {
-      jamba::printDebug("Error:",
-         c("No '","Group","' column was recognized."),
-         sep="",
-         fgText=c("red", "dodgerblue"));
-      stop("No Group column was recognized.");
-   }
-   filename_colname <- head(jamba::provigrep(c("^filename$", "^file"),
-      colnames(sample_df)), 1);
-   if (length(filename_colname) == 0) {
-      filename_colname <- "Filename";
-      sample_df[[filename_colname]] <- filenames;
-   }
-   rownames(sample_df) <- sample_df[[sample_colname]];
-   knitr::kable(sample_df,
-      caption=paste0(
-         "Sample Groups defined by curation_txt '",
-         curation_txt,
-         "'"));
-   if (any(!sapply(c("iSamples", "Run", "iGroup"), exists))) {
-      stop("One or more of iSamples,Run,Group could not be defined.");
-   }
-} else if (length(curation_yaml) > 0 && nchar(curation_yaml) > 0 && file.exists(curation_yaml)) {
-   curationL <- tryCatch({
-      if (length(curation_yaml) == 1 && file.exists(curation_yaml)) {
-         yaml::yaml.load(readLines(curation_yaml));
-      } else {
-         yaml::yaml.load(curation_yaml);
-      }
-   }, error=function(e){
-      jamba::printDebug("Error: ",
-         c("curation_yaml file '",
-         curation_yaml,
-         "' coult not be parsed by yaml::yaml.load()"),
-         sep="",
-         fgText=c("red", "dodgerblue"));
-      list();
-   });
-   if (length(curationL) > 0) {
-      sample_df <- splicejam::curateVtoDF(filenames, curationL);
-      sample_colname <- head(vigrep("^sample[s]*$", colnames(sample_df)), 1)
-      if (length(sample_colname) > 0) {
-         iSamples <- jamba::makeNames(sample_df[[sample_colname]]);
-      } else {
-         jamba::printDebug("Error:",
-            c("No '","Sample","' column was recognized."),
-            sep="",
-            fgText=c("red", "dodgerblue"));
-         stop("No Sample column was recognized.");
-      }
-      run_colname <- head(vigrep("^run$", colnames(sample_df)), 1)
-      if (length(run_colname) > 0) {
-         Run <- sample_df[[run_colname]];
-      } else {
-         jamba::printDebug("Error:",
-            c("No '","Run","' column was recognized."),
-            sep="",
-            fgText=c("red", "dodgerblue"));
-      }
-      group_colname <- head(vigrep("^Group$", colnames(sample_df)), 1)
-      if (length(group_colname) > 0) {
-         ## Ensure group names have no invalid characters like "-"
-         sample_df[[group_colname]] <- gsub("[- ]+",
-            ".",
-            sample_df[[group_colname]]);
-         iGroup <- sample_df[[group_colname]];
-         iGroup <- factor(iGroup,
-            levels=provigrep(c(
-               "UL3", "p2w5", "p4w4",
-               "^Contr|^ctrl|^cntr",
-               "^veh", "NTC", "blank",
-               "^notr", "^nont", "^untr",
-               "^luc", "WT", "wildtype", "^norm", "^healthy",
-               "."),
-               jamba::mixedSort(unique(iGroup)))
-            );
-         sample_df[[group_colname]] <- iGroup;
-      } else {
-         jamba::printDebug("Error:",
-            c("No '","Group","' column was recognized."),
-            sep="",
-            fgText=c("red", "dodgerblue"));
-         stop("No Group column was recognized.");
-      }
-      filename_colname <- head(vigrep("^filename$", colnames(sample_df)), 1);
-      if (length(filename_colname) == 0) {
-         filename_colname <- "Filename";
-         sample_df[[filename_colname]] <- filenames;
-      }
-      rownames(sample_df) <- sample_df[[sample_colname]];
-      knitr::kable(sample_df,
-         caption="Sample Groups defined by curation.yaml");
-      if (any(!sapply(c("iSamples", "Run", "iGroup"), exists))) {
-         stop("One or more of iSamples,Run,Group could not be defined.");
-      }
-   } else {
-      curation_yaml <- NULL;
-   }
-}
-if (!exists("sample_df")) {
-   jamba::printDebug("Using legacy filename parsing to Sample, Run, Group").
-   iSamples <- gsub("[-_.](v[0-9]|Coord|DeDup|dudup|cutadapt|sickle|sanger|trim|bam|fastq|fq).*$",
-      ignore.case=TRUE,
-      "",
-      basename(filenames));
-   Run <- gsub("[-_.].+$", "", iSamples);
-   iGroup <- gsub("^([^-_.]+)[-_.]+([^-_.]+)[-_.].*$",
-      "\\2",
-      iSamples);
-   iGroup <- gsub("[- ]+",
-      ".",
-      iGroup);
-   iGroup <- factor(iGroup,
-      levels=provigrep(c("UL3", "p2w5", "p4w4",
-         "Control|ctrl|ctl", "Veh", "NTC", "blank",
-         "."),
-         unique(iGroup)));
-   group_colname <- "Group";
-   sample_colname <- "Sample";
-   filename_colname <- "Filename";
-   run_colname <- "Run";
-   sample_df <- data.frame(
-      check.names=FALSE,
-      stringsAsFactors=FALSE,
-      Filename=filenames,
-      Sample=iSamples,
-      Group=Group,
-      Run=Run,
-      row.names=iSamples
-   );
-   knitr::kable(sample_df,
-      caption="Sample Groups defined by basic rules (not curation.yaml)");
+if (length(curation_txt) == 0 || nchar(curation_txt) == 0 || !file.exists(curation_txt)) {
+   jamba::printDebug("Error: ",
+      c("No ",
+         "CURATION_TXT",
+         " file was supplied."),
+      sep="",
+      fgText=c("red", "dodgerblue"));
+   stop("No Group column was recognized.");
 }
 
-## Optional GROUPCHECK which exits here to allow reviewing the sample grouping
-if (GROUPCHECK) {
-   txt_ext <- paste0(".curated_samples.txt");
-   sample_txt_file <- file.path(OUTDIR,
-      gsub("[.]fc$|[.]fc[.]txt$",
-         txt_ext,
-         basename(fc_file)));
-   data.table::fwrite(
-      x=sample_df,
-      file=sample_txt_file,
-      sep="\t",
-      col.names=TRUE);
-   stop(paste0("Curated sample data for review: '",
-      sample_txt_file, "'"));
+## Use curation_txt if that file exists
+curation_df <- data.table::fread(curation_txt,
+   data.table=FALSE,
+   sep="\t");
+filename_colname <- "Filename";
+sample_df <- slicejam::curate_to_df_by_pattern(
+   x=filenames,
+   input_colname=filename_colname,
+   df=curation_df);
+if (nrow(sample_df) == 0) {
+   jamba::printDebug("Error: ",
+      c("The curation_txt file '",
+         curation_txt,
+         "' did not match filenames."),
+      sep="",
+      fgText=c("red", "dodgerblue"));
+   jamba::printDebug("filenames: ",
+      paste0("\n'", filenames, "'"));
+   jamba::printDebug("curation_txt contents:");
+   print(curation_df);
+   stop("curation_txt file did not match filenames.");
+}
+
+## Check for samples not curated, and therefore dropped from the analysis
+if (length(sample_df[[filename_colname]]) < length(filenames)) {
+   jamba::printDebug("Note: ",
+      "Some samples were dropped during curation:",
+      paste0("\n'",
+         setdiff(filenames,
+            sample_df[[filename_colname]]),
+         "'"));
+   jamba::printDebug("Note: ",
+      "Samples retained:",
+      paste0("\n'",
+         sample_df[[filename_colname]],
+         "'"));
+}
+
+sample_colname <- head(jamba::provigrep(c("^label$", "^sample$", "^sample.*(name|id)$"),
+   colnames(sample_df)), 1);
+if (length(sample_colname) == 0) {
+   jamba::printDebug("Error: ",
+      c("No '","Label","' nor '", "Sample", "' column was recognized."),
+      sep="",
+      fgText=c("red", "dodgerblue"));
+   stop("No Sample column was recognized.");
+}
+sample_df[[sample_colname]] <- jamba::makeNames(sample_df[[sample_colname]]);
+rownames(sample_df) <- sample_df[[sample_colname]];
+
+run_colname <- head(jamba::provigrep(c("^batch$", "^run$"),
+   colnames(sample_df)), 1);
+if (length(run_colname) == 0) {
+   jamba::printDebug("Error: ",
+      c("No '","Run","' or '","Batch","' column was recognized."),
+      sep="",
+      fgText=c("red", "dodgerblue"));
+}
+
+group_colname <- head(jamba::provigrep(c("^Group$", "^group.*name$", "group$"),
+   colnames(sample_df)), 1);
+if (length(group_colname) == 0) {
+   jamba::printDebug("Error: ",
+      c("No '","Group","' column was recognized."),
+      sep="",
+      fgText=c("red", "dodgerblue"));
+   stop("No Group column was recognized.");
+}
+## Ensure group names have no invalid characters like "-"
+sample_df[[group_colname]] <- gsub("[%]", "pct",
+   gsub("[- ]+",
+      ".",
+      sample_df[[group_colname]]));
+sample_df[[group_colname]] <- factor(sample_df[[group_colname]],
+   levels=unique(sample_df[[group_colname]]));
+
+   
+## Sort sample_df by group
+sample_df <- jamba::mixedSortDF(sample_df,
+   byCol=c(group_colname,
+      sample_colname));
+
+## Define useful sample annotation vectors
+iSamples <- sample_df[[sample_colname]];
+Run <- jamba::nameVector(sample_df[[run_colname]],
+   iSamples);
+iGroup <- jamba::nameVector(sample_df[[group_colname]],
+   iSamples);
+
+## Make sure the order in filenames is propagated
+filenames <- jamba::nameVector(sample_df[[filename_colname]],
+   iSamples);
+fc_data <- fc_data[,c(fc_colnames, filenames),,drop=FALSE];
+
+## Print sample annotation table
+knitr::kable(sample_df,
+   caption=paste0(
+      "Sample Groups defined by curation_txt '",
+      curation_txt,
+      "'"));
+if (any(!sapply(c("iSamples", "Run", "iGroup"), exists))) {
+   stop("One or more of iSamples,Run,Group could not be defined.");
 }
 
 ## Rename featureCounts columns to match iSamples
@@ -530,8 +447,8 @@ iGroup <- nameVector(colData(fc_se)[[group_colname]],
 ## Define sample colors
 g_levels <- levels(colData(fc_se)[[group_colname]]);
 n_levels <- length(g_levels);
-sample_colors <- nameVector(
-   head(rainbowJam(n_levels+3)[c(-3,-4,-6)], n_levels),
+sample_colors <- jamba::nameVector(
+   head(colorjam::rainbowJam(n_levels), n_levels),
    g_levels);
 color_sub1 <- nameVector(sample_colors[colData(fc_se)[[group_colname]]],
    colData(fc_se)[[sample_colname]]);
@@ -539,6 +456,48 @@ run_colors <- group2colors(unique(Run));
 
 run_colors1 <- nameVector(run_colors[colData(fc_se[,iSamples])[[run_colname]]],
    iSamples);
+```
+
+```{r, define_contrasts}
+sample_txt_file <- file.path(OUTDIR,
+   "curated_samples.txt");
+data.table::fwrite(
+   x=sample_df,
+   file=sample_txt_file,
+   sep="\t",
+   col.names=TRUE);
+
+contrast_txt_file <- file.path(OUTDIR,
+   "contrasts.txt");
+if (file.exists(contrast_txt_file)) {
+   contrastNames <- gsub("^[ \t\r\n]+|[ \t\r\n]+$",
+      "",
+      readLines(contrast_txt_file));
+   jamba::printDebug("Loaded contrastNames from pre-existing file: '",
+      contrast_txt_file,
+      "'");
+} else {
+   contrastNames <- splicejam::groups2contrasts(
+      sample_df[,group_colname,drop=FALSE],
+      maxDepth=1)$contrastName;
+   writeLines(text=contrastNames,
+      con=contrast_txt_file);
+}
+
+## Optional GROUPCHECK which exits here to allow reviewing the sample grouping
+if (GROUPCHECK) {
+   #txt_ext <- paste0(".curated_samples.txt");
+   #sample_txt_file <- file.path(OUTDIR,
+   #   gsub("[.]fc$|[.]fc[.]txt$",
+   #      txt_ext,
+   #      basename(fc_file)));
+   stop(paste0("Curated sample data for review: '",
+      sample_txt_file,
+      "' and contrastNames file '",
+      contrast_txt_file,
+      "'"));
+}
+
 ```
 
 ### Plot distribution of peak sizes
@@ -925,8 +884,8 @@ if (any(ctGroup > 1)) {
    printDebug("No sample group contains replicates. Pooled replicates will be created.");
    denovo_controls <<- TRUE;
    fc_se_ctrl <- fc_se_b[,iSamplesUse];
-   colData(fc_se_ctrl)[,group_colname] <- "Control";
-   colnames(fc_se_ctrl) <- jamba::makeNames(rep("Control", ncol(fc_se_ctrl)));
+   colData(fc_se_ctrl)[,group_colname] <- "DenovoControl";
+   colnames(fc_se_ctrl) <- jamba::makeNames(rep("DenovoControl", ncol(fc_se_ctrl)));
    colData(fc_se_ctrl)[,"Sample"] <- colnames(fc_se_ctrl);
    fc_se_b <- cbind(fc_se_ctrl, fc_se_b);
    iSamplesUse <- colnames(fc_se_b);
@@ -945,9 +904,15 @@ conDesB <- splicejam::groups2contrasts(
 iContrasts <- conDesB$iContrasts;
 iDesign <- conDesB$iDesign;
 
+## Custom contrastNames
+if (exists("contrastNames")) {
+   iContrasts <- limma::makeContrasts(levels=iDesign,
+      contrasts=contrastNames);
+}
+
 ## Optionally remove denovo controls from contrasts if needed
 if (denovo_controls) {
-   iRemove <- igrep("Control-|-Control", colnames(iContrasts));
+   iRemove <- igrep("DenovoControl-|-DenovoControl", colnames(iContrasts));
    if (length(iRemove) > 0) {
       iContrasts <- iContrasts[, -iRemove, drop=FALSE];
    }

@@ -3,8 +3,8 @@
 ## enhancements
 
 * `slicejam_analysis.Rmd` has new argument `CURATION_TXT` which
-is a tab-delimited text format. This mechanism will probably
-replace `CURATION_YAML` as more scientist-friendly. Example
+is a tab-delimited text format. This mechanism has
+replaced `CURATION_YAML` as more scientist-friendly. Example
 format:
 
          Pattern            Batch         Group
@@ -15,6 +15,30 @@ format:
          NS50644_UL3VEH     NS50644       UL3_Veh
          NS644_p2w5VEH      NS644         p2w5_Veh
 
+* Removed `CURATION_YAML` argument altogether.
+* `slicejam_analysis.Rmd` now always exports two files:
+
+    1. `"curated_samples.txt"` which contains the table of sample annotations
+    and filenames used in the analysis.
+    2. `"contrasts.txt"` which contains each statistical contrast one
+    per row. If this file is edited, the edited contrast names will be
+    used for the analysis.
+    
+* Suggested above, `"contrasts.txt"` can be supplied with a specific list
+of statistical contrasts, which will be used in downstream analysis.
+Currently the default `maxDepth=1` limits contrasts to one-way comparisons,
+however the function `limma::makeContrasts()` is used to recognize
+contrast names, which means you can encode your own two-way contrasts,
+using format: `(group_one-group_two)-(group_three-group_four)`. Make
+sure the group names match the values in the file `"curated_samples.txt"`.
+
+## New R functions
+
+* `curate_to_df_by_pattern()` is a function that handles the `curation.txt`
+parsing. The function name may change in future.
+* `import_featurecounts()` is a simple import function for featureCounts
+text output files. In future this function may also apply curation by
+`curation.txt` logic.
 
 # slicejam 0.0.6.900
 

@@ -12,6 +12,9 @@
          NS50644_UL3VEH     NS50644       UL3_Veh
          NS644_p2w5VEH      NS644         p2w5_Veh
 
+1. In "mergeSplitCountBed" when run with "DRYRUN=1" it should
+test for dependencies like featureCounts.
+
 1. Allow "Problem_Regions.bed" as optional input.
 
    * Peak slices are flagged when they overlap Problem_Regions

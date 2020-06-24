@@ -9,7 +9,7 @@ Before running slicejam you need these elements:
 
 * featureCounts .fc file
 * GTF file
-* curation.yaml file
+* curation.txt file
 * Path to `Rscript` for the correct R version
 
 The sections describe how to create these files.
@@ -68,7 +68,7 @@ DRYRUN=0 \
    for each sample.
    * The column headers will be used to define sample groups in Step 2.
 
-2. Create a `"curation.yaml"` file (see below).
+2. Create a `"curation.txt"` file (see below).
 
    * The simplest form converts a sample ID to `"Group"` (to define sample
    replicates per group), `"Run"` (sequencing run, used for batch adjustment),
