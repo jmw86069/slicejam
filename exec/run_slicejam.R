@@ -38,7 +38,7 @@
 DRYRUN <- Sys.getenv("DRYRUN");
 fc_file <- Sys.getenv("FC_FILE");
 MGM <- Sys.getenv("MGM");
-CURATION_YAML <- Sys.getenv("CURATION_YAML");
+CURATION_TXT <- Sys.getenv("CURATION_TXT");
 if (length(MGM) == 0 || nchar(MGM) == 0) {
    MGM <- 4;
 }
@@ -107,7 +107,7 @@ jamba::printDebug("output_file:  ", fc_html);
 jamba::printDebug("knit_root_dir:", knit_root_dir);
 jamba::printDebug("cache_dir:    ", cache_dir);
 jamba::printDebug("fc_file path: ", fc_filepath);
-jamba::printDebug("CURATION_YAML:", CURATION_YAML);
+jamba::printDebug("CURATION_TXT:", CURATION_TXT);
 jamba::printDebug("GTF:          ", GTF);
 jamba::printDebug("GTFNAME:      ", GTFNAME);
 Sys.setenv(FC_FILE=fc_filepath);
