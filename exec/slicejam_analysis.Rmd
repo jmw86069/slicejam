@@ -412,7 +412,7 @@ iGroup <- jamba::nameVector(sample_df[[group_colname]],
 ## Make sure the order in filenames is propagated
 filenames <- jamba::nameVector(sample_df[[filename_colname]],
    iSamples);
-fc_data <- fc_data[,c(fc_colnames, filenames),,drop=FALSE];
+fc_data <- fc_data[,c(fc_colnames, filenames),drop=FALSE];
 
 ## Print sample annotation table
 knitr::kable(sample_df,
