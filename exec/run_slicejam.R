@@ -37,11 +37,13 @@
 
 DRYRUN <- Sys.getenv("DRYRUN");
 fc_file <- Sys.getenv("FC_FILE");
-MGM <- Sys.getenv("MGM");
 CURATION_TXT <- Sys.getenv("CURATION_TXT");
+MGM <- Sys.getenv("MGM");
 if (length(MGM) == 0 || nchar(MGM) == 0) {
    MGM <- 4;
 }
+
+OUTDIR <- Sys.getenv("OUTDIR");
 
 GTF <- Sys.getenv("GTF");
 if (length(GTF) > 0 && nchar(GTF) > 0) {
@@ -87,7 +89,11 @@ if (!ATAC %in% c(0)) {
 }
 
 ## Add GTF stem using GTFNAME or small name _gtfhg19121619
-fc_base <- paste0(fc_base, gtf_stem);
+if (nchar(OUTDIR) == 0) {
+   fc_base <- paste0(fc_base, gtf_stem);
+} else {
+   fc_base <- OUTDIR;
+}
 
 fc_basedir <- paste0(fc_base,  "_analysis");
 fc_html <- paste0(fc_base,  ".html");
@@ -95,9 +101,7 @@ fc_html <- paste0(fc_base,  ".html");
 knit_root_dir <- file.path(
    getwd(),
    fc_basedir);
-fc_filepath <- file.path(
-   getwd(),
-   fc_file);
+fc_filepath <- normalizePath(fc_file);
 
 cache_dir <- file.path(fc_basedir, "cache", "");
 

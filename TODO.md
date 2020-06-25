@@ -1,5 +1,11 @@
 # TODO items for Slicejam
 
+## Minor convenience fixes
+
+* `run_slicejam.R` should add file path when not specified, to protect
+against directory changes.
+* Allow custom out directory.
+
 ## Enhancements
 
 1. Change grouping input to "three-column style"
