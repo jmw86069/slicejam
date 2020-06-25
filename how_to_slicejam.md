@@ -71,8 +71,8 @@ DRYRUN=0 \
 2. Create a `"curation.txt"` file (see below).
 
    * The simplest form converts a sample ID to `"Group"` (to define sample
-   replicates per group), `"Run"` (sequencing run, used for batch adjustment),
-   and `"Sample"` (used as a short visual label).
+   replicates per group), `"Batch"` (sequencing run, used for batch adjustment),
+   and `"Label"` (used as a short visual label).
 
 3. GTF file that defines gene-transcript-exons.
 
@@ -128,85 +128,174 @@ DRYRUN=0 \
    
          /ddn/gs1/biotools/R361/bin/Rscript --version
 
-## How to create a `curation.yaml` file
+## How to create a `curation.txt` file
 
 An important and useful part of the workflow is converting column
 names in the featureCounts `.fc` file into useful sample grouping.
-The `"curation.yaml"` file defines rules to create three values
-for each replicate:
+The `"curation.txt"` file uses pattern matching to assign three
+types of annotation to each entry:
 
-1. Sample - some label or unique identifier for each sample replicate
-2. Group - group name for each sample replicate
-3. Run - the sequencing run, used when batch-adjustment should be performed
+1. Group - group name for each sample replicate
+2. Batch - the sequencing run or other experimental source of batch effects
+3. Label - some label or unique identifier for each sample replicate
 
-The `"curation.yaml"` file should have three sections, one
-each for `"Sample:"`, `"Run:"`, and `"Group:"`. The content is
-described in the context of an example below:
+So `curation.txt` should have 4 columns:
 
-      Run:
-      - - ^[A-Z]+[0-9]+
-        - \\1
-      Group:
-      - - (p[0-9]w[0-9]|UL3)
-        - \\2
-      Sample:
-      - - ((p[0-9]w[0-9]|UL3).*_v[0-9]+)
-        - \\2
+1. Pattern
+2. Group
+3. Batch
+4. Label
 
-For the section `Run:` there is one rule:
+The `"Pattern"` should match all or part of each filename in the
+featureCounts results, which are the column headers representing
+counts for each sample.
 
-* It matches `"^[A-Z]+[0-9]+"` - which matches uppercase
-letters, then numbers, starting at the beginning of the
-column name. If the pattern is matched, that pattern is
-used as the value.
-* Therefore, `"NOV215_p2w5_blahblah.bam"` is converted to `"NOV215"`
+Consider having these four files:
 
-For the section `Group:` there is one rule:
+```
+1  NS573_UL3-DexGR_dedup_Single_Fragment_namesort.bam
+2  NS573_UL3-VehGR_dedup_Single_Fragment_namesort.bam
+3  NS755_UL3-Dex-GR_dedup_SingleFragment_Coordsort.bam
+4  NS755_UL3-EtOH-GR_dedup_SingleFragment_Coordsort.bam
+```
 
-* It matches `"(p[0-9]w[0-9]|UL3)"` which matches either
-`"p[0-9]w[0-9]"` or `"UL3"`.
-* Therefore, `"NOV215_p2w5_blahblah.bam"` is converted to `"p2w5"`.
-* Similarly, `"NOV215_UL3_blahblah.bam"` is converted to `"UL3"`.
+A useful `curation.txt` file could be created like this:
 
-For the section `Sample:` there is one rule:
+```
+Pattern             Group       Batch   Label
+NS573_UL3-DexGR     UL3_DexGR   NS573   UL3_DexGR_NS573
+NS573_UL3-VehGR     UL3_VehGR   NS573   UL3_VehGR_NS573
+NS755_UL3-Dex-GR    UL3_DexGR   NS755   UL3_DexGR_NS755
+NS755_UL3-EtOH-GR   UL3_VehGR   NS755   UL3_VehGR_NS755
+```
 
-* It matches `"((p[0-9]w[0-9]|UL3).*_v[0-9]+)"`. This rule extends
-the previous rule `"(p[0-9]w[0-9]|UL3)"` which matches either
-`"p[0-9]w[0-9]"` or `"UL3"`. The rule adds `".*_v[0-9]+"` which
-matches any string until it reaches `"_v"` followed by one or more
-numbers.
-* Therefore, `"NOV215_p2w5_blahblah_v1.bam"` is converted to `"p2w5_blahblah_v1"`.
-* Similarly, `"NOV215_UL3_blahblah_v2.bam"` is converted to `"UL3_blahblah_v2"`.
+The `Pattern` does not have to match the entire filename, just
+part of the filename.
 
-There can be multiple rules per column if necessary. Rules can be simpler,
-for example instead of regular expressions, they can include exact
-text strings:
+### How groups are used
 
-      Group:
-      - - p2w5
-        - p2w5
-      - - p4w4
-        - p4w4
-      - - UL3
-        - UL3
+The slicejam workflow will determine all pairwise contrasts,
+based upon the order of groups in `curation.txt`.
 
-There are three rules, and in each case the pattern match is also used
-as the replacement.
-Whenever it sees `"p2w5"` anywhere in the input,
-it puts `"p2w5"` in the `"Group"` column.
-Whenever it sees `"p4w4"`, it puts `"p4w4"` in the `"Group"` column.
-Whenever it sees `"UL3"`, it puts `"UL3"` in the `"Group"` column.
-Everything else is left as-is without change, and is placed into the
-`"Group"` column.
+Control groups should appear first, so they will
+become the denominator during fold change calculations.
+(Note that the P-value and fold change magnitude will be
+equivalent regardless, only the direction of the fold change
+is affected.)
 
-This technique is effective for curating inconsistencies,
-for example we can recognize `"p2w5DEX"` and `"p2w5_DEX"`:
+From the example above, the rows would be re-ordered so
+`"Veh"` appears first, representing a vehicle control:
 
-      Group:
-      - - p2w5DEX
-        - p2w5_dex
-      - - p2w5_DEX
-        - p2w5_dex
+```
+Pattern             Group       Batch   Label
+NS573_UL3-VehGR     UL3_VehGR   NS573   UL3_VehGR_NS573
+NS755_UL3-EtOH-GR   UL3_VehGR   NS755   UL3_VehGR_NS755
+NS573_UL3-DexGR     UL3_DexGR   NS573   UL3_DexGR_NS573
+NS755_UL3-Dex-GR    UL3_DexGR   NS755   UL3_DexGR_NS755
+```
+
+## Multi-factor designs
+
+If an experiment involves multiple factors, group names should
+separate factor levels using an underscore `"_"`.
+
+For example:
+
+`"Veh_GR"`
+
+will be recognized as
+
+`"Veh"` and `"GR"`
+
+In multi-factor designs, contrasts are produced which
+change only one factor at a time. For example, consider
+these four sample groups:
+
+```
+Veh_NTC
+Veh_GR
+Dex_NTC
+Dex_GR
+```
+
+Valid one-way contrasts would include:
+
+```
+"Dex_GR-Veh_GR"
+```
+
+because this contrast compares the `"Dex-Veh"` effect while
+keeping the factor `"GR"` constant.
+
+The following contrast would not be valid:
+
+`"Dex_GR-Veh_NTC"`
+
+because this contrast compares the `"Dex-Veh"` effect
+while also comparing the `"GR-NTC"` effect.
+
+To ignore multi-factor designs, do not use underscore `"_"`
+in group names. For example instead of
+using group name:
+
+`"Veh_GR"`
+
+use group name:
+
+`"Veh.GR"`
+
+If there is only one factor, then all groups will be compared
+to all other groups.
+
+
+## How to customize statistical contrasts
+
+When using the option `GROUPCHECK=1`, the pipeline will save
+two files for review:
+
+* `"curated_samples.txt"`
+* `"contrasts.txt"`
+
+You can customize the contrasts by editing the file `"contrasts.txt"`
+to use any valid contrast recognized by the R `"limma"` package.
+
+The typical format for a one-way contrast:
+
+`group2-group1`
+
+The typical format for a two-way contrast:
+
+`(group4-group3)-(group2-group1)`
+
+This two-way contrast literally compares the fold change `(group4-group3)`
+to the fold change `(group2-group1)`, to see if the aggregate fold change
+is sufficiently different from zero, given the pooled variance across
+all four groups. (See the R `"limma"` package docs for more details.)
+
+Contrasts should appear one per line of the file `"contrasts.txt"`,
+and should be saved as a text file.
+
+
+### How batches are used
+
+When multiple batches are present in the data, a batch adjustment
+process is performed using `limma::removeBatchEffects()`.
+This function will produce output indicating an error if the
+groups or batches are unbalanced in such a way that it cannot
+properly estimate certain factors. Refer to documentation
+for the R package `"limma"` and function `removeBatchEffects()`
+for more information.
+
+The batch adjustment is performed before statistical comparisons
+so that the normalized, batch-adjusted data can be properly
+reviewed for data quality and normalization, independent of
+potential discovery of statistical differences across sample
+groups. If the data is not properly normalized and batch-adjusted,
+all downstream steps will be skewed by normalization and
+batch effects.
+
+
+### Final note
 
 Most importantly, use the option `GROUPCHECK=1` to run only the
 steps that `curation.yaml` steps, to verify that the output is
@@ -214,6 +303,7 @@ what you intended. When `GROUPCHECK=1` the Rmarkdown will
 save a file with extension `".curated_samples.txt"` that
 contains a table with the featureCounts `.fc` column headers,
 and the results of the `"curation.yaml"` output.
+
 
 ## slicejam options
 
