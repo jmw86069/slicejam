@@ -246,7 +246,7 @@ import_featurecounts <- function
    ## Recognize counts columns as all other colnames
    filenames <- setdiff(colnames(fc_data),
       fc_colnames);
-   attr(fc_data, "fc_columns") <- fc_columns;
+   attr(fc_data, "fc_colnames") <- fc_colnames;
    attr(fc_data, "filenames") <- filenames;
    return(fc_data);
 }

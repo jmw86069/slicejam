@@ -279,11 +279,11 @@ and should be saved as a text file.
 ### How batches are used
 
 When multiple batches are present in the data, a batch adjustment
-process is performed using `limma::removeBatchEffects()`.
+process is performed using `limma::removeBatchEffect()`.
 This function will produce output indicating an error if the
 groups or batches are unbalanced in such a way that it cannot
 properly estimate certain factors. Refer to documentation
-for the R package `"limma"` and function `removeBatchEffects()`
+for the R package `"limma"` and function `removeBatchEffect()`
 for more information.
 
 The batch adjustment is performed before statistical comparisons
