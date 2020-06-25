@@ -4,7 +4,9 @@
 
 * `run_slicejam.R` should add file path when not specified, to protect
 against directory changes.
-* Allow custom out directory.
+* Helper function `update_slicejam()` which updates the R package
+from github (if needed) then copies the two files from the package
+directory to the current directory.
 
 ## Enhancements
 

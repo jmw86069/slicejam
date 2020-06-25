@@ -1151,8 +1151,14 @@ if (length(AtacStatsMgm4) > 0) {
 
 #### Venn diagrams (all peaks)
 
+Venn diagrams are created for all pairs of results, and represent
+directionality of the shared hits.
+
+Note that Venn diagrams are not produced when there is only one
+comparison.
+
 ```{r, venn_pairs, fig.height=10, fig.width=10, dependson=c("run_limma")}
-if (length(AtacStats) > 0) {
+if (length(AtacStats) > 0 && length(dim(AtacStats$statsHitsA)[[2]]) > 1) {
    pair_l <- unlist(recursive=FALSE,
       apply(combn(dimnames(AtacStats$statsHitsA)[[2]], 2), 2, list));
    
@@ -1173,7 +1179,7 @@ if (length(AtacStats) > 0) {
 #### Venn diagrams (subset peaks)
 
 ```{r, venn_pairs_mgm4, fig.height=10, fig.width=10, dependson=c("run_limma_mgm4")}
-if (length(AtacStatsMgm4) > 0) {
+if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$statsHitsA)[[2]]) > 1) {
    pair_l_mgm4 <- unlist(recursive=FALSE,
       apply(combn(dimnames(AtacStatsMgm4$statsHitsA)[[2]], 2), 2, list));
    
