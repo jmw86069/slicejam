@@ -1837,7 +1837,7 @@ if (length(AtacStats) > 0) {
    
 if (length(AtacStatsMgm4) > 0) {
    broad_hit_counts_mgm4 <- lapply(nameVector(dimnames(AtacStatsMgm4$statsHitsA)[[1]]), function(p){
-      sapply(nameVectorN(dimnames(AtacStatsMgm4$statsHitsA)[[2]]), function(i){
+      sapply(nameVector(dimnames(AtacStatsMgm4$statsHitsA)[[2]]), function(i){
          k <- AtacStatsMgm4$statsHitsA[p,i,1][[1]];
          k_bp <- values(fc_gr[names(k)])$broad_peak;
          c(peak_hits=length(k_bp),
