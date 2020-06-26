@@ -1864,21 +1864,21 @@ if (length(AtacStats) > 0) {
    dimnames1 <- dimnames(AtacStats$statsHitsA)[[1]];
    dimnames2 <- dimnames(AtacStats$statsHitsA)[[2]];
    peak_hits <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStats$statsHitsA[head(dimnames1, 1),i,1])
+      names(AtacStats$statsHitsA[head(dimnames1, 1), i, 1])
    })));
    peak_hits_q <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStats$statsHitsA[tail(dimnames1, 1),i,1])
+      names(AtacStats$statsHitsA[tail(dimnames1, 1), i, 1])
    })));
 }
 if (length(AtacStatsMgm4) > 0) {
    mgm4_stats_dim <- dim(AtacStatsMgm4$statsHitsA);
    mgm_dimnames1 <- dimnames(AtacStatsMgm4$statsHitsA)[[1]];
    mgm_dimnames2 <- dimnames(AtacStatsMgm4$statsHitsA)[[2]];
-   peak_hits_mgm4 <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStatsMgm4$statsHitsA[head(dimnames1, 1), i, 1])
+   peak_hits_mgm4 <- unique(unlist(lapply(mgm_dimnames2, function(i){
+      names(AtacStatsMgm4$statsHitsA[head(mgm_dimnames1, 1), i, 1])
    })));
-   peak_hits_mgm4_q <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStatsMgm4$statsHitsA[tail(dimnames1, 1), i, 1])
+   peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
+      names(AtacStatsMgm4$statsHitsA[tail(mgm_dimnames1, 1), i, 1])
    })));
 
    if (denovo_controls) {
