@@ -1962,7 +1962,7 @@ if (length(AtacStatsMgm4) > 0) {
 
 **`r paste0("ATAC=", ATAC)`**
 
-**`r if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {("ATAC-mode is enabled.")} else {("ATAC-mode is disabled."}`**
+**`r if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {("ATAC-mode is enabled.")} else {("ATAC-mode is disabled.")}`**
 
 This workflow is enabled only when environment variable `ATAC=1`,
 and when stats have been performed, and when the max group mean
