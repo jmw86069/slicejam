@@ -2211,7 +2211,7 @@ statsdf2bed <- function
    hits_label <- pasteByRow(hits_vm, sep="|");
    statsdf$label <- hits_label;
    statsdf$score <- hits_score;
-   statsdf$strand <- "+";
+   statsdf$strand <- rep("+", nrow(statsdf));
    statsbed <- statsdf[,c("Chr", "Start", "End", "label", "score", "strand"),drop=FALSE];
    return(statsbed);
 }
