@@ -202,6 +202,18 @@ curate_to_df_by_pattern <- function
 
 #' Import featureCounts file
 #' 
+#' Import featureCounts file
+#' 
+#' This function is a simple importer for featureCounts data saved
+#' in a tab-delimited text file, the default format for featureCounts.
+#' 
+#' @param file `character` path to a featureCounts file.
+#' @param verbose `logical` indicating whether to print verbose output.
+#' @param rowid_colname `character` string indicating the first column
+#'    header in the featureCounts file, by default `"Geneid"` is used
+#'    by featureCounts.
+#' @param ... additional arguments are ignored.
+#' 
 #' @export
 import_featurecounts <- function
 (file,

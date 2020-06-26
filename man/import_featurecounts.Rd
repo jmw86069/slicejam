@@ -4,8 +4,23 @@
 \alias{import_featurecounts}
 \title{Import featureCounts file}
 \usage{
-import_featurecounts(file, verbose = FALSE, id_colname = "Geneid", ...)
+import_featurecounts(file, verbose = FALSE, rowid_colname = "Geneid", ...)
+}
+\arguments{
+\item{file}{\code{character} path to a featureCounts file.}
+
+\item{verbose}{\code{logical} indicating whether to print verbose output.}
+
+\item{rowid_colname}{\code{character} string indicating the first column
+header in the featureCounts file, by default \code{"Geneid"} is used
+by featureCounts.}
+
+\item{...}{additional arguments are ignored.}
 }
 \description{
 Import featureCounts file
+}
+\details{
+This function is a simple importer for featureCounts data saved
+in a tab-delimited text file, the default format for featureCounts.
 }

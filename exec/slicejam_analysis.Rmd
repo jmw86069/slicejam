@@ -1824,34 +1824,35 @@ are statistically changing across multiple slices per peak.
 if (length(AtacStats) > 0) {
    
    broad_hit_counts <- lapply(nameVector(dimnames(AtacStats$statsHitsA)[[1]]), function(p){
-      sapply(nameVectorN(AtacStats$statsHitsA[p,,]), function(i){
+      sapply(nameVector(dimnames(AtacStats$statsHitsA)[[2]]), function(i){
          k <- AtacStats$statsHitsA[p,i,1][[1]];
          k_bp <- values(fc_gr[names(k)])$broad_peak;
          c(peak_hits=length(k_bp),
             broad_peak_hits=length(table(k_bp)));
       })
    });
-   printDebug("broad_hit_counts:");
+   jamba::printDebug("broad_hit_counts:");
    broad_hit_counts;
 }
    
 if (length(AtacStatsMgm4) > 0) {
    broad_hit_counts_mgm4 <- lapply(nameVector(dimnames(AtacStatsMgm4$statsHitsA)[[1]]), function(p){
-      sapply(nameVectorN(AtacStatsMgm4$statsHitsA[p,,]), function(i){
+      sapply(nameVectorN(dimnames(AtacStatsMgm4$statsHitsA)[[2]]), function(i){
          k <- AtacStatsMgm4$statsHitsA[p,i,1][[1]];
          k_bp <- values(fc_gr[names(k)])$broad_peak;
          c(peak_hits=length(k_bp),
             broad_peak_hits=length(table(k_bp)));
       })
    });
-   printDebug("broad_hit_counts ",
+   jamba::printDebug("broad_hit_counts ",
       c("(", "MGM", ">=", MGM, ")"),
       ":", sep="");
    broad_hit_counts_mgm4;
 
 }
 ## Briefly compare All peak hits to Mgm4 peak hits
-## signedVennPlotSets(list(mgm4=AtacStatsMgm4$statsHitsA[1,2,1][[1]], all=AtacStats$statsHitsA[1,2,1][[1]]))
+## signedVennPlotSets(list(mgm4=AtacStatsMgm4$statsHitsA[1,2,1][[1]]
+## all=AtacStats$statsHitsA[1,2,1][[1]]))
 
 ```
 
@@ -1860,28 +1861,41 @@ if (length(AtacStatsMgm4) > 0) {
 ```{r, heatmap_hits, fig.height=14, fig.width=10}
 if (length(AtacStats) > 0) {
    stats_dim <- dim(AtacStats$statsHitsA);
-   peak_hits <- unique(unlist(lapply(AtacStats$statsHitsA[,1:2,], names)));
-   peak_hits_q <- unique(unlist(lapply(AtacStats$statsHitsA[stats_dim[1],1:2,], names)));
+   dimnames1 <- dimnames(AtacStats$statsHitsA)[[1]];
+   dimnames2 <- dimnames(AtacStats$statsHitsA)[[2]];
+   peak_hits <- unique(unlist(lapply(dimnames2, function(i){
+      names(AtacStats$statsHitsA[head(dimnames1, 1),i,1])
+   })));
+   peak_hits_q <- unique(unlist(lapply(dimnames2, function(i){
+      names(AtacStats$statsHitsA[tail(dimnames1, 1),i,1])
+   })));
 }
 if (length(AtacStatsMgm4) > 0) {
    mgm4_stats_dim <- dim(AtacStatsMgm4$statsHitsA);
-   peak_hits_mgm4 <- unique(unlist(lapply(AtacStatsMgm4$statsHitsA[,1:2,], names)));
-   peak_hits_mgm4_q <- unique(unlist(lapply(AtacStatsMgm4$statsHitsA[mgm4_stats_dim[1],1:2,], names)));
-   #lengths(list(peak_hits=peak_hits, peak_hits_q=peak_hits_q,
-   #   peak_hits_mgm4=peak_hits_mgm4, peak_hits_mgm4_q=peak_hits_mgm4_q))
-   
+   mgm_dimnames1 <- dimnames(AtacStatsMgm4$statsHitsA)[[1]];
+   mgm_dimnames2 <- dimnames(AtacStatsMgm4$statsHitsA)[[2]];
+   peak_hits_mgm4 <- unique(unlist(lapply(dimnames2, function(i){
+      names(AtacStatsMgm4$statsHitsA[head(dimnames1, 1), i, 1])
+   })));
+   peak_hits_mgm4_q <- unique(unlist(lapply(dimnames2, function(i){
+      names(AtacStatsMgm4$statsHitsA[tail(dimnames1, 1), i, 1])
+   })));
+
    if (denovo_controls) {
       iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
    }
    if (length(peak_hits_mgm4_q) > 1) {
-      iM <- iMatrixQBctr[peak_hits_mgm4_q,iSamplesUse,drop=FALSE];
-      hc <- hcluster(iM, link="ward", method="euclidean");
+      iM <- iMatrixQBctr[peak_hits_mgm4_q, iSamplesUse, drop=FALSE];
+      hc <- amap::hcluster(iM,
+         link="ward",
+         method="euclidean");
       
       
       ## Subset only promoter peak hits
-      #peak_hits_mgm4_q_p <- subset(rowData(fc_se[peak_hits_mgm4_q,]), feature_type_winner %in% "promoter")$Geneid;
-      #iM <- iMatrixQBctr[peak_hits_mgm4_q_p,];
-      #hc_p <- hcluster(iM, link="ward", method="euclidean");
+      # peak_hits_mgm4_q_p <- subset(rowData(fc_se[peak_hits_mgm4_q,]), 
+      #    feature_type_winner %in% "promoter")$Geneid;
+      # iM <- iMatrixQBctr[peak_hits_mgm4_q_p,];
+      # hc_p <- hcluster(iM, link="ward", method="euclidean");
       
       hm_mgm4 <- heatmap.3(iM,
       #   Colv=FALSE,
@@ -1916,7 +1930,7 @@ if (length(AtacStatsMgm4) > 0) {
       iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
    }
    if (length(peak_hits_mgm4_q) > 1) {
-      iM_grp <- rowGroupMeans(iM[,iSamplesUse],
+      iM_grp <- jamba::rowGroupMeans(iM[,iSamplesUse,drop=FALSE],
          useMedian=FALSE,
          groups=iGroup[iSamplesUse]);
       
@@ -1999,7 +2013,7 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
       newend <- ifelse(gr2pos,
          end(gr) - (downstream-1),
          end(gr) - upstream);
-      ranges(gr) <- IRanges(start=newstart,
+      ranges(gr) <- IRanges::IRanges(start=newstart,
          end=newend);
       return(gr);
    }
