@@ -2,9 +2,13 @@
 
 export(curate_to_df_by_pattern)
 export(genomic_regions_from_gtf)
+export(handle_na_values)
 export(import_featurecounts)
 export(matrix_normalize)
+export(run_limma_replicate)
+export(se_contrast_stats)
 export(se_normalize)
 export(statsdf2bed)
 export(update_function_params)
 export(update_list_elements)
+export(voom_jam)

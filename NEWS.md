@@ -1,3 +1,27 @@
+# slicejam 0.0.9.900
+
+## new functions
+
+* `se_contrast_stats()` is a workhorse function, wrapper to run
+multiple statistical contrasts on a `SummarizedExperiment` object,
+primarily using `limma` methods.
+* `run_limma_replicate()` is a wrapper to run `limma` contrasts on
+a single data matrix, applying one or more contrasts in bulk.
+* `voom_jam()` is a Jam-specific minor modification to `limma::voom()`
+for the specific scenario where there may be NA values, which causes
+the `stats::lowess()` function to return erroneous results.
+* `handle_na_values()` handles a numeric matrix that contains `NA`
+values, in a group context. Three options: `"full"` replaces only
+`NA` values when the entire group is `NA`; `"partial"` replaces `NA`
+only when the group contains some non-`NA` values. This function is
+aimed at platform technologies where missing values are `NA` and
+have particular meaning to that platform. Notably, when all values
+of a group are `NA`, limma will return `NA` for all related contrasts.
+When any values are not `NA` it is sometimes preferable to keep the
+value without adding any replacement. When an entire group is `NA`
+is can be useful to replace `NA` with a floor value, for example `0`,
+in which case `limma` will still include this entry in the contrast.
+
 # slicejam 0.0.8.900
 
 ## new functions
