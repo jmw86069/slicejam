@@ -529,9 +529,9 @@ if ("Length" %in% colnames(rowData(fc_se))) {
 iMatrix <- assays(fc_se[,iSamples])[["counts"]];
 
 ## Evaluate quantile normalization
-fc_se <- doNorm(fc_se,
-   signal="counts",
-   methodList=c("quantile"));
+fc_se <- se_normalize(fc_se,
+   assay_names="counts",
+   method=c("quantile"));
 
 ## Quantile-normalized data
 iMatrixQ <- assays(fc_se[,iSamples])[["quantile_counts"]];
@@ -1151,6 +1151,8 @@ if (length(AtacStatsMgm4) > 0) {
 
 #### Venn diagrams (all peaks)
 
+**`r if (length(AtacStats) > 0 && length(dim(AtacStats$statsHitsA)[[2]]) > 1) {("")} else {("Venn diagrams are skipped.")}`**
+
 Venn diagrams are created for all pairs of results, and represent
 directionality of the shared hits.
 
@@ -1177,6 +1179,8 @@ if (length(AtacStats) > 0 && length(dim(AtacStats$statsHitsA)[[2]]) > 1) {
 ```
 
 #### Venn diagrams (subset peaks)
+
+**`r if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$statsHitsA)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped.")}`**
 
 ```{r, venn_pairs_mgm4, fig.height=10, fig.width=10, dependson=c("run_limma_mgm4")}
 if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$statsHitsA)[[2]]) > 1) {
@@ -1211,6 +1215,7 @@ annotated "promoter".
 * **intron**: non-exonic region within a stranded transcript region
 * **intergenic**: all other regions.
 
+
 #### Define genome regions (or load previously defined genome regions)
 
 The GTF file is used to derive a filename to store genome regions
@@ -1228,136 +1233,16 @@ is renamed to have file extension:
 If the RData file does not exist, genome regions are defined, then
 saved into that RData file.
 
-```{r, refgene_txdb}
-
-#refgene_gtf <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/EA_Jul052017_RNAseq/hg19_refgene_041619_minimus_exons.gtf";
-refgene_gtf <- GTF;
-
-## genome_regions may be saved to a file already
-gtf_gr_file <- gsub("[.](gff|gtf|gff3)$",
-   ".genome_regions.RData",
-   ignore.case=TRUE,
-   refgene_gtf);
-if (!file.exists(gtf_gr_file) && file.exists(basename(gtf_gr_file))) {
-   gtf_gr_file <- basename(gtf_gr_file);
-}
-if (file.exists(gtf_gr_file)) {
-   genome_regions_o <- load(gtf_gr_file);
-   if (!exists("genome_regions")) {
-      printDebug("The RData file '",
-         gtf_gr_file,
-         "' did not contain R object '",
-         "genome_regions", "'.");
-      printDebug("Instead, it contained these R objects:",
-         genome_regions_o);
-   }
-}
-
+```{r, define_genome_regions}
+genome_regions <- genomic_regions_from_gtf(gtf=GTF,
+   upstream_promoter=upstream_promoter,
+   downstream_promoter=downstream_promoter,
+   upstream_tts=upstream_tts,
+   downstream_tts=downstream_tts,
+   save_rdata=TRUE,
+   save_txdb=TRUE);
 ```
 
-If genome regions must be defined, they will be defined below:
-
-```{r, define_genome_regions_txdb}
-## If genome_regions is not define, create it
-if (!exists("genome_regions")) {
-   printDebug("Defining genome regions from GTF features.");
-   txdb_file <- gsub("[.]gtf", ".txdb",
-      ignore.case=TRUE,
-      refgene_gtf);
-   if (file.exists(txdb_file)) {
-      refgene_txdb <- AnnotationDbi::loadDb(txdb_file);
-   } else {
-      refgene_txdb <- GenomicFeatures::makeTxDbFromGFF(refgene_gtf);
-   }
-}
-```
-
-```{r, define_genome_regions_tx2geneDF}
-if (!exists("genome_regions")) {
-   ## tx2geneDF
-   system.time(tx2geneDF <- unique(splicejam::makeTx2geneFromGtf(refgene_gtf,
-      geneAttrNames=c("gene_id", "gene_name"),
-      txAttrNames=c("transcript_id"),
-      geneFeatureType="exon",
-      verbose=TRUE,
-      txFeatureType="exon")));
-   rownames(tx2geneDF) <- tx2geneDF$transcript_id;
-}
-```
-
-```{r, define_genome_regions_featuresBy}
-if (!exists("genome_regions")) {
-
-   ## Exons
-   exonsByGene <- exonsBy(refgene_txdb, by="gene");
-   values(exonsByGene@unlistData)$gene_name <- rep(
-      tx2geneDF[match(names(exonsByGene),
-         tx2geneDF$gene_id), "gene_name"],
-      elementNROWS(exonsByGene));
-   values(exonsByGene@unlistData)$gene_id <- rep(
-      names(exonsByGene),
-      elementNROWS(exonsByGene));
-   
-   ## transcript ranges
-   txByGene <- transcriptsBy(refgene_txdb);
-   values(txByGene@unlistData)$gene_name <- tx2geneDF[match(values(txByGene@unlistData)$tx_name,
-      tx2geneDF$transcript_id), "gene_name"];
-   values(txByGene@unlistData)$gene_id <- tx2geneDF[match(values(txByGene@unlistData)$tx_name,
-      tx2geneDF$transcript_id), "gene_id"];
-   
-   ## TTS per transcript range, extend -1000,+1000 around TTS
-   ttsByTx <- flank(txByGene@unlistData, start=FALSE, width=-1);
-   ttsByTx <- flank(ttsByTx, width=1000, both=TRUE);
-   
-   ## promoters
-   ## Use default values for GenomicFeatures::promoters()
-   ## but store them here to make sure they do not change
-   upstream <- 2000;
-   downstream <- 200;
-   promoters_gr <- promoters(refgene_txdb,
-      upstream=upstream,
-      downstream=downstream,
-      use.names=TRUE);
-   values(promoters_gr)$gene_name <- tx2geneDF[match(values(promoters_gr)$tx_name,
-      tx2geneDF$transcript_id), "gene_name"];
-   values(promoters_gr)$gene_id <- tx2geneDF[match(values(promoters_gr)$tx_name,
-      tx2geneDF$transcript_id), "gene_id"];
-   
-   ## Introns
-   intronsByGene <- GenomicRanges::setdiff(txByGene@unlistData,
-      exonsByGene@unlistData);
-   intronsByGene <- annotateGRfromGR(intronsByGene,
-      txByGene@unlistData[,c("gene_name", "gene_id")]);
-
-   ## Assemble each layer of genomic region
-   promoter_name <- paste0("Promoters (-", upstream, ",+", downstream, ")");
-   genome_regions_l <- list(
-      promoters=promoters_gr[,c("gene_name", "gene_id")],
-      exons=exonsByGene@unlistData[,c("gene_name", "gene_id")],
-      introns=intronsByGene[,c("gene_name", "gene_id")],
-      `TTS(-1000,+1000)`=ttsByTx[,c("gene_name", "gene_id")]);
-   names(genome_regions_l)[1] <- promoter_name;
-   genome_regions <- GRangesList(genome_regions_l)@unlistData;
-   values(genome_regions)$feature_type <- rep(names(genome_regions_l),
-      lengths(genome_regions_l));
-   
-   ## Save to the RData file
-   tryCatch({
-      save(list=c("genome_regions", "tx2geneDF"),
-         file=gtf_gr_file);
-      printDebug("Genome regions were saved for later re-use:",
-         gtf_gr_file);
-   }, error=function(e){
-      save(list=c("genome_regions", "tx2geneDF"),
-         file=basename(gtf_gr_file));
-      gtf_gr_file <- basename(gtf_gr_file);
-      printDebug("Genome regions were saved for later re-use:",
-         gtf_gr_file);
-   });
-} else {
-   printDebug("Genome regions were already defined.");
-}
-```
 
 #### Annotate peaks by genome region
 
@@ -1960,8 +1845,6 @@ if (length(AtacStatsMgm4) > 0) {
 
 ### Peak to ATAC-promoter analysis (optional)
 
-**`r paste0("ATAC=", ATAC)`**
-
 **`r if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {("ATAC-mode is enabled.")} else {("ATAC-mode is disabled.")}`**
 
 This workflow is enabled only when environment variable `ATAC=1`,
@@ -2161,73 +2044,13 @@ Statistical results are saved in text file for the full set
 of peaks.
 Look in the folder defined by OUTDIR: **`r OUTDIR`**.
 
-```{r, export_beds}
-statsdf2bed <- function
-(statsdf,
- type=c("all", "hits"),
- ...)
-{
-   ## This function converts Stats data.frame to BED format
-   ## using the BED name field to encode additional info
-   type <- match.arg(type);
-   
-   hit_cols <- vigrep("^hit ", colnames(statsdf));
-   hit_cols_names <- gsub("^.+ ", "", hit_cols);
-   hit_cols_names2 <- gsub("_v2", "", makeNames(hit_cols_names));
-   names(hit_cols) <- hit_cols_names2;
-   hit_cols_use <- hit_cols[unvigrep("_v[0-9]+$", hit_cols_names2)];
-   hits_l <- lapply(hit_cols_use, function(i){statsdf[[i]] != 0})
-   hits_v <- Reduce("|", hits_l);
-   
-   ## Optionally subset for stats hits
-   if ("hits" %in% type) {
-      statsdf <- statsdf[hits_v,,drop=FALSE];
-   }
-   
-   hits_im <- as.matrix(statsdf[,hit_cols_use,drop=FALSE]);
-   hits_score <- rowSums(abs(hits_im));
-   ## Make BED name
-   hits_vl <- lapply(nameVectorN(hit_cols_use), function(i){
-      j <- statsdf[[hit_cols[i]]];
-      ifelse(j == 0,
-         "",
-         paste0(j, "_", i))
-   });
-   ## _annoTSS_gene_name
-   mgmpg <- paste0("mgm", MGM, "_annoTSS_gene_name");
-   mgmpgid <- paste0("mgm", MGM, "_annoTSS_gene_id");
-   mgmpd <- paste0("mgm", MGM, "_annoTSS_distance");
-
-   statsdf$ft_winner <- gsub("[ ()].*$",
-      "", 
-      statsdf$feature_type_winner);
-
-   hits_vm <- do.call(cbind, c(
-      lapply(nameVector(c("Gene", "ft_winner", mgmpg, mgmpd)), function(i){
-         rmNA(naValue="", statsdf[[i]])
-      }),
-      hits_vl
-   ));
-   hits_label <- pasteByRow(hits_vm, sep="|");
-   statsdf$label <- hits_label;
-   statsdf$score <- hits_score;
-   statsdf$strand <- rep("+", nrow(statsdf));
-   statsbed <- statsdf[,c("Chr", "Start", "End", "label", "score", "strand"),drop=FALSE];
-   return(statsbed);
-}
-```
 
 ```{r, stats_df, dependson=c("run_limma")}
 if (length(AtacStats) > 0) {
    ## Subset statsDF for rows with at least one hit
    for (iSig in dimnames(AtacStats$statsHitsA)[[3]]) {
       iDF_all <- AtacStats$statsDF[[iSig]];
-      hit_cols <- vigrep("^hit ", colnames(iDF_all));
-      hits_l <- lapply(hit_cols, function(i){iDF_all[,i] != 0})
-      hits_v <- Reduce("|", hits_l);
-      #iDF_all_hits <- iDF_all[hits_v,,drop=FALSE];
-      iDF_all_hits <- iDF_all;
-      
+
       ## Add nearest promoter df
       pro_cols1 <- provigrep(c("^gene_id",
          "^gene_name",
@@ -2241,17 +2064,21 @@ if (length(AtacStats) > 0) {
          pro_cols1
       );
       if (length(pro_cols) > 0) {
-         idf_match <- match(iDF_all_hits$Gene, values(fc_gr)$Gene);
-         promoter_df <- as.data.frame(values(fc_gr[idf_match,pro_cols]));
-         iDF_all_hits[,pro_cols] <- promoter_df;
+         idf_match <- match(iDF_all$Gene, values(fc_gr)$Gene);
+         promoter_df <- data.frame(check.names=FALSE,
+            stringsAsFactors=FALSE,
+            values(fc_gr[idf_match,pro_cols]));
+         iDF_all[,pro_cols] <- promoter_df;
       }
       
       ## Add genome coordinate annotations
       coord_cols <- c("Chr", "Start", "End", "Length");
-      coord_df <- data.frame(rowData(
-         fc_se[match(iDF_all_hits$Gene, rowData(fc_se)$Geneid),]
+      coord_df <- data.frame(check.names=FALSE,
+         stringsAsFactors=FALSE,
+         rowData(
+         fc_se[match(iDF_all$Gene, rowData(fc_se)$Geneid),]
          )[,coord_cols]);
-      iDF_all_hits2 <- insertDFcols(iDF_all_hits,
+      iDF_all2 <- insertDFcols(iDF_all,
          coord_df,
          colnum=2);
       
@@ -2264,17 +2091,19 @@ if (length(AtacStats) > 0) {
             basename(fc_file)));
 
       data.table::fwrite(
-         x=iDF_all_hits2,
+         x=iDF_all2,
          file=txt_file,
          sep="\t",
          col.names=TRUE);
       printDebug("Wrote ",
-         formatInt(nrow(iDF_all_hits2)),
+         formatInt(nrow(iDF_all2)),
          " rows to: ",
          txt_file);
 
       ## Save all peaks in BED format
-      statsbed <- statsdf2bed(iDF_all_hits2);
+      statsbed <- statsdf2bed(iDF_all2,
+         MGM=0,
+         type="all");
       bed_ext <- paste0(".stats_nomgm",
          ifelse(ATAC, "_atac1", ""),
          ".", iSig, ".bed");
@@ -2316,12 +2145,7 @@ if (length(AtacStatsMgm4) > 0) {
    ## Subset statsDF for rows with at least one hit
    for (iSig in dimnames(AtacStatsMgm4$statsHitsA)[[3]]) {
       iDF_all <- AtacStatsMgm4$statsDF[[iSig]];
-      hit_cols <- vigrep("^hit ", colnames(iDF_all));
-      hits_l <- lapply(hit_cols, function(i){iDF_all[,i] != 0})
-      hits_v <- Reduce("|", hits_l);
-      #iDF_all_hits <- iDF_all[hits_v,,drop=FALSE];
-      iDF_all_hits <- iDF_all;
-   
+
       ## Add nearest promoter df
       pro_cols1 <- provigrep(c("gene_id",
          "gene_name",
@@ -2333,15 +2157,19 @@ if (length(AtacStatsMgm4) > 0) {
          colnames(values(fc_gr)),
          pro_cols1
       );
-      promoter_df <- as.data.frame(values(fc_gr[iDF_all_hits$Gene])[,pro_cols]);
-      iDF_all_hits[,pro_cols] <- promoter_df;
+      promoter_df <- data.frame(check.names=FALSE,
+         stringsAsFactors=FALSE,
+         values(fc_gr[iDF_all$Gene])[,pro_cols]);
+      iDF_all[,pro_cols] <- promoter_df;
       
       ## Add genome coordinate annotations
       coord_cols <- c("Chr", "Start", "End", "Length");
-      coord_df <- data.frame(rowData(
-         fc_se[match(iDF_all_hits$Gene, rowData(fc_se)$Geneid),]
+      coord_df <- data.frame(check.names=FALSE,
+         stringsAsFactors=FALSE,
+         rowData(
+            fc_se[match(iDF_all$Gene, rowData(fc_se)$Geneid),]
          )[,coord_cols]);
-      iDF_all_hits2 <- insertDFcols(iDF_all_hits,
+      iDF_all2 <- insertDFcols(iDF_all,
          coord_df,
          colnum=2);
       
@@ -2356,17 +2184,19 @@ if (length(AtacStatsMgm4) > 0) {
       
       cat(file="debug_log.txt", txt_file, "\n");
       data.table::fwrite(
-         x=iDF_all_hits2,
+         x=iDF_all2,
          file=txt_file,
          sep="\t",
          col.names=TRUE);
       printDebug("Wrote ",
-         formatInt(nrow(iDF_all_hits2)),
+         formatInt(nrow(iDF_all2)),
          " rows to: ",
          txt_file);
       
       ## Save all peaks in BED format
-      statsbed <- statsdf2bed(iDF_all_hits2);
+      statsbed <- statsdf2bed(iDF_all2,
+         MGM=MGM,
+         type="all");
       bed_ext <- paste0(".stats_mgm",
          MGM,
          ifelse(ATAC, "_atac1", ""),
@@ -2394,7 +2224,9 @@ if (length(AtacStatsMgm4) > 0) {
          col.names=FALSE);
       
       ## Save all peaks in BED format
-      statsbed <- statsdf2bed(iDF_all_hits2, type="hits");
+      statsbed <- statsdf2bed(iDF_all2,
+         MGM=MGM,
+         type="hits");
       bed_ext <- paste0(".stathits_mgm",
          MGM,
          ifelse(ATAC, "_atac1", ""),
@@ -2430,6 +2262,8 @@ if (length(AtacStatsMgm4) > 0) {
 
 ## Export RData for follow-up analyses
 
+**`r if (SAVE_RDATA) {("RData will be saved.")} else {("RData will not be saved.")}`**
+
 
 ```{r, export_rdata, dependson=c("check_reps", "run_limma", "run_limma_mgm4")}
 if (SAVE_RDATA) {
@@ -2450,137 +2284,3 @@ if (SAVE_RDATA) {
 }
 ```
 
-
-## Change log
-
-#### 18jul2019
-
-* Added comments to MA-plot of quantile-normalized, batch-adjusted data.
-* Added display of MAD values to the above MA-plot, with note saying
-outliers are not removed.
-* Fixed issue with `genomic_regions` where names like
-`"Promoter(-2000,+200)"` were replaced with `"promoter"`.
-Now it uses the proper name.
-* Note this file saves genome regions to an RData file
-`"hg19_refgene_041619_minimus_exons.genome_regions.RData"`.
-It does not name the file with promoter and TTS ranges, which
-means the ranges are fixed relative to the RData file. In
-future if we want to change the ranges around promoters and TTS,
-we need to add range numbers to the RData filename.
-
-
-#### 27aug2019
-
-* Added step to check for replicates per sample group. When there
-are no replicates, the whole set of singlets are copied into
-a new matrix annotated "Control" to be used to estimate
-variability in limma.
-* Subsequent steps test for success of each limma contrast
-before running each subsequent section.
-
-#### 14nov2019
-
-* Changed maxGroupMean "Mgm4" threshold to be user-configurable
-with environmental variable `MGM`, which defaults to `MGM=4`.
-* The script `run_gokeyATAC.R` was updated to pass the `MGM`
-environmental variable, and includes `_mgm#` in the output file
-and directory only if `MGM` is not 4, preserving previous results.
-
-#### 15nov2019
-
-* Changed output to use environmental variable `OUTDIR`, default `"."`
-which is the current working directory. The script
-`run_gokeyATAC.R` will define `OUTDIR` to use the same subfolder
-where the Rmarkdown html file is created.
-* Added `CACHEDIR` as optional method of defining a specific cache directory,
-the default is the `OUTDIR` with `"cache/"` appended to the end.
-* Fixed several issues where plots were labeled "Mgm4" even when `MGM`
-was not 4.
-* Changed stats output files to check for existing file before writing
-a new file.
-
-#### 20nov2019
-
-* Added new section for peak annotation by genome region. This process
-annotates all peaks using all genes defined in the GTF file. Genome
-regions are defined as promoter, TTS, exon, intron, or intergenic.
-First, all peaks are annotated with any intersecting genome region,
-along with the corresponding gene(s) where applicable. Next, a
-"winner" is chosen among feature_types, in order: promoter, TTS,
-exon, intron. Then, the corresponding gene_name(s) for the
-feature_type_winner are annotated for each peak. Finally, the distance
-to nearest gene, along with the nearest_gene_name are annotated,
-which is mostly interesting for peaks in "intergenic" regions.
-* Added environment variable `ATAC` which should be 0 or 1 (0 by default).
-When ATAC=0 then peaks are not annotated to the nearest ATAC-positive
-promoter region. When ATAC=1, then only gene promoters with an ATAC peak
-overlapping the promoter are used for annotation -- intended to subset
-the total set of all possible genes, to the subset of genes for which
-data support their active expression.
-
-#### 21nov2019
-
-* New optional environmental variable `GTF` with file path to
-the GTF file that should be used when annotating peaks to genes
-and nearest genes. Note that changing this file invalidates the cache,
-causing the whole pipeline to be repeated.
-* The script will now save the stats files even if they previously exist,
-in order to update the peak annotations.
-
-#### 13dec2019
-
-* Add "gene_id" to set of columns retained by genomic_regions,
-and include "gene_id" in subsequent output columns.
-* Change in nearest Mgm4 promoter logic to use TSS of promoters overlapping
-Mgm peaks.
-
-   * take promoters_gr that overlap Mgm4 peaks, call them mgm_promoters_gr
-   * convert mgm_promoters_gr to mgm_tss_gr (adjust back to original TSS position)
-   * determine distance to nearest mgm_tss_gr per fc_gr peak
-   * use `distanceToNearest(..., 'select="all"')`
-   to return all hits with same distance
-   * use column headers "mgm4_annoTSS_gene_name", "mgm4_annoTSS_gene_id", "mgm4_annoTSS_distance"
-
-#### 02jan2020
-
-* Ideas for naming this tool: The tool stacks layers of peaks, merges
-overlapping peaks, slices the merged peaks by max width, then compares
-peak depth across layers using differential analysis.
-* peak, merge, slice, diff, comp
-* geologic terms: stratum/strata; mesa; slate; mesa; plateau
-* divergent
-
-#### 06jan2020
-
-* Fixed bug in `peak_genes` caused by syntax differences that work with
-`data.frame` and `matrix`, but not `data.table` objects. Also made the
-peak annotation steps markedly faster by only running the step to
-comma-delimit multiple values for the subset of rows that require that
-logic.
-
-#### 03feb2020
-
-* Changed the volcano plots with MGM threshold to use the actual
-`MGM` threshold, previously they used MGM=4 which caused minor
-discrepancies between the reported hits from limma, and the volcano
-plot numbers. This change removes that discrepancy.
-
-#### 17apr2020
-
-* Initial migration to Github.
-* Changed instances of `CellLine` to `Group`.
-
-#### 29apr2020
-
-* use `distanceToNearest(..., 'select="all"', ignore.strand=TRUE)`
-to return all hits with same distance, and to return hits from either strand
-* use `subsetByOverlaps(..., ignore.strand=TRUE)` to return overlaps
-from either strand.
-* use `findOverlaps(..., ignore.strand=TRUE)` to return overlaps
-from either strand.
-* Export BED files for all peaks, MGM-filtered peaks, and MGM peak hits.
-* Enable use of `"curation.yaml"` file to convert featureCounts column
-names to Sample, Group, Run columns used for sample grouping
-and batch adjustment.
-* Added optional GROUPCHECK which allows reviewing the sample grouping
-without running the rest of the pipeline.

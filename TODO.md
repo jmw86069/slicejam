@@ -8,6 +8,13 @@ against directory changes.
 from github (if needed) then copies the two files from the package
 directory to the current directory.
 
+## Refactoring R code
+
+* Migrate from `heatmap.3()` to `ComplexHeatmap::Heatmap()`.
+* Move genomic regions to its own stand-alone R function.
+* Move volcano plot functions into this package (for now.)
+* Move Venn diagram functions into this package (for now.)
+
 ## Enhancements
 
 1. Change grouping input to "three-column style"

@@ -1,6 +1,38 @@
+# slicejam 0.0.8.900
+
+## new functions
+
+* `genomic_regions_from_gtf()` - stand-alone function to convert
+a GTF file into `genome_regions`, in the form of a
+`GRanges` objects annotated for `"Promoters", "TTS", "exons", "introns"`,
+which are also annotated by the gene defined in the GTF file.
+A custom subset of `detectedTx` or `detectedGenes` can be supplied,
+representing only the active or detected genes relevant to the
+experiment.
+* `se_normalize()` provides several normalization methods, which can
+be applied to a `SummarizedExperiment` object. Multiple normalizations
+can be applied, each is stored in the output `SummarizedExperiment`
+object.
+* `matrix_normalize()` is the base function for normalizing a numeric
+data matrix. It operates on one numeric matrix, and performs
+only one normalization method, from a selection of available methods.
+* `update_list_elements()` and `update_function_params()` are two helper
+functions, used to combine default parameters from a list, with a subset
+of customized parameters. It is used to send normalization parameters
+in a list named by one or more normalization methods.
+* `statsdf2bed()` is a slicejam-specific function, used to convert the
+stats `data.frame` into BED format for export to a file.
+
 # slicejam 0.0.7.900
 
 ## enhancements
+
+* `slicejam_analysis.Rmd` output indicates when sections are skipped:
+
+    * Venn diagrams are skipped when there is only one contrast.
+    * Heatmaps are not created when there are no MGM hits.
+    * ATAC-mode is turned off when `ATAC=0`.
+    * RData file is not saved when `SAVE_RDATA=0`.
 
 * `slicejam_analysis.Rmd` has new argument `CURATION_TXT` which
 is a tab-delimited text format. This mechanism has
