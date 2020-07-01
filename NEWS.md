@@ -1,5 +1,15 @@
 # slicejam 0.0.9.900
 
+## enhancements
+
+* `slicejam_analysis.Rmd` allows more custom settings:
+
+    * upstream_promoter,downstream_promoter,upstream_tts,downstream_tts
+    * `detectedTx` defined by environment variable `DETECTED_TX`,
+    used to subset the GTF transcripts used when defining genome_regions.
+    * `detectedGenes` defined by environment variable `DETECTED_GENES`,
+    used to subset the GTF transcripts used when defining genome_regions.
+
 ## new functions
 
 * `se_contrast_stats()` is a workhorse function, wrapper to run
@@ -21,6 +31,12 @@ When any values are not `NA` it is sometimes preferable to keep the
 value without adding any replacement. When an entire group is `NA`
 is can be useful to replace `NA` with a floor value, for example `0`,
 in which case `limma` will still include this entry in the contrast.
+
+## bug fixes
+
+* `se_normalize()` was updated to handle assignment to `assays(se)`
+while also defining rows and columns, otherwise a bug that creates
+assay name `NA`; now properly assigns the assay name.
 
 # slicejam 0.0.8.900
 

@@ -76,10 +76,8 @@ se_normalize <- function
          inorm <- matrix_normalize(imatrix,
             method=imethod,
             params=params);
-         if (length(genes) < nrow(se) || length(samples) < ncol(se)) {
-            assays(se)[[output_assay_name]] <- assays(se)[[assay_name]];
-            assays(se)[[output_assay_name]][] <- NA;
-         }
+         assays(se)[[output_assay_name]] <- assays(se)[[assay_name]];
+         assays(se)[[output_assay_name]][] <- NA;
          assays(se[genes, samples])[[output_assay_name]] <- inorm[genes, samples];
       }
    }

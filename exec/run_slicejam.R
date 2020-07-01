@@ -91,11 +91,12 @@ if (!ATAC %in% c(0)) {
 ## Add GTF stem using GTFNAME or small name _gtfhg19121619
 if (nchar(OUTDIR) == 0) {
    fc_base <- paste0(fc_base, gtf_stem);
+   fc_basedir <- paste0(fc_base,  "_analysis");
 } else {
    fc_base <- OUTDIR;
+   fc_basedir <- OUTDIR;
 }
 
-fc_basedir <- paste0(fc_base,  "_analysis");
 fc_html <- paste0(fc_base,  ".html");
 
 knit_root_dir <- file.path(
@@ -111,7 +112,7 @@ jamba::printDebug("output_file:  ", fc_html);
 jamba::printDebug("knit_root_dir:", knit_root_dir);
 jamba::printDebug("cache_dir:    ", cache_dir);
 jamba::printDebug("fc_file path: ", fc_filepath);
-jamba::printDebug("CURATION_TXT:", CURATION_TXT);
+jamba::printDebug("CURATION_TXT: ", CURATION_TXT);
 jamba::printDebug("GTF:          ", GTF);
 jamba::printDebug("GTFNAME:      ", GTFNAME);
 Sys.setenv(FC_FILE=fc_filepath);

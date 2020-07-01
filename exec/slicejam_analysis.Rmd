@@ -68,6 +68,26 @@ if (length(GTF) == 0 || nchar(GTF) == 0) {
 if (!file.exists(GTF)) {
    stop(paste0("The GTF was not found:", GTF));
 }
+
+upstream_promoter <- Sys.getenv("UPSTREAM_PROMOTER", 2000);
+downstream_promoter <- Sys.getenv("DOWNSTREAM_PROMOTER", 200);
+upstream_tts <- Sys.getenv("UPSTREAM_TTS", 1000);
+downstream_tts <- Sys.getenv("DOWNSTREAM_TTS", 1000);
+
+## Optional detectedTx, detectedGenes
+detectedTx_file <- Sys.getenv("DETECTED_TX");
+if (length(detectedTx_file) > 0 && nchar(detectedTx_file) > 0 && file.exists(detectedTx_file)) {
+   detectedTx <- readLines(detectedTx_file);
+} else {
+   detectedTx <- NULL;
+}
+detectedGenes_file <- Sys.getenv("DETECTED_GENES");
+if (length(detectedGenes_file) > 0 && nchar(detectedGenes_file) > 0 && file.exists(detectedGenes_file)) {
+   detectedGenes <- readLines(detectedGenes_file);
+} else {
+   detectedGenes <- NULL;
+}
+
 ```
 
 ```{r, setup, include=TRUE}
@@ -543,23 +563,28 @@ iMatrixQ <- assays(fc_se[,iSamples])[["quantile_counts"]];
 ```{r, batch_adjust_run, dependson="norm_quantile"}
 ## Batch adjustment
 if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
+   fc_batch <- nameVector(colData(fc_se[,iSamples])[[run_colname]],
+      iSamples);
+   fc_group <- nameVector(colData(fc_se[,iSamples])[[group_colname]],
+      iSamples);
    fc_se_b <- tryCatch({
-      removeAllNormBatchEffect(
-         fc_se[,iSamples],
-         groupColumn=group_colname,
-         batchColumn=run_colname,
-         signal=c("counts","quantile_counts"),
-         adjustMethod="limma");
+      se_normalize(fc_se,
+         assay_names=c("counts", "quantile_counts"),
+         method=c("limma_batch_adjust"),
+         params=list(
+            limma_batch_adjust=list(batch=fc_batch,
+               group=fc_group))
+      );
    }, error=function(e){
-      printDebug("Error during removeAllNormBatchEffect():");
+      printDebug("Error during batch adjustment by se_normalize():");
       print(e);
       NULL;
    });
    if (length(fc_se_b) > 0) {
       ## batch-adjusted raw data
-      iMatrixB <- assays(fc_se_b[,iSamples])[["countsbatch"]];
+      iMatrixB <- assays(fc_se_b[,iSamples])[["limma_batch_adjust_counts"]];
       ## quantile-normalized data, batch-adjusted
-      iMatrixQB <- assays(fc_se_b[,iSamples])[["quantile_countsbatch"]];
+      iMatrixQB <- assays(fc_se_b[,iSamples])[["limma_batch_adjust_quantile_counts"]];
    } else {
       ## Do not perform batch adjustment
       fc_se_b <- fc_se;
@@ -1239,6 +1264,8 @@ genome_regions <- genomic_regions_from_gtf(gtf=GTF,
    downstream_promoter=downstream_promoter,
    upstream_tts=upstream_tts,
    downstream_tts=downstream_tts,
+   detectedTx=detectedTx,
+   detectedGenes=detectedGenes,
    save_rdata=TRUE,
    save_txdb=TRUE);
 ```
