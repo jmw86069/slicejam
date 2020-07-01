@@ -69,10 +69,10 @@ if (!file.exists(GTF)) {
    stop(paste0("The GTF was not found:", GTF));
 }
 
-upstream_promoter <- Sys.getenv("UPSTREAM_PROMOTER", 2000);
-downstream_promoter <- Sys.getenv("DOWNSTREAM_PROMOTER", 200);
-upstream_tts <- Sys.getenv("UPSTREAM_TTS", 1000);
-downstream_tts <- Sys.getenv("DOWNSTREAM_TTS", 1000);
+upstream_promoter <- as.numeric(Sys.getenv("UPSTREAM_PROMOTER", 2000));
+downstream_promoter <- as.numeric(Sys.getenv("DOWNSTREAM_PROMOTER", 200));
+upstream_tts <- as.numeric(Sys.getenv("UPSTREAM_TTS", 1000));
+downstream_tts <- as.numeric(Sys.getenv("DOWNSTREAM_TTS", 1000));
 
 ## Optional detectedTx, detectedGenes
 detectedTx_file <- Sys.getenv("DETECTED_TX");
