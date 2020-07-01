@@ -181,9 +181,11 @@ genomic_regions_from_gtf <- function
                   txdb_file);
             }
             tryCatch({
-               AnnotationDbi::saveDb(refgene_txdb);
+               AnnotationDbi::saveDb(refgene_txdb,
+                  file=txdb_file);
             }, error=function(e){
-               AnnotationDbi::saveDb(basename(refgene_txdb));
+               AnnotationDbi::saveDb(refgene_txdb,
+                  file=basename(txdb_file));
             });
          }
       }
