@@ -105,6 +105,9 @@ genomic_regions_from_gtf <- function
 {
    ##
    ## genome_regions may be saved to a file already
+   if (!file.exists(gtf)) {
+      stop(paste0("Input gtf file not found:", gtf));
+   }
    short_dist_label <- function(x){
       if (x >= 1000) {
          paste0(x/1000, "kb")
@@ -122,10 +125,11 @@ genomic_regions_from_gtf <- function
       "_tts_",
       short_dist_label(downstream_tts),
       ".genome_regions.RData");
-   gtf_gr_file <- gsub("[.](gff|gtf|gff3)([.]gz|)$",
-      save_ext,
+   gtf_base <- gsub("[.](gff|gtf|gff3)([.]gz|)$",
+      "",
       ignore.case=TRUE,
       gtf);
+   gtf_gr_file <- paste0(gtf_base, save_ext);
    if (!file.exists(gtf_gr_file) && file.exists(basename(gtf_gr_file))) {
       gtf_gr_file <- basename(gtf_gr_file);
    }
@@ -147,23 +151,26 @@ genomic_regions_from_gtf <- function
    
    ## If genome_regions is not define, create it
    if (!exists("genome_regions")) {
-      jamba::printDebug("Defining genome regions from GTF features.");
-      txdb_file <- gsub("[.](gff|gtf|gff3)([.]gz|)$",
-         ".txdb",
-         ignore.case=TRUE,
-         gtf);
-      if (save_txdb && file.exists(txdb_file)) {
-         if (verbose) {
-            jamba::printDebug("genomic_regions_from_gtf(): ",
-               "Loading from txdb file:",
-               txdb_file);
+      txdb_file <- paste0(gtf_base, ".txdb");
+      refgene_txdb <- NULL;
+      if (save_txdb) {
+         if (!file.exists(txdb_file) && file.exists(basename(txdb_file))) {
+            txdb_file <- basename(txdb_file);
          }
-         refgene_txdb <- AnnotationDbi::loadDb(txdb_file);
-      } else {
+         if (file.exists(txdb_file)) {
+            if (verbose) {
+               jamba::printDebug("genomic_regions_from_gtf(): ",
+                  "Loading from txdb file:",
+                  txdb_file);
+            }
+            refgene_txdb <- AnnotationDbi::loadDb(txdb_file);
+         }
+      }
+      if (length(refgene_txdb) == 0) {
          ## 15-20 seconds for human GTF
          if (verbose) {
             jamba::printDebug("genomic_regions_from_gtf(): ",
-               "Creatung txdb from gtf:",
+               "Creating txdb from gtf:",
                gtf);
          }
          refgene_txdb <- GenomicFeatures::makeTxDbFromGFF(gtf);
@@ -173,7 +180,11 @@ genomic_regions_from_gtf <- function
                   "Saving to txdb file:",
                   txdb_file);
             }
-            AnnotationDbi::saveDb(refgene_txdb);
+            tryCatch({
+               AnnotationDbi::saveDb(refgene_txdb);
+            }, error=function(e){
+               AnnotationDbi::saveDb(basename(refgene_txdb));
+            });
          }
       }
    }
@@ -188,7 +199,7 @@ genomic_regions_from_gtf <- function
       txAttrNames=txAttrNames,
       geneFeatureType=geneFeatureType,
       verbose=TRUE,
-      txFeatureType="exon");
+      txFeatureType=txFeatureType);
    gene_colname <- head(intersect(geneAttrNames, colnames(tx2geneDF)), 1);
    if (length(gene_colname) == 0) {
       jamba::printDebug("genomic_regions_from_gtf(): ",
