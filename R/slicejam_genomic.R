@@ -146,7 +146,7 @@ genomic_regions_from_gtf <- function
          jamba::printDebug("Instead, it contained these R objects:",
             genome_regions_o);
       }
-      return(genomic_regions);
+      return(genome_regions);
    }
    
    ## If genome_regions is not define, create it
