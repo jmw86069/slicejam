@@ -2075,7 +2075,7 @@ Look in the folder defined by OUTDIR: **`r OUTDIR`**.
 if (length(AtacStats) > 0) {
    ## Subset statsDF for rows with at least one hit
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
-      iDF_all <- AtacStats$statsDF[[iSig]];
+      iDF_all <- AtacStats$stats_df[[iSig]];
 
       ## Add nearest promoter df
       pro_cols1 <- provigrep(c("^gene_id",
