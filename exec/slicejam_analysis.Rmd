@@ -1113,7 +1113,7 @@ if (length(AtacStats) > 0) {
 
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
-         iDF <- AtacStats$statsDFs[[iSig]][[iCon]];
+         iDF <- AtacStats$stats_dfs[[iSig]][[iCon]];
          par("mar"=c(7,7,4,3));
          vp1 <- volcanoPlot(iDF,
             pvalueCutoff=0.05,
@@ -1144,7 +1144,7 @@ after subsetting peaks for max group mean >=
 if (length(AtacStatsMgm4) > 0) {
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       for (iCon in dimnames(AtacStatsMgm4$hit_array)[[2]]) {
-         iDF <- AtacStatsMgm4$statsDFs[[iSig]][[iCon]];
+         iDF <- AtacStatsMgm4$stats_dfs[[iSig]][[iCon]];
          par("mar"=c(7,7,4,3))
          tryCatch({
             volcanoPlot(iDF,
@@ -1192,7 +1192,7 @@ if (length(AtacStats) > 0 && length(dim(AtacStats$hit_array)[[2]]) > 1) {
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStats$hit_array)[[1]]) {
          for (iCon in pair_l) {
-            hit_arrayvenn(AtacStats$hit_array,
+            statsHitsAvenn(AtacStats$hit_array,
                iCon=iCon,
                iHit=iHit,
                iSig=iSig);
@@ -1215,7 +1215,7 @@ if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$hit_array)[[2]]) > 1) 
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStatsMgm4$hit_array)[[1]]) {
          for (iCon in pair_l_mgm4) {
-            hit_arrayvenn(AtacStatsMgm4$hit_array,
+            statsHitsAvenn(AtacStatsMgm4$hit_array,
                iCon=iCon,
                iHit=iHit,
                iSig=iSig);
