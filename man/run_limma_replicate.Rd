@@ -12,6 +12,7 @@ run_limma_replicate(
   robust = FALSE,
   adjust.method = "BH",
   confint = FALSE,
+  trim_colnames = c("t", "B", "F"),
   verbose = FALSE,
   ...
 )

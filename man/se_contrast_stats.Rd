@@ -7,13 +7,14 @@
 se_contrast_stats(
   se,
   assay_names,
-  p_cutoff = 0.01,
-  adjp_cutoff = NULL,
+  adjp_cutoff = 0.05,
+  p_cutoff = NULL,
   fold_cutoff = 1.5,
-  cutoffAveExpr = NULL,
+  int_adjp_cutoff = adjp_cutoff,
+  int_p_cutoff = p_cutoff,
+  int_fold_cutoff = fold_cutoff,
   mgm_cutoff = NULL,
-  p_int_cutoff = cutoffP,
-  adjp_int_cutoff = cutoffAdjP,
+  ave_cutoff = NULL,
   confint = FALSE,
   floor_min = NULL,
   floor_value = NULL,
@@ -26,6 +27,7 @@ se_contrast_stats(
   weights = NULL,
   robust = FALSE,
   handle_na = c("partial", "full", "none"),
+  collapse_by_gene = FALSE,
   verbose = TRUE,
   ...
 )

@@ -169,7 +169,7 @@ suppressPackageStartupMessages(library(slicejam));
 suppressPackageStartupMessages(library(data.table));
 suppressPackageStartupMessages(library(matrixStats));
 suppressPackageStartupMessages(library(extrafont));
-suppressPackageStartupMessages(library(GenomicFeatures));
+#suppressPackageStartupMessages(library(GenomicFeatures));
 suppressPackageStartupMessages(library(rtracklayer));
 suppressPackageStartupMessages(library(methods));
 suppressPackageStartupMessages(library(multienrichjam));
@@ -793,7 +793,7 @@ printDebug("Using samples:", iSamplesUse);
 ## Define centering control samples
 iControl <- head(levels(iGroup), 1);
 iControlSamples <- intersect(
-   subset(colData(fc_se), colData(fc_se)[[group_colname]] %in% iControl)$Sample,
+   subset(colData(fc_se), colData(fc_se)[[group_colname]] %in% iControl)[[sample_colname]],
    iSamplesUse);
 printDebug("Using control: ", iControl);
 printDebug("Control Samples: ", iControlSamples);
@@ -972,46 +972,43 @@ use with count-based data.
 
 ```{r, run_limma, dependson=c("stats_design")}
 ## Find best available signal
-signalList <- head(
-   provigrep(c("quantile_countsbatch", "quantile_counts"),
+assay_names <- head(
+   provigrep(c("limma_batch_adjust_quantile_counts", "quantile_counts"),
       names(assays(fc_se_b))),
    1);
 ## Use all peaks
 iPeaks <- rownames(fc_se);
 
 ## Determine whether we can use Voom
-useVoom <- TRUE;
+use_voom <- TRUE;
 if (all(colSums(iDesign) == 1)) {
-   useVoom <- FALSE;
+   use_voom <- FALSE;
 }
 
 ## Stats using all batches
-cutoffMaxGroupMean <- 4;
+mgm_cutoff <- 4;
 AtacStats <- tryCatch({
-   allNormStatsTests(allNorm=fc_se_b[,iSamplesUse],
-      signalList=signalList,
-      useVoom=useVoom,
-      iContrasts=iContrasts,
-      iDesign=iDesign[iSamplesUse,,drop=FALSE],
-      cutoffMaxGroupMean=cutoffMaxGroupMean,
-      returnAllDFs=TRUE,
-      returnLmFit=TRUE,
-      iGenes=iPeaks,
-      cutoffFold=c(1.5),
-      cutoffP=NULL,
-      transformAveExpr="none",
-      cutoffAdjP=c(0.05),
-      iSamples=iSamplesUse,
-      collapseByGene=FALSE,
+   se_contrast_stats(se=fc_se_b[,iSamplesUse],
+      assay_names=assay_names,
+      use_voom=use_voom,
+      icontrasts=iContrasts,
+      idesign=iDesign[iSamplesUse,,drop=FALSE],
+      mgm_cutoff=mgm_cutoff,
+      igenes=iPeaks,
+      isamples=iSamplesUse,
+      fold_cutoff=1.5,
+      p_cutoff=NULL,
+      adjp_cutoff=0.05,
+      #collapse_by_gene=FALSE,
       verbose=FALSE);
 }, error=function(e){
-   printDebug("Error during allNormStatsTests():");
+   jamba::printDebug("Error during se_contrast_stats():");
    print(e);
    NULL;
 });
 if (length(AtacStats) > 0) {
    printDebug("Stats hits by contrast and hit criteria:");
-   AtacStats$statsHitsA;
+   AtacStats$hit_array;
 }
 ```
 
@@ -1056,44 +1053,46 @@ The max group mean threshold is: **`r MGM`**
 ## used in the limma test
 if (length(AtacStats) > 0) {
    
-   if ("quantile_countsbatch" %in% names(AtacStats$statsLmFits)) {
-      coef_1 <- coefficients(AtacStats$statsLmFits$quantile_countsbatch$lmFit1);
-   } else {
-      coef_1 <- coefficients(AtacStats$statsLmFits$quantile_counts$lmFit1);
-   }
-   if (length(coef_1) == 0 || !is.matrix(coef_1)) {
+   ## TODO: change to use the full stat df
+   mgm_colnames <- jamba::vigrep("^mgm[_ ]|[_ ]mean$",
+      colnames(AtacStats$stats_df[[1]]));
+   mgm_m <- as.matrix(AtacStats$stats_df[[1]][,mgm_colnames,drop=FALSE]);
+   mgm_values <- jamba::nameVector(rowMaxs(mgm_m),
+      rownames(mgm_m));
+   rm(mgm_m);
+   iPeaksMgm4 <- names(mgm_values)[mgm_values >= head(MGM, 1)];
+   
+   if (length(AtacStats) == 0 || length(iPeaksMgm4) == 0) {
       AtacStatsMgm4 <- NULL;
    } else {
-      iPeaksMgm4 <- rownames(coef_1)[rowMaxs(coef_1) >= head(MGM, 1)];
-      printDebug("Filtered from: ",
-         format(nrow(coef_1), big.mark=","),
+      mgm_n <- length(mgm_values);
+      jamba::printDebug(sep="",
+         c("Filtered from: ",
+         format(mgm_n, big.mark=","),
          " total peaks to ",
          format(length(iPeaksMgm4), big.mark=","),
-         " (", format(length(iPeaksMgm4)*100/nrow(coef_1), digits=1), " %)",
-         " with log2(1+x) group mean >= ",
+         " (", format(length(iPeaksMgm4)*100/mgm_n, digits=1),
+         "%) with log2(1+x) max group mean >= ",
          MGM,
-         " (normalized, batch-adjusted) in at least one sample group.");
+         " in signal ",
+         head(names(AtacStats$stats_df), 1)));
       
       ## Stats using all batches
       AtacStatsMgm4 <- tryCatch({
-         allNormStatsTests(allNorm=fc_se_b[iPeaksMgm4,iSamplesUse],
-            signalList=signalList,
-            useVoom=TRUE,
-            iContrasts=iContrasts,
-            iDesign=iDesign[iSamplesUse,,drop=FALSE],
-            cutoffMaxGroupMean=c(MGM),
-            returnAllDFs=TRUE,
-            returnLmFit=TRUE,
-            iGenes=iPeaksMgm4,
-            cutoffFold=c(1.5, 1.5),
-            cutoffP=c(0.05,0.05),
-            transformAveExpr="none",
-            cutoffAdjP=c(1,0.05),
-            iSamples=iSamplesUse,
-            collapseByGene=FALSE,
+         se_contrast_stats(se=fc_se_b[iPeaksMgm4,iSamplesUse],
+            assay_names=assay_names,
+            use_voom=TRUE,
+            icontrasts=iContrasts,
+            idesign=iDesign[iSamplesUse,,drop=FALSE],
+            mgm_cutoff=c(MGM),
+            igenes=iPeaksMgm4,
+            fold_cutoff=c(1.5, 1.5),
+            p_cutoff=c(0.05,0.05),
+            adjp_cutoff=c(1,0.05),
+            isamples=iSamplesUse,
             verbose=FALSE);
       }, error=function(e){
-         printDebug("Error during allNormStatsTests():");
+         jamba::printDebug("Error during allNormStatsTests():");
          print(e);
          NULL;
       });
@@ -1102,7 +1101,7 @@ if (length(AtacStats) > 0) {
       printDebug("Stats hits by contrast and hit criteria ",
          c("(", "MGM ", ">= ", MGM, ")"), ":",
          sep="");
-      AtacStatsMgm4$statsHitsA;
+      AtacStatsMgm4$hit_array;
    }
 }
 ```
@@ -1112,8 +1111,8 @@ if (length(AtacStats) > 0) {
 ```{r, volcano_plots, fig.height=12, fig.width=12, dependson=c("run_limma")}
 if (length(AtacStats) > 0) {
 
-   for (iSig in dimnames(AtacStats$statsHitsA)[[3]]) {
-      for (iCon in dimnames(AtacStats$statsHitsA)[[2]]) {
+   for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
+      for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
          iDF <- AtacStats$statsDFs[[iSig]][[iCon]];
          par("mar"=c(7,7,4,3));
          vp1 <- volcanoPlot(iDF,
@@ -1143,8 +1142,8 @@ after subsetting peaks for max group mean >=
 
 ```{r, volcano_plots_mgm4, fig.height=12, fig.width=12, dependson=c("run_limma_mgm4")}
 if (length(AtacStatsMgm4) > 0) {
-   for (iSig in dimnames(AtacStatsMgm4$statsHitsA)[[3]]) {
-      for (iCon in dimnames(AtacStatsMgm4$statsHitsA)[[2]]) {
+   for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
+      for (iCon in dimnames(AtacStatsMgm4$hit_array)[[2]]) {
          iDF <- AtacStatsMgm4$statsDFs[[iSig]][[iCon]];
          par("mar"=c(7,7,4,3))
          tryCatch({
@@ -1176,7 +1175,7 @@ if (length(AtacStatsMgm4) > 0) {
 
 #### Venn diagrams (all peaks)
 
-**`r if (length(AtacStats) > 0 && length(dim(AtacStats$statsHitsA)[[2]]) > 1) {("")} else {("Venn diagrams are skipped.")}`**
+**`r if (length(AtacStats) > 0 && length(dim(AtacStats$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams are skipped.")}`**
 
 Venn diagrams are created for all pairs of results, and represent
 directionality of the shared hits.
@@ -1185,15 +1184,15 @@ Note that Venn diagrams are not produced when there is only one
 comparison.
 
 ```{r, venn_pairs, fig.height=10, fig.width=10, dependson=c("run_limma")}
-if (length(AtacStats) > 0 && length(dim(AtacStats$statsHitsA)[[2]]) > 1) {
+if (length(AtacStats) > 0 && length(dim(AtacStats$hit_array)[[2]]) > 1) {
    pair_l <- unlist(recursive=FALSE,
-      apply(combn(dimnames(AtacStats$statsHitsA)[[2]], 2), 2, list));
+      apply(combn(dimnames(AtacStats$hit_array)[[2]], 2), 2, list));
    
    par("mar"=c(5,4,4,2));
-   for (iSig in dimnames(AtacStats$statsHitsA)[[3]]) {
-      for (iHit in dimnames(AtacStats$statsHitsA)[[1]]) {
+   for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
+      for (iHit in dimnames(AtacStats$hit_array)[[1]]) {
          for (iCon in pair_l) {
-            statsHitsAvenn(AtacStats$statsHitsA,
+            hit_arrayvenn(AtacStats$hit_array,
                iCon=iCon,
                iHit=iHit,
                iSig=iSig);
@@ -1205,18 +1204,18 @@ if (length(AtacStats) > 0 && length(dim(AtacStats$statsHitsA)[[2]]) > 1) {
 
 #### Venn diagrams (subset peaks)
 
-**`r if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$statsHitsA)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped.")}`**
+**`r if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped.")}`**
 
 ```{r, venn_pairs_mgm4, fig.height=10, fig.width=10, dependson=c("run_limma_mgm4")}
-if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$statsHitsA)[[2]]) > 1) {
+if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$hit_array)[[2]]) > 1) {
    pair_l_mgm4 <- unlist(recursive=FALSE,
-      apply(combn(dimnames(AtacStatsMgm4$statsHitsA)[[2]], 2), 2, list));
+      apply(combn(dimnames(AtacStatsMgm4$hit_array)[[2]], 2), 2, list));
    
    par("mar"=c(5,4,4,2));
-   for (iSig in dimnames(AtacStatsMgm4$statsHitsA)[[3]]) {
-      for (iHit in dimnames(AtacStatsMgm4$statsHitsA)[[1]]) {
+   for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
+      for (iHit in dimnames(AtacStatsMgm4$hit_array)[[1]]) {
          for (iCon in pair_l_mgm4) {
-            statsHitsAvenn(AtacStatsMgm4$statsHitsA,
+            hit_arrayvenn(AtacStatsMgm4$hit_array,
                iCon=iCon,
                iHit=iHit,
                iSig=iSig);
@@ -1549,7 +1548,7 @@ feature_to_pie <- function
 }
 
 peak_pie_by_region <- function
-(statsHitsA,
+(hit_array,
  feature_type_winner=NULL,
  PeakSet="",
  iHit=NULL,
@@ -1576,19 +1575,19 @@ peak_pie_by_region <- function
       return(j_df);
    } else {
       if (length(iHit) == 0) {
-         iHit <- dimnames(statsHitsA)[[1]];
+         iHit <- dimnames(hit_array)[[1]];
       } else if (is.numeric(iHit)) {
-         iHit <- dimnames(statsHitsA)[[1]][iHit];
+         iHit <- dimnames(hit_array)[[1]][iHit];
       }
       if (length(iSig) == 0) {
-         iSig <- dimnames(statsHitsA)[[3]];
+         iSig <- dimnames(hit_array)[[3]];
       } else if (is.numeric(iSig)) {
-         iSig <- dimnames(statsHitsA)[[3]][iSig];
+         iSig <- dimnames(hit_array)[[3]][iSig];
       }
       if (length(iCon) == 0) {
-         iCon <- dimnames(statsHitsA)[[2]];
+         iCon <- dimnames(hit_array)[[2]];
       } else if (is.numeric(iSig)) {
-         iCon <- dimnames(statsHitsA)[[2]][iSig];
+         iCon <- dimnames(hit_array)[[2]][iSig];
       }
       printDebug("peak_pie_by_region(): ",
          "\niCon:", iCon,
@@ -1597,7 +1596,7 @@ peak_pie_by_region <- function
       j_df_l <- rbindList(lapply(iHit, function(iHit1) {
          rbindList(lapply(iSig, function(iSig1) {
             rbindList(lapply(iCon, function(iCon1) {
-               k <- names(statsHitsA[iHit1, iCon1, iSig1][[1]]);
+               k <- names(hit_array[iHit1, iCon1, iSig1][[1]]);
                main <- paste(c(iCon1, iHit1, iSig1, PeakSet), collapse="\n");
                j_df <- feature_to_pie(feature_type_winner[k],
                   main=main,
@@ -1619,7 +1618,7 @@ if (length(AtacStats) > 0) {
    colorSub_pie <- nameVector(
       rainbowJam(length(unique(feature_type_winner))),
          unique(feature_type_winner));
-   j_df_s <- peak_pie_by_region(AtacStats$statsHitsA,
+   j_df_s <- peak_pie_by_region(AtacStats$hit_array,
       PeakSet="All Peaks Tested",
       do_pie=TRUE,
       colorSub=colorSub_pie,
@@ -1651,7 +1650,7 @@ for the max group mean threshold: **`r MGM`**
 ```{r, peak_region_pies_mgm4, fig.height=12, fig.width=12}
 if (length(AtacStatsMgm4) > 0) {
    par("mfrow"=c(3,3), "mar"=c(5,5,6,8));
-   j_df_mgm4_s <- peak_pie_by_region(AtacStatsMgm4$statsHitsA,
+   j_df_mgm4_s <- peak_pie_by_region(AtacStatsMgm4$hit_array,
       PeakSet=paste0("Subset Peaks Mgm", MGM),
       colorSub=colorSub_pie,
       do_pie=TRUE,
@@ -1735,9 +1734,9 @@ are statistically changing across multiple slices per peak.
 ```{r, broad_hit_counts}
 if (length(AtacStats) > 0) {
    
-   broad_hit_counts <- lapply(nameVector(dimnames(AtacStats$statsHitsA)[[1]]), function(p){
-      sapply(nameVector(dimnames(AtacStats$statsHitsA)[[2]]), function(i){
-         k <- AtacStats$statsHitsA[p,i,1][[1]];
+   broad_hit_counts <- lapply(nameVector(dimnames(AtacStats$hit_array)[[1]]), function(p){
+      sapply(nameVector(dimnames(AtacStats$hit_array)[[2]]), function(i){
+         k <- AtacStats$hit_array[p,i,1][[1]];
          k_bp <- values(fc_gr[names(k)])$broad_peak;
          c(peak_hits=length(k_bp),
             broad_peak_hits=length(table(k_bp)));
@@ -1748,9 +1747,9 @@ if (length(AtacStats) > 0) {
 }
    
 if (length(AtacStatsMgm4) > 0) {
-   broad_hit_counts_mgm4 <- lapply(nameVector(dimnames(AtacStatsMgm4$statsHitsA)[[1]]), function(p){
-      sapply(nameVector(dimnames(AtacStatsMgm4$statsHitsA)[[2]]), function(i){
-         k <- AtacStatsMgm4$statsHitsA[p,i,1][[1]];
+   broad_hit_counts_mgm4 <- lapply(nameVector(dimnames(AtacStatsMgm4$hit_array)[[1]]), function(p){
+      sapply(nameVector(dimnames(AtacStatsMgm4$hit_array)[[2]]), function(i){
+         k <- AtacStatsMgm4$hit_array[p,i,1][[1]];
          k_bp <- values(fc_gr[names(k)])$broad_peak;
          c(peak_hits=length(k_bp),
             broad_peak_hits=length(table(k_bp)));
@@ -1763,8 +1762,8 @@ if (length(AtacStatsMgm4) > 0) {
 
 }
 ## Briefly compare All peak hits to Mgm4 peak hits
-## signedVennPlotSets(list(mgm4=AtacStatsMgm4$statsHitsA[1,2,1][[1]]
-## all=AtacStats$statsHitsA[1,2,1][[1]]))
+## signedVennPlotSets(list(mgm4=AtacStatsMgm4$hit_array[1,2,1][[1]]
+## all=AtacStats$hit_array[1,2,1][[1]]))
 
 ```
 
@@ -1772,25 +1771,25 @@ if (length(AtacStatsMgm4) > 0) {
 
 ```{r, heatmap_hits, fig.height=14, fig.width=10}
 if (length(AtacStats) > 0) {
-   stats_dim <- dim(AtacStats$statsHitsA);
-   dimnames1 <- dimnames(AtacStats$statsHitsA)[[1]];
-   dimnames2 <- dimnames(AtacStats$statsHitsA)[[2]];
+   stats_dim <- dim(AtacStats$hit_array);
+   dimnames1 <- dimnames(AtacStats$hit_array)[[1]];
+   dimnames2 <- dimnames(AtacStats$hit_array)[[2]];
    peak_hits <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStats$statsHitsA[head(dimnames1, 1), i, 1])
+      names(AtacStats$hit_array[head(dimnames1, 1), i, 1])
    })));
    peak_hits_q <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStats$statsHitsA[tail(dimnames1, 1), i, 1])
+      names(AtacStats$hit_array[tail(dimnames1, 1), i, 1])
    })));
 }
 if (length(AtacStatsMgm4) > 0) {
-   mgm4_stats_dim <- dim(AtacStatsMgm4$statsHitsA);
-   mgm_dimnames1 <- dimnames(AtacStatsMgm4$statsHitsA)[[1]];
-   mgm_dimnames2 <- dimnames(AtacStatsMgm4$statsHitsA)[[2]];
+   mgm4_stats_dim <- dim(AtacStatsMgm4$hit_array);
+   mgm_dimnames1 <- dimnames(AtacStatsMgm4$hit_array)[[1]];
+   mgm_dimnames2 <- dimnames(AtacStatsMgm4$hit_array)[[2]];
    peak_hits_mgm4 <- unique(unlist(lapply(mgm_dimnames2, function(i){
-      names(AtacStatsMgm4$statsHitsA[head(mgm_dimnames1, 1), i, 1])
+      names(AtacStatsMgm4$hit_array[head(mgm_dimnames1, 1), i, 1])
    })));
    peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
-      names(AtacStatsMgm4$statsHitsA[tail(mgm_dimnames1, 1), i, 1])
+      names(AtacStatsMgm4$hit_array[tail(mgm_dimnames1, 1), i, 1])
    })));
 
    if (denovo_controls) {
@@ -2075,7 +2074,7 @@ Look in the folder defined by OUTDIR: **`r OUTDIR`**.
 ```{r, stats_df, dependson=c("run_limma")}
 if (length(AtacStats) > 0) {
    ## Subset statsDF for rows with at least one hit
-   for (iSig in dimnames(AtacStats$statsHitsA)[[3]]) {
+   for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       iDF_all <- AtacStats$statsDF[[iSig]];
 
       ## Add nearest promoter df
@@ -2170,7 +2169,7 @@ A BED file is also saved during this step.
 ```{r, stats_df_mgm4, dependson=c("run_limma_mgm4")}
 if (length(AtacStatsMgm4) > 0) {
    ## Subset statsDF for rows with at least one hit
-   for (iSig in dimnames(AtacStatsMgm4$statsHitsA)[[3]]) {
+   for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       iDF_all <- AtacStatsMgm4$statsDF[[iSig]];
 
       ## Add nearest promoter df

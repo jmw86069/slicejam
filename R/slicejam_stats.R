@@ -343,28 +343,30 @@ update_list_elements <- function
 #' @export
 se_contrast_stats <- function
 (se,
-   assay_names,
-   p_cutoff=0.01,
-   adjp_cutoff=NULL,
-   fold_cutoff=1.5,
-   cutoffAveExpr=NULL,
-   mgm_cutoff=NULL,
-   p_int_cutoff=cutoffP,
-   adjp_int_cutoff=cutoffAdjP,
-   confint=FALSE,
-   floor_min=NULL,
-   floor_value=NULL,
-   icontrasts=NULL,
-   idesign=NULL,
-   igenes=NULL,
-   isamples=NULL,
-   enforce_design=TRUE,
-   use_voom=FALSE,
-   weights=NULL,
-   robust=FALSE,
-   handle_na=c("partial", "full", "none"),
-   verbose=TRUE,
-   ...)
+ assay_names,
+ adjp_cutoff=0.05,
+ p_cutoff=NULL,
+ fold_cutoff=1.5,
+ int_adjp_cutoff=adjp_cutoff,
+ int_p_cutoff=p_cutoff,
+ int_fold_cutoff=fold_cutoff,
+ mgm_cutoff=NULL,
+ ave_cutoff=NULL,
+ confint=FALSE,
+ floor_min=NULL,
+ floor_value=NULL,
+ icontrasts=NULL,
+ idesign=NULL,
+ igenes=NULL,
+ isamples=NULL,
+ enforce_design=TRUE,
+ use_voom=FALSE,
+ weights=NULL,
+ robust=FALSE,
+ handle_na=c("partial", "full", "none"),
+ collapse_by_gene=FALSE,
+ verbose=TRUE,
+ ...)
 {
    handle_na <- match.arg(handle_na);
    
@@ -393,7 +395,7 @@ se_contrast_stats <- function
    
    ## Iterate each assay_name
    ## Run statistical tests for gene data
-   statsHitsDFs1 <- lapply(jamba::nameVector(assay_names), function(signalSet) {
+   stats_hits_dfs1 <- lapply(jamba::nameVector(assay_names), function(signalSet) {
       retVals <- list();
       imatrix <- SummarizedExperiment::assays(se[igenes, isamples])[[signalSet]];
       if (!"none" %in% handle_na && any(is.na(imatrix))) {
@@ -443,6 +445,15 @@ se_contrast_stats <- function
          weights=weights,
          robust=robust,
          verbose=verbose,
+         adjp_cutoff=adjp_cutoff,
+         p_cutoff=p_cutoff,
+         fold_cutoff=fold_cutoff,
+         mgm_cutoff=mgm_cutoff,
+         int_adjp_cutoff=int_adjp_cutoff,
+         int_p_cutoff=int_p_cutoff,
+         int_fold_cutoff=int_fold_cutoff,
+         ave_cutoff=ave_cutoff,
+         collapse_by_gene=collapse_by_gene,
          ...);
       ## rlr_result is a list
       ## - statsDF
@@ -452,22 +463,26 @@ se_contrast_stats <- function
    });
    
    ## Assemble list of statsDF
-   statsDF <- lapply(statsHitsDFs1, function(i){
-      i$statsDF;
+   stats_df <- lapply(stats_hits_dfs1, function(i){
+      i$stats_df;
    });
-   ret_list <- list(stats_df=statsDF);
+   ret_list <- list(stats_df=stats_df);
    
    ## Assemble list of statsDFs
-   statsHitsDFs <- lapply(statsHitsDFs1, function(i){
-      i$statsDFs;
+   stats_dfs <- lapply(stats_hits_dfs1, function(i){
+      i$stats_dfs;
    });
-   ret_list$stats_dfs <- statsHitsDFs;
+   ret_list$stats_dfs <- stats_dfs;
    
    ## list of named lists
-   statsHits <- lapply(statsHitsDFs, function(iDFs){
+   stats_hits <- lapply(stats_dfs, function(iDFs){
       lapply(iDFs, function(iDF){
          iHitCols <- jamba::nameVector(
-            jamba::provigrep("^hit ", colnames(iDF)));
+            jamba::provigrep("^hit", colnames(iDF)));
+         if (verbose) {
+            jamba::printDebug("se_contrast_stats(): ",
+               "iHitCols:", iHitCols);
+         }
          lapply(iHitCols, function(iHitCol){
             iHitRows <- (!is.na(iDF[,iHitCol]) & iDF[,iHitCol] != 0);
             jamba::nameVector(
@@ -476,26 +491,37 @@ se_contrast_stats <- function
          });
       });
    });
+   if (verbose) {
+      jamba::printDebug("se_contrast_stats(): ",
+         "ssdim(stats_hits[[1]]):");
+      print(jamba::ssdim(stats_hits[[1]]));
+   }
 
    ## array of named lists
-   arrayDim <- c(length(statsHits[[1]][[1]]),
-      length(statsHits[[1]]),
-      length(statsHits));
-   arrayDimnames <- list(gsub("[ ]+[^ ]+$", "", names(statsHits[[1]][[1]])), 
-      names(statsHits[[1]]), 
-      names(statsHits));
-   names(arrayDimnames) <- c("HitFilters",
+   arrayDim <- c(length(stats_hits[[1]][[1]]),
+      length(stats_hits[[1]]),
+      length(stats_hits));
+   arrayDimnames <- list(gsub("[ ]+[^ ]+$", "", names(stats_hits[[1]][[1]])), 
+      names(stats_hits[[1]]), 
+      names(stats_hits));
+   names(arrayDimnames) <- c("Cutoffs",
       "Contrasts",
       "Signal");
-   jamba::printDebug("arrayDim:", arrayDim);
-   jamba::printDebug("arrayDimnames:");print(arrayDimnames);
-   statsHitsA <- array(dim=arrayDim,
+   if (verbose) {
+      jamba::printDebug("se_contrast_stats(): ",
+         "arrayDim:",
+         arrayDim);
+      jamba::printDebug("se_contrast_stats(): ",
+         "arrayDimnames:");
+      print(arrayDimnames);
+   }
+   hit_array <- array(dim=arrayDim,
       data=(unlist(recursive=FALSE,
          unlist(recursive=FALSE,
-            statsHits))),
+            stats_hits))),
       dimnames=arrayDimnames);
-   ret_list$hit_array <- statsHitsA;
-   ret_list$hit_list <- statsHits;
+   ret_list$hit_array <- hit_array;
+   ret_list$hit_list <- stats_hits;
 
    ## Add design and contrast data used
    ret_list$idesign <- idesign;
@@ -764,7 +790,7 @@ voom_jam <- function
    ## Find individual quarter-root fitted counts
    if (fit$rank < ncol(design)) {
       if (verbose) {
-         printDebug("voomJam(): ",
+         jamba::printDebug("voom_jam(): ",
             "Using subset of fit$rank, length(fit$rank):",
             length(fit$rank));
       }
@@ -815,6 +841,7 @@ run_limma_replicate <- function
  robust=FALSE,
  adjust.method="BH",
  confint=FALSE,
+ trim_colnames=c("t", "B", "F"),
  verbose=FALSE,
  ...)
 {
@@ -880,81 +907,622 @@ run_limma_replicate <- function
    contrastNames <- colnames(subFit3$contrast);
    
    dimNum <- nrow(subFit3$coefficients);
+   
    ## top table for each contrast
-   tts <- lapply(jamba::nameVector(contrastNames), function(contrastName) {
-      tt <- limma::topTable(subFit3,
-         coef=contrastName,
-         number=Inf,
-         adjust.method=adjust.method,
-         confint=confint);
-      
-      ## Rename columns to include the contrast
-      ## Note: this step could rename "probes" or "genes"
-      tt <- jamba::renameColumn(tt,
-         from=c(renameCols),
-         to=c(paste(renameCols, contrastName)));
-      
-      if (verbose) {
-         jamba::printDebug("run_limma_replicate(): ",
-            "contrastName:",
-            contrastName,
-            " head(topTable):");
-         print(head(tt, 5));
-      }
-      tt;
-   } );
+   if (1 == 1) {
+      stats_dfs <- ebayes2dfs(lmFit3=subFit3,
+         lmFit1=subFit1,
+         define_hits=TRUE,
+         trim_colnames=trim_colnames,
+         verbose=verbose,
+         ...);
+   } else {
+      stats_dfs <- lapply(jamba::nameVector(contrastNames), function(contrastName) {
+         tt <- limma::topTable(subFit3,
+            coef=contrastName,
+            number=Inf,
+            adjust.method=adjust.method,
+            confint=confint);
+         
+         ## Rename columns to include the contrast
+         ## Note: this step could rename "probes" or "genes"
+         tt <- jamba::renameColumn(tt,
+            from=c(renameCols),
+            to=c(paste(renameCols, contrastName)));
+         
+         if (verbose) {
+            jamba::printDebug("run_limma_replicate(): ",
+               "contrastName:",
+               contrastName,
+               " head(topTable):");
+            print(head(tt, 5));
+         }
+         tt;
+      } );
+   }
    
-   # Create stats table overall
-   ttAll1 <- topTable(subFit3,
-      number=Inf,
-      adjust.method=adjust.method,
-      confint=confint);
-   ttAll <- ttAll1[match(rownames(imatrix), ttAll1[,1]),,drop=FALSE];
-   ## 30jun2020: changed to keep empty rows
-   ttAll[,1] <- rownames(imatrix);
-   #ttAll <- ttAll[!is.na(ttAll[,1]),,drop=FALSE];
-
-   ## Rename columns to include the contrast
-   ttAll <- jamba::renameColumn(ttAll,
-      from=c(renameCols),
-      to=c(paste(renameCols)));
-
-   #tts <- list(overall=ttAll,
-   #   list=tts);
-   #all_fits <- list(tts=tts,
-   #   subFit3=subFit3,
-   #   subFit1=subFit1);
-
-   trim_colnames <- c("t", "B", "F");
-   trim_grep <- paste0("^", trim_colnames, "( |[(]|$)");
-   trim_grep;
-   statsDFs <- lapply(contrastNames, function(contrastName){
-      statsDF <- tts[[contrastName]];
-      trimCols1 <- jamba::provigrep(trim_grep, colnames(statsDF));
-      if (length(trimCols1) > 0) {
-         statsDF <- statsDF[,setdiff(colnames(statsDF), trimCols1),drop=FALSE];
-      }
-      if (length(jamba::tcount(statsDF[,1], minCount=2)) == 0) {
-         rownames(statsDF) <- statsDF[,1];
-      }
-      statsDF;
-   });
+   stats_df <- jamba::mergeAllXY(stats_dfs);
+   stats_df_colnames <- unique(
+      unlist(lapply(stats_dfs, colnames)));
+   stats_df <- jamba::mergeAllXY(stats_dfs);
+   stats_df <- stats_df[, stats_df_colnames, drop=FALSE];
    
-   all_statsDF_colnames <- unique(c(colnames(ttAll),
-      unlist(lapply(statsDFs, colnames))));
-   all_statsDF <- jamba::mergeAllXY(c(
-      list(overall=ttAll),
-      statsDFs));
-   all_statsDF <- all_statsDF[, all_statsDF_colnames, drop=FALSE];
-   if (length(jamba::tcount(all_statsDF[,1], minCount=2)) == 0) {
-      rownames(all_statsDF) <- all_statsDF[,1];
+   if (length(jamba::tcount(stats_df[,1], minCount=2)) == 0) {
+      rownames(stats_df) <- stats_df[,1];
    }
    return(
-      list(statsDF=all_statsDF,
-         statsDFs=statsDFs,
-         repFits=list(subFit1=subFit1,
-            subFit2=subFit2,
-            subFit3=subFit3)
+      list(stats_df=stats_df,
+         stats_dfs=stats_dfs,
+         rep_fits=list(lmFit1=subFit1,
+            lmFit2=subFit2,
+            lmFit3=subFit3)
       )
    )
 }
+
+
+#' Convert limma eBayes fit to data.frame with annotated hits
+#' 
+#' Convert limma eBayes fit to data.frame with annotated hits
+#' 
+#' This function is an extension to `limma::topTable()` except that
+#' it is performed for each contrast in the input `lmFit3` object.
+#' 
+#' When `define_hits=TRUE`, then statistical thresholds are applied
+#' to define a set of statistical hits. The thresholds available include:
+#' 
+#' 1. `adjp_cutoff` - applied to `"adj.P.Val"` for adjusted P-value.
+#' 2. `p_cutoff` - applied to `"P.Value"` for raw, unadjusted P-value.
+#' 3. `fold_cutoff` - normal space fold change, applied to `"logFC"`
+#'    by using `log2(fold_cutoff)`.
+#' 4. `mgm_cutoff` - max group mean, applied to the highest group mean
+#'    value involved in each specific contrast.
+#' 5. `ave_cutoff` - applied to `"AveExpr"` which represents the mean
+#'    value across all sample groups.
+#' 
+#' Note that `mgm_cutoff` requires input `lmFit1` which stores the
+#' group mean values used in the limma workflow.
+#' 
+#' Note also there are optional arguments specific to interaction
+#' contrasts, which in this context is assumed to be a
+#' "fold change of fold changes" style of contrast, for example:
+#' `(groupA-groupB)-(groupC-groupD)`. The purpose is distinct interaction
+#' thresholds is to enable reasonable data mining, sometimes with
+#' somewhat more lenient thresholds for interaction contrasts.
+#' For example, one may use `adjp_cutoff=0.01` and `int_adjp_cutoff=0.05`,
+#' or `fold_cutoff=2` and `int_fold_cutoff=1.5`.
+#' 
+#' By default, `rename_headers=TRUE` causes colnames to include the
+#' contrast, for example renaming colname `"logFC"` to `"logFC contrastA"`.
+#' This change helps reinforce the source of the statistical results,
+#' and allows the `data.frame` results to be merged together using
+#' `base::merge()`.
+#' 
+#' Indeed, `merge_df=TRUE` will cause all `data.frame` results to be
+#' merged into one large `data.frame`, using `jamba::mergeAllXY()`.
+#' 
+#' @return `list` with one `data.frame` per contrast defined in
+#'    the input `lmFit3` object. When `define_hits=TRUE` there
+#'    will be one column per statistical threshold, named `"hit"`
+#'    followed by an abbreviation of the statistical thresholds
+#'    which were applied.
+#'    When `merge_df=TRUE` the returned data will be one
+#'    `data.frame` object.
+#' 
+#' @param lmFit3 object returned by `limma::eBayes()`.
+#' @param lmFit1 object returned by `limma::lmFit()`, optional.
+#' @param define_hits `logical` indicating whether to define hits
+#'    using the statistical thresholds.
+#' @param adjp_cutoff,p_cutoff,fold_cutoff,mgm_cutoff,ave_cutoff `numeric`
+#'    values representing the appropriate statistical threshold,
+#'    or `NULL` when a threshold should not be applied.
+#' @param int_adjp_cutoff,int_p_cutoff,int_fold_cutoff `numeric`
+#'    thresholds to apply only to interaction contrasts.
+#' @param confint `logical` passed to `limma::topTable()`, which defines
+#'    whether to return confidence intervals for each log2 fold change.
+#' @param use_cutoff_colnames `logical` whether to include the
+#'    statistical thresholds abbreviated in the `"hit"` colname,
+#'    when `define_hits=TRUE`.
+#' @param rename_headers `logical` indicating whether to rename
+#'    statistical colnames returned by `limma::topTable()` to the
+#'    colnames include the contrast name.
+#' @param return_fold `logical` whether to return an additional column
+#'    with the signed fold change, see `log2fold_to_fold()`.
+#' @param merge_df `logical` indicating whether to merge the final
+#'    `data.frame` list into one `data.frame`.
+#' @param include_ave_expr `logical` indicating whether to retain
+#'    the column `"AveExpr"`. This column can be misleading, especially
+#'    if the `mgm` (max group mean) threshold is used when determining
+#'    statistical hits. This column is mainly useful in reviewing limma
+#'    output, since it uses the `"AveExpr"` values to apply its moderated
+#'    variance statistic.
+#' @param include_group_means `logical` indicating whether to include each
+#'    group mean along with the relevant contrast. These values are
+#'    helpful, in that they should exactly represent the reported `logFC`
+#'    value. Sometimes it is helpful and comforting to see the exact values
+#'    used in that calculation.
+#' @param collapse_by_gene `logical` indicating whether to apply
+#'    `collapse_stats_by_gene` which chooses one "best" exemplar per gene
+#'    when there are multiple rows that represent the same gene.
+#' @param rename_contrasts `logical` (inactive) which will in future allow
+#'    for automated renaming of contrasts.
+#' @param sep `character` string used as a delimiter in certain output
+#'    colnames.
+#' @param int_grep `character` string used to recognize contrasts which
+#'    are considered "interaction contrasts". The default pattern recognizes
+#'    any contrasts that contain multiple fold changes, recognized by the
+#'    presence of more than one hypen `"-"` in the contrast name.
+#' @param verbose `logical` indicating whether to print verbose output.
+#' 
+#' @export
+ebayes2dfs <- function
+(lmFit3=NULL,
+ lmFit1=NULL,
+ define_hits=TRUE,
+ adjp_cutoff=0.05, 
+ p_cutoff=NULL, 
+ fold_cutoff=1.5,
+ int_adjp_cutoff=adjp_cutoff, 
+ int_p_cutoff=p_cutoff,
+ int_fold_cutoff=fold_cutoff,
+ mgm_cutoff=NULL,
+ ave_cutoff=NULL,
+ confint=FALSE,
+ use_cutoff_colnames=TRUE,
+ rename_headers=TRUE,
+ return_fold=TRUE, 
+ merge_df=FALSE, 
+ include_ave_expr=FALSE, 
+ include_group_means=TRUE,
+ transform_means=c("none", "exp2signed", "10^"),
+ collapse_by_gene=FALSE, 
+ rename_contrasts=FALSE,
+ sep=" ",
+ int_grep="[(].+-.+-.+[)]|-.+-",
+ trim_colnames=c("t", "B", "F"),
+ verbose=FALSE,
+ ...)
+{
+   ## Purpose is to convert the lmFit3 results of eBayes() into a list of data.frames
+   ##
+   ## Note the cutoffFold is normal space fold change, but converted to log2fold to compare with limma output
+   ## Note cutoffMaxGroupmean is in whatever units are sent to limma... usually log2 intensity or log2 counts
+   ##
+   ## collapseByGene=TRUE will attempt to produce per-gene results, using pre-defined logic to select the best
+   ## exemplar(s) among multiple probes for the same gene.
+   ##    1. choose statistical hits first
+   ##       a. if multiple hits, same direction, choose them all.
+   ##       b. if multiple hits, diff direction,
+   ##          i.  mark this gene as multi-direction
+   ##          ii. choose best P-value, then take hits with same direction
+   ##    2. if no statistical hits, choose entry(ies) above maxMean signal cutoff
+   ##    3. If no hits, and no entries above signal cutoff, choose all entries
+   ##
+   ## renameContrasts=TRUE will rename a fully described contrast into a more human-readable
+   ## contrast, e.g.
+   ## from: dHSA10GR_EtOH-SW13GR_EtOH
+   ## to:   dHSA10GR-SW13GR (EtOH)
+   ##
+   ## intCutoffPVal and intCutoffAdjPVal are intended to allow
+   ## applying a different P-value threshold for interaction effects.
+   ##
+   ## confint is used by topTable(), when FALSE no confidence intervals are
+   ## calculated; when TRUE, by default it calculates 0.95 confidence
+   ## intervals, reported as logFC upper and lower bounds, CI.L and CI.R,
+   ## respectively.
+   ##
+   ## Optionally transform the AveExpr values, most useful when reporting normal space values which are stored in log space
+   transform_means <- match.arg(transform_means);
+   
+   ## cutoffMaxGroupMean requires lmFit1
+   if (!define_hits) {
+      mgm_cutoff <- NULL;
+   }
+   if ((length(jamba::rmNA(mgm_cutoff)) > 0 || include_group_means) && length(lmFit1) == 0) {
+      #stop("To use cutoffMaxGroupMean, lmFit1 must be supplied, from which the group means are obtained.");
+      jamba::printDebug("ebayes2dfs(): ",
+         c("lmFit1 is required for mgm_cutoff or include_group_means. Setting ",
+            "mgm_cutoff=NULL",
+            ", and ",
+            "include_group_means=FALSE"),
+         sep="");
+      include_group_means <- FALSE;
+      mgm_cutoff <- NULL;
+   }
+
+   ## TODO: Allow some curation of labels here
+   contrastNames <- colnames(coef(lmFit3));
+   contrastLabels <- jamba::nameVector(contrastNames, contrastNames);
+   is_interaction <- grepl(int_grep,
+      ignore.case=TRUE,
+      contrastNames);
+   
+   if (define_hits) {
+      ## Add cutoff parameters to the colnames, optional
+      cutoff_l <- list(
+         mgm=mgm_cutoff,
+         p=p_cutoff,
+         adjp=adjp_cutoff,
+         fc=fold_cutoff,
+         intp=int_p_cutoff,
+         intadjp=int_adjp_cutoff,
+         intfc=int_fold_cutoff);
+      cutoff_df <- as.data.frame(jamba::rmNULL(cutoff_l));
+      if (!any(is_interaction) && jamba::igrepHas("int", colnames(cutoff_df))) {
+         cutoff_df <- cutoff_df[,jamba::unvigrep("int", colnames(cutoff_df)),drop=FALSE];
+      }
+      if (nrow(cutoff_df) == 0) {
+         define_hits <- FALSE;
+      }
+   }
+   if (define_hits) {
+      cutoff_string_df <- cutoff_df;
+      for (i in colnames(cutoff_df)) {
+         cutoff_string_df[[i]] <- paste0(i, cutoff_df[[i]]);
+         ## if column is "int"
+         ## remove if values are all identical to "non-int" cutoff
+         if (jamba::igrepHas("^int", i)) {
+            j <- gsub("^int", "", i);
+            if (j %in% colnames(cutoff_df)) {
+               if (all(cutoff_df[[i]] == cutoff_df[[j]])) {
+                  cutoff_string_df[,i] <- list(NULL);
+               }
+            }
+         }
+      }
+      if (any(is_interaction)) {
+         int_use <- jamba::provigrep(
+            c("mgm", "ave", "^intadjp", "^intp", "^intfc", "^int"),
+            colnames(cutoff_string_df))
+         if (length(int_use) > 0) {
+            int_cutoff_string <- jamba::pasteByRow(
+               cutoff_string_df[,int_use,drop=FALSE],
+               sep=sep);
+         } else {
+            int_cutoff_string <- rep("", nrow(cutoff_df));
+         }
+      }
+      nonint_use <- jamba::unvigrep("^int",
+         jamba::provigrep(
+            c("mgm", "ave", "^adjp", "^p", "^fc"),
+            colnames(cutoff_string_df)));
+      if (length(nonint_use) > 0) {
+         cutoff_string <- jamba::pasteByRow(
+            cutoff_string_df[,nonint_use,drop=FALSE],
+            sep=sep);
+      } else {
+         cutoff_string <- rep("", nrow(cutoff_df));
+      }
+      if (verbose) {
+         jamba::printDebug("ebayes2dfs(): ",
+            "cutoff_df:");
+         print(cutoff_df);
+         jamba::printDebug("ebayes2dfs(): ",
+            "cutoff_string_df:");
+         print(cutoff_string_df);
+         jamba::printDebug("ebayes2dfs(): ",
+            "cutoff_string:",
+            cutoff_string);
+      }
+      #return(cutoff_string_df);
+   }
+
+   ## assign rownames if not present in lmFit1$coefficients
+   if (length(lmFit1) > 0 && length(rownames(lmFit1$coefficients)) == 0) {
+      jamba::printDebug("ebayes2dfs(): ",
+         c("Note there are no",
+            " rownames(lmFit1$coefficients)"),
+         sep="",
+         fgText=c("darkorange1", "red1"));
+      if ("genes" %in% names(lmFit1)) {
+         rownames(lmFit1$coefficients) <- rownames(lmFit1$genes);
+      }
+   }
+   if (length(rownames(lmFit3$coefficients)) == 0) {
+      jamba::printDebug("ebayes2dfs(): ",
+         c("Note there are no",
+            " rownames(lmFit3$coefficients)"),
+         sep="",
+         fgText=c("darkorange1", "red1"));
+      if ("genes" %in% names(lmFit3)) {
+         rownames(lmFit3$coefficients) <- rownames(lmFit3$genes);
+      }
+   }
+
+   ## TODO: handle cases with zero residual degrees of freedom,
+   ## where we would not have a P-value but still have fold changes.
+   ## Examples would be per-patient fold changes.
+   ##
+   ## lmTopTables is a list:
+   ## - named by contrastNames
+   ## - containing elements "iTopTableDF"
+   ## - if collapseByGene=TRUE
+   ##    - "iTopTableByGene"
+   ##    - "multiDirProbes" 
+   lmTopTables <- lapply(jamba::nameVector(contrastNames), function(i){
+      retVals <- list();
+      iLabel <- contrastLabels[i];
+      ## Detect whether the contrast is an interaction effect (2-way or 3-way)
+      ## or is a simple pairwise style t-test
+      isInteraction <- jamba::igrepHas(int_grep, iLabel);
+      if (verbose) {
+         if (isInteraction) {
+            jamba::printDebug("ebayes2dfs(): ",
+               c("Interaction effect detected for contrast:",
+                  iLabel),
+               sep="",
+               fgText=c("darkorange1", "purple"));
+         } else {
+            jamba::printDebug("ebayes2dfs(): ",
+               c("Evaluting contrast:",
+                  iLabel),
+               sep="");
+         }
+      }
+      #if (rename_contrasts) {
+      #   iLabel <- renameTwoFactorComparisons(iLabel);
+      #}
+      
+      ## Assemble top table, handling single replicate data in a specific way
+      if (!any(lmFit3$df.residual > 0)) {
+         jamba::printDebug("ebayes2dfs(): ",
+            "No values for df.residual>0.",
+            fgText=c("darkorange1", "red1"));
+         if (confint) {
+            iTopTable <- data.frame(
+               check.names=FALSE,
+               stringsAsFactors=FALSE,
+               lmFit3$genes,
+               logFC=lmFit3$coefficients[,i],
+               CI.L=lmFit3$coefficients[,i],
+               CI.R=lmFit3$coefficients[,i],
+               adj.P.Val=1,
+               P.Value=1,
+               AveExpr=lmFit3$Amean);
+         } else {
+            iTopTable <- data.frame(
+               check.names=FALSE,
+               stringsAsFactors=FALSE,
+               lmFit3$genes,
+               logFC=lmFit3$coefficients[,i],
+               adj.P.Val=1,
+               P.Value=1,
+               AveExpr=lmFit3$Amean);
+         }
+      } else {
+         iTopTable <- limma::topTable(
+            lmFit3,
+            coef=i,
+            sort.by="none",
+            number=nrow(lmFit3),
+            confint=confint);
+      }
+      ## Optionally remove extraneous colnames
+      if (length(trim_colnames) > 0) {
+         iTopTable <- iTopTable[,setdiff(colnames(iTopTable), trim_colnames), drop=FALSE];
+      }
+      
+      ## Optionally include group mean and maxgroupmean values
+      if (length(lmFit1) > 0) {
+         ## Improve maxGroupMean by using the specific groups included in the contrast
+         iCoefCols <- names(which(lmFit3$contrasts[,i] != 0));
+         iCoefLabs <- paste(iCoefCols,
+            sep=sep,
+            "mean");
+         coef_match <- match(rownames(iTopTable),
+            rownames(lmFit1$coefficients));
+         gm_m <- jamba::renameColumn(
+            lmFit1$coefficients[coef_match, iCoefCols, drop=FALSE],
+            from=iCoefCols,
+            to=iCoefLabs);
+         mgm <- matrixStats::rowMaxs(gm_m,
+            na.rm=TRUE);
+         if (include_group_means) {
+            iTopTable[,colnames(gm_m)] <- gm_m;
+         }
+         iTopTable[,"mgm"] <- mgm;
+      }
+      
+      ## Apply statistical thresholds
+      if (define_hits || collapse_by_gene) {
+         probe_colname <- head(colnames(iTopTable), 1);
+         if (collapse_by_gene) {
+            if (verbose) {
+               jamba::printDebug("ebayes2dfs(): ",
+                  "collapse_by_gene.");
+            }
+            gene_colname <- head(jamba::provigrep(
+               c("GeneName", "geneSymbol", "gene"),
+               colnames(iTopTable)), 1);
+            isGenes <- nameVector(iTopTable[,gene_colname],
+               rownames(iTopTable));
+         }
+         if (isInteraction) {
+            pcol <- "intp";
+            adjpcol <- "intadjp";
+            foldcol <- "intfc";
+         } else {
+            pcol <- "p";
+            adjpcol <- "adjp";
+            foldcol <- "fc";
+         }
+         
+         ## iterate each set of thresholds by row in cutoff_df
+         ## but only iterate unique set of cutoff thresholds
+         if (isInteraction) {
+            k_rows <- match(unique(int_cutoff_string),
+               int_cutoff_string);
+         } else {
+            k_rows <- match(unique(cutoff_string),
+               cutoff_string);
+         }
+         for (k in k_rows) {
+            if (isInteraction) {
+               hit_colname <- paste("hit",
+                  sep=sep,
+                  int_cutoff_string[k]);
+            } else {
+               hit_colname <- paste("hit",
+                  sep=sep,
+                  cutoff_string[k]);
+            }
+            if (verbose) {
+               jamba::printDebug("ebayes2dfs(): ",
+                  c("hit_colname:",
+                     hit_colname),
+                  sep="");
+            }
+            ## Call utility function to get hit flags
+            mgm_cutoff <- ifelse("mgm" %in% colnames(cutoff_df),
+               cutoff_df[k,"mgm"],
+               NA);
+            ave_cutoff <- ifelse("ave" %in% colnames(cutoff_df),
+               cutoff_df[k,"ave"],
+               NA);
+            p_cutoff <- ifelse(pcol %in% colnames(cutoff_df),
+               cutoff_df[k,pcol],
+               NA);
+            adjp_cutoff <- ifelse(adjpcol %in% colnames(cutoff_df),
+               cutoff_df[k,adjpcol],
+               NA);
+            fold_cutoff <- ifelse(foldcol %in% colnames(cutoff_df),
+               cutoff_df[k,foldcol],
+               NA);
+            hit_values <- mark_stat_hits(x=iTopTable,
+               adjp_cutoff=adjp_cutoff,
+               p_cutoff=p_cutoff,
+               fold_cutoff=fold_cutoff,
+               mgm_cutoff=mgm_cutoff,
+               ave_cutoff=ave_cutoff,
+               adjp_colname="adj.P.Val",
+               p_colname="P.Value",
+               logfc_colname="logFC",
+               mgm_colname="mgm",
+               ave_colname="AveExpr");
+            iTopTable[[hit_colname]] <- hit_values;
+         }
+      }
+      
+      ## Optionally transform intensities, e.g. exponentiating log2 values
+      ## Note that the 2^ conversion now subtracts 1, since the typical
+      ## transformation is log2(1+x)
+      if (1 == 2) {
+         if (transformAveExpr %in% c("2^")) {
+            #iTopTable[,"AveExpr"] <- 2^iTopTable[,"AveExpr"];
+            iTopTable[,"AveExpr"] <- 2^iTopTable[,"AveExpr"] - 1;
+            if ("maxGroupMean" %in% colnames(iTopTable)) {
+               #iTopTable[,"maxGroupMean"] <- 2^iTopTable[,"maxGroupMean"];
+               iTopTable[,"maxGroupMean"] <- 2^iTopTable[,"maxGroupMean"] - 1;
+            }
+         } else if (transformAveExpr %in% c("10^")) {
+            #iTopTable[,"AveExpr"] <- 10^iTopTable[,"AveExpr"];
+            iTopTable[,"AveExpr"] <- 10^iTopTable[,"AveExpr"] - 1;
+            if ("maxGroupMean" %in% colnames(iTopTable)) {
+               #iTopTable[,"maxGroupMean"] <- 10^iTopTable[,"maxGroupMean"];
+               iTopTable[,"maxGroupMean"] <- 10^iTopTable[,"maxGroupMean"] - 1;
+            }
+         }
+      }
+      ## Optionally convert log2 fold change to normal fold change
+      if (return_fold) {
+         iTopTable[,"fold"] <- log2fold_to_fold(iTopTable[,"logFC"]);
+      }
+      ################################################
+      ## Per-gene collapse:
+      ##
+      ## Note we ultimately define per-gene rows using the first stats hit criteria,
+      ## otherwise too many columns will be created.  E.g. changing the stats hit criteria
+      ## changes the prioritization of probes to include in the per-gene row, so it affects
+      ## the fold change, groupMean, P-Value, and adj-P-Val.
+      ## The current solution is to use only the first hit filters, so only one set of these
+      ## values is propagated downstream.
+      ## However, the "hit" columns can represent multiple stats hit criteria.
+      ##
+      ## TODO: implement the interaction P-value cutoffs here as well
+      if (collapse_by_gene) {
+         if (verbose) {
+            printDebug("collapseByGene iTopTable:");
+            print(head(iTopTable));
+            printDebug("geneColname:", geneColname);
+         }
+         iTopTableByGeneL <- collapseTopTableByGene(iTopTable,
+            geneColname=geneColname,
+            aveExprColname="AveExpr",
+            maxGroupMeanColname="maxGroupMean",
+            adjPvalColname="adj.P.Val",
+            PvalueColname="P.Value",
+            logFCcolname="logFC",
+            cutoffAveExpr=cutoffAveExpr[1],
+            cutoffMaxGroupMean=cutoffMaxGroupMean[1],
+            cutoffAdjPVal=cutoffAdjPVal[1],
+            cutoffPVal=cutoffPVal[1],
+            cutoffFold=cutoffFold[1]);
+         iTopTableByGene <- iTopTableByGeneL$iTopTableByGene;
+         retVals$top_bygene_df <- iTopTableByGene;
+         retVals$multidir_probes <- iTopTableByGeneL$multiDirProbes;
+      }
+      ## Optionally rename column headers to include the contrast name
+      gene_colnames <- intersect(colnames(iTopTable),
+         c(colnames(lmFit3$genes), probe_colname));
+      if (rename_headers) {
+         ## Note we do rename maxGroupMean now,
+         ## since we calculate it per each specific contrast
+         rename_from <- setdiff(
+            jamba::unvigrep("AveExpr| mean$|gene|probe",
+               colnames(iTopTable)),
+            gene_colnames);
+         rename_to <- paste(rename_from,
+            iLabel,
+            sep=sep);
+         iTopTable <- jamba::renameColumn(iTopTable,
+            from=rename_from,
+            to=rename_to);
+      }
+      if (!include_ave_expr) {
+         iTopTable <- iTopTable[,jamba::unvigrep("AveExpr", colnames(iTopTable)),drop=FALSE];
+      }
+      rownames(iTopTable) <- jamba::makeNames(iTopTable[,1]);
+      retVals$top_df <- iTopTable;
+      retVals;
+   });
+   
+   ## Now prepare the data to return
+   if (merge_df) {
+      lmTopTablesAll <- jamba::mergeAllXY(lapply(lmTopTables, function(i){
+         i$top_df;
+      }));
+      if (collapse_by_gene) {
+         lmTopTablesAllG <- jamba::mergeAllXY(lapply(lmTopTables, function(i){
+            i$top_bygene_df;
+         }));
+      }
+      ## Re-order columns so the genes, then hits, appear first
+      colname_order <- jamba::provigrep(c(gene_colnames, "^hit", "."),
+         colnames(lmTopTablesAll));
+      lmTopTablesAll <- lmTopTablesAll[,colname_order, drop=FALSE];
+      rownames(lmTopTablesAll) <- jamba::makeNames(lmTopTablesAll[,head(gene_colnames, 1)]);
+   } else {
+      lmTopTablesAll <- lapply(lmTopTables, function(i){
+         i$top_df;
+      });
+      if (collapse_by_gene) {
+         lmTopTablesAllG <- lapply(lmTopTables, function(i){
+            i$top_bygene_df;
+         });
+      }
+   }
+   
+   if (define_hits) {
+      attr(lmTopTablesAll, "cutoff_df") <- cutoff_df;
+   }
+   if (collapse_by_gene) {
+      if (define_hits) {
+         attr(lmTopTablesAllG, "cutoff_df") <- cutoff_df;
+      }
+      retList <- list(top_df=lmTopTablesAll,
+         top_bygene_df=lmTopTablesAllG);
+      return(retList);
+   }
+   return(lmTopTablesAll);
+}
+

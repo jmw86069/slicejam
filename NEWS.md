@@ -1,3 +1,17 @@
+# slicejam 0.0.10.900
+
+## new functions
+
+* `ebayes2dfs()` converts the limma eBayes fit into a list of
+`data.frame` which also include a column for hits, based upon
+one or more statistical thresholds.
+* `log2fold_to_fold()` and `fold_to_log2fold()` convert to and
+from signed fold change, where fold change -4 represents log2 fold
+change -2.
+* `mark_stat_hits()` takes a `data.frame` of stats results, and marks
+statistical hits by three types of criteria: detected, changing, and
+significant.
+
 # slicejam 0.0.9.900
 
 ## enhancements
