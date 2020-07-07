@@ -2116,6 +2116,7 @@ if (length(AtacStats) > 0) {
          ".", iSig, ".txt");
       txt_file <- file.path(OUTDIR,
          gsub("[.]fc$|[.]fc[.]txt$",
+            ignore.case=TRUE,
             txt_ext,
             basename(fc_file)));
 
@@ -2138,6 +2139,7 @@ if (length(AtacStats) > 0) {
          ".", iSig, ".bed");
       bed_file <- file.path(OUTDIR,
          gsub("[.]fc$|[.]fc[.]txt$",
+            ignore.case=TRUE,
             bed_ext,
             basename(fc_file)));
       ## Add track header line
@@ -2215,6 +2217,7 @@ if (length(AtacStatsMgm4) > 0) {
          ".", iSig, ".txt");
       txt_file <- file.path(OUTDIR,
          gsub("[.]fc$|[.]fc[.]txt$",
+            ignore.case=TRUE,
             txt_ext,
             basename(fc_file)));
       
@@ -2239,6 +2242,7 @@ if (length(AtacStatsMgm4) > 0) {
          ".", iSig, ".bed");
       bed_file <- file.path(OUTDIR,
          gsub("[.]fc$|[.]fc[.]txt$",
+            ignore.case=TRUE,
             bed_ext,
             basename(fc_file)));
       ## Add track header line
@@ -2269,6 +2273,7 @@ if (length(AtacStatsMgm4) > 0) {
          ".", iSig, ".bed");
       bed_file <- file.path(OUTDIR,
          gsub("[.]fc$|[.]fc[.]txt$",
+            ignore.case=TRUE,
             bed_ext,
             basename(fc_file)));
       ## Add track header line
@@ -2303,10 +2308,13 @@ if (length(AtacStatsMgm4) > 0) {
 
 ```{r, export_rdata, dependson=c("check_reps", "run_limma", "run_limma_mgm4")}
 if (SAVE_RDATA) {
+   rdata_ext <- ".RData";
    fc_dat_file <- file.path(OUTDIR,
       gsub("[.]fc$|[.]fc[.]txt$",
-         ".RData",
-         fc_file));
+         rdata_ext,
+         ignore.case=TRUE,
+         basename(fc_file)));
+
    if (!igrepHas("RData", fc_dat_file)) {
       fc_dat_file <- paste0(fc_dat_file, ".RData");
    }
