@@ -1,3 +1,12 @@
+# slicejam 0.0.11.900
+
+## new functions
+
+* `volcanoPlot()` and supporting function `blockArrowMargin()`,
+`gradient_rect()`, `logAxis()`. Will be migrated probably to
+the `"jamma"` package, for now is here to migrate away from
+custom functions not stored in an R package.
+
 # slicejam 0.0.10.900
 
 ## new functions
