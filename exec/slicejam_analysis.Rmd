@@ -2090,7 +2090,7 @@ if (length(AtacStats) > 0) {
          pro_cols1
       );
       if (length(pro_cols) > 0) {
-         idf_match <- match(iDF_all$Gene, values(fc_gr)$Gene);
+         idf_match <- match(iDF_all[,1], values(fc_gr)$Gene);
          promoter_df <- data.frame(check.names=FALSE,
             stringsAsFactors=FALSE,
             values(fc_gr[idf_match,pro_cols]));
@@ -2102,7 +2102,7 @@ if (length(AtacStats) > 0) {
       coord_df <- data.frame(check.names=FALSE,
          stringsAsFactors=FALSE,
          rowData(
-         fc_se[match(iDF_all$Gene, rowData(fc_se)$Geneid),]
+         fc_se[match(iDF_all[,1], rowData(fc_se)$Geneid),]
          )[,coord_cols]);
       iDF_all2 <- insertDFcols(iDF_all,
          coord_df,
@@ -2183,17 +2183,20 @@ if (length(AtacStatsMgm4) > 0) {
          colnames(values(fc_gr)),
          pro_cols1
       );
-      promoter_df <- data.frame(check.names=FALSE,
-         stringsAsFactors=FALSE,
-         values(fc_gr[iDF_all$Gene])[,pro_cols]);
-      iDF_all[,pro_cols] <- promoter_df;
+      if (length(pro_cols) > 0) {
+         idf_match <- match(iDF_all[,1], values(fc_gr)$Gene);
+         promoter_df <- data.frame(check.names=FALSE,
+            stringsAsFactors=FALSE,
+            values(fc_gr[idf_match,pro_cols]));
+         iDF_all[,pro_cols] <- promoter_df;
+      }
       
       ## Add genome coordinate annotations
       coord_cols <- c("Chr", "Start", "End", "Length");
       coord_df <- data.frame(check.names=FALSE,
          stringsAsFactors=FALSE,
          rowData(
-            fc_se[match(iDF_all$Gene, rowData(fc_se)$Geneid),]
+            fc_se[match(iDF_all[,1], rowData(fc_se)$Geneid),]
          )[,coord_cols]);
       iDF_all2 <- insertDFcols(iDF_all,
          coord_df,
