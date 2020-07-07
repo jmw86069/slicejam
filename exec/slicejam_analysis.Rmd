@@ -2076,6 +2076,9 @@ if (length(AtacStats) > 0) {
    ## Subset statsDF for rows with at least one hit
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       iDF_all <- AtacStats$stats_df[[iSig]];
+      if (nrow(iDF_all) == 0) {
+         next;
+      }
 
       ## Add nearest promoter df
       pro_cols1 <- provigrep(c("^gene_id",
@@ -2158,7 +2161,7 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-### Export stats results for hits (subset)
+### Export stats results for hits (subset peaks)
 
 Statistical results are saved in text file for the subset
 of peaks with max group mean >= **`r MGM`**.
@@ -2171,13 +2174,17 @@ if (length(AtacStatsMgm4) > 0) {
    ## Subset statsDF for rows with at least one hit
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       iDF_all <- AtacStatsMgm4$statsDF[[iSig]];
+      if (nrow(iDF_all) == 0) {
+         next;
+      }
 
       ## Add nearest promoter df
-      pro_cols1 <- provigrep(c("gene_id",
-         "gene_name",
-         "feature_type",
+      pro_cols1 <- provigrep(c("^gene_id",
+         "^gene_name",
+         "feature_type($|_winner)",
+         "_gene",
          "_distance",
-         "broad_peak"),
+         "broad_peak|num_slices"),
          colnames(values(fc_gr)));
       pro_cols <- intersect(
          colnames(values(fc_gr)),
