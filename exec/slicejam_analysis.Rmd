@@ -2173,7 +2173,7 @@ A BED file is also saved during this step.
 if (length(AtacStatsMgm4) > 0) {
    ## Subset statsDF for rows with at least one hit
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
-      iDF_all <- AtacStatsMgm4$statsDF[[iSig]];
+      iDF_all <- AtacStatsMgm4$stats_df[[iSig]];
       if (nrow(iDF_all) == 0) {
          next;
       }
