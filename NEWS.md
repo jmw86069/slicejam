@@ -1,3 +1,46 @@
+# slicejam 0.0.12.900
+
+## new functions
+
+The Venn update! (Not fully functional yet, functions being migrated.)
+
+* `signed_venn_counts()` assembles various forms of directional
+Venn counts, colors, and UTF8 arrows as labels.
+* `list2im_opt()`, `list2im_signed()` are optimized forms of
+`multienrichjam::list2im()` -- which as it turns out is painfully
+slow even using `arules` `transactions` operations, when the input
+list contains more than 10,000 entries each. Operations were taking
+20+ seconds, now complete in less than 1 second. Could probably
+still be faster.
+* `match.matrix()` fill an unmet need, borrowing code from `unique.matrix()`
+* `match.im()` is an optimized match for incidence matrix data,
+converting them into integer scores per row -- but obviously limiting
+the input incidence matrices to about 16 columns. Sufficient for this
+purpose anyway.
+* `blend_colors()` - finally ported a custom function, and after much
+testing feel good about how it operates. It emulates the effect of
+blending paint colors -- subtractive color mixing, and using a
+red-yellow-blue color wheel instead of red-green-blue. Most driving
+use cases work as intended now:
+
+   * blue + yellow = green
+   * red + yellow = orange
+   * red + blue = purple
+   * red + yellow + blue = grayish brown (as expected from paints)
+   
+   Note that it also handles color weights, which is used when some
+   colors have partial transparency. It also handles blending more than
+   two colors -- as shown in the examples above.
+* `mean_angle()` takes one or more angles in degrees, and returns
+the average angle, based upon the average unit vector. It also
+handles weights, so certain angle unit vectors can be scaled
+accordingly. (This function is used by `blend_colors()` to produce
+an average color hue.) It also returns the radius, which works for
+color hue blending, because the radius represents how much color
+chroma (saturation) remains after taking the average.
+* `symbol2utf8()` is a wrapper function to return one of various
+UTF-8 arrow characters: `"upArrow"`, `"downArrow"` and several more.
+
 # slicejam 0.0.11.900
 
 ## new functions
