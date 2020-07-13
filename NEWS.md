@@ -1,3 +1,23 @@
+# slicejam 0.0.13.900
+
+## changes to existing functions
+
+* `volcanoPlot()` was renamed to `volcano_plot()`
+* `volcano_plot()` received many updates to argument names,
+removing most of the camelCase, and reducing overall arguments.
+(More reduction to be done.)
+* `blockArrowMargin()` now adjusts itself appropriately when the
+figure aspect ratio is not 1:1 -- which is dramatic when the ratio
+is 1:2 or 2:1.
+
+## new function
+
+* `find_colname()` is a utility function, probably moving to jamba,
+which finds the best suitable matching colname in a `data.frame` given
+one or more text patterns. Specifically here it is good for finding
+P-value columns, or adjusted P-value columns; fold change or log2fold
+columns, etc.
+
 # slicejam 0.0.12.900
 
 ## new functions

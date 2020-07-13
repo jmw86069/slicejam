@@ -257,6 +257,9 @@ update_list_elements <- function
    ##
    ## Or in one line:
    ## trellis.par.set(updateListElements(trellis.par.get(), list(fontsize=list(points=6))));
+   if (length(update_list) == 0) {
+      return(source_list);
+   }
    if (class(update_list) %in% c("list") && class(update_list[[1]]) %in% c("list")) {
       for (update_list_name in names(update_list)) {
          if (update_list_name %in% names(source_list)) {
