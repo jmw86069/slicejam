@@ -506,6 +506,8 @@ statsdf2bed <- function
 
 #' Annotate GRanges by genome_regions
 #' 
+#' @import data.table
+#' 
 #' @export
 annotate_gr_by_genome_region <- function
 (gr,
