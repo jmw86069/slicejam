@@ -513,6 +513,7 @@ annotate_gr_by_genome_region <- function
  name_colname="name",
  gene_name_colname="gene_name",
  feature_type_colname="feature_type",
+ verbose=FALSE,
  ...)
 {
    ## Expand genome_regions if there are multi-gene features
@@ -540,6 +541,10 @@ annotate_gr_by_genome_region <- function
 
    ##################################################
    ## Annotate peaks by overlapping region
+   if (verbose) {
+      printDebug("annotate_gr_by_genome_region(): ",
+         "Annotate peaks by overlapping region");
+   }
    fco <- GenomicRanges::findOverlaps(gr,
       ignore.strand=TRUE,
       genome_regions_exp);
@@ -564,8 +569,21 @@ annotate_gr_by_genome_region <- function
       colnames(grdt));
    ## Iterate each column, combine multi-row features into one row
    ## then annotate using unique, sorted, comma-delimited values
+   if (verbose) {
+      printDebug("annotate_gr_by_genome_region(): ",
+         "grd_colnames:", grd_colnames);
+      printDebug("annotate_gr_by_genome_region(): ",
+         "head(grdt):");
+      print(head(grdt));
+   }
    grd_vals <- lapply(nameVector(grd_colnames), function(i){
       icols <- c("fc", i);
+      if (verbose) {
+         printDebug("annotate_gr_by_genome_region(): ",
+            "icols:", icols);
+         printDebug("annotate_gr_by_genome_region(): ",
+            "colnames(grdt):", colnames(grdt));
+      }
       idt <- grdt[, ..icols];
       ## expand comma-delimited entries
       grdt0ft <- unique(mixedSortDF(idt, byCols=1:2)[,c(1,2)]);
@@ -591,6 +609,10 @@ annotate_gr_by_genome_region <- function
    
    ##################################################
    ## sort for best feature_type
+   if (verbose) {
+      printDebug("annotate_gr_by_genome_region(): ",
+         "Annotate winner");
+   }
    grdt0 <- mixedSortDF(grdt,
       byCols=c("fc",
          feature_type_colname,
@@ -612,6 +634,11 @@ annotate_gr_by_genome_region <- function
          gene_name_colname,
          "gene_id"),
       colnames(grdt0));
+   if (verbose) {
+      printDebug("annotate_gr_by_genome_region(): ",
+         "bestftcolnames:", bestftcolnames);
+   }
+   
    grdt0_hasbestft <- unique(
       subset(grdt0,
          grdt0[[feature_type_colname]] == grdt0_bestft[grdt0_peak])[,..bestftcolnames]);
