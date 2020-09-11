@@ -50,7 +50,7 @@ volcano_plot(
   tophist_cutoffs = c("pvalue", "foldchange"),
   tophist_breaks = 100,
   tophist_color = "#000099FF",
-  tophist_fraction = 1/5,
+  tophist_fraction = 1/3,
   tophist_by = 0.2,
   hi_points = NULL,
   hi_hits = FALSE,

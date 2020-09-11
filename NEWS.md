@@ -1,3 +1,17 @@
+# slicejam 0.0.14.900
+
+## new functions
+
+* `annotate_gr_by_genome_region()` annotates GRanges using
+`genome_regions` as returned by `genomic_regions_from_gtf()`.
+This function makes it more feasible to use a command-line
+function to annotate a BED file with a GTF file.
+
+## venn functions in progress
+
+Several functions related to Venn diagrams are in development,
+partial forms are included but not ready for full release yet.
+
 # slicejam 0.0.13.900
 
 ## changes to existing functions

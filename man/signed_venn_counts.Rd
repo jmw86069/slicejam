@@ -6,7 +6,7 @@
 \usage{
 signed_venn_counts(
   setlist,
-  return_type = c("counts", "names", "im", "setlist_arrows"),
+  return_type = c("counts", "names", "im", "setlist_arrows", "dircounts"),
   sep = "-",
   alt_sep = "!",
   pos_col = "red4",

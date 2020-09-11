@@ -106,7 +106,7 @@ volcano_plot <- function
  tophist_cutoffs=c("pvalue", "foldchange"),
  tophist_breaks=100,
  tophist_color="#000099FF",
- tophist_fraction=1/5,
+ tophist_fraction=1/3,
  tophist_by=0.20,
  hi_points=NULL,
  hi_hits=FALSE,
@@ -392,8 +392,10 @@ volcano_plot <- function
       }
    }
    
+   origPar <- par(no.readonly=TRUE);
+   #on.exit(par(origPar));
    parList <- list();
-   parList[["prePlots"]] <- par();
+   parList[["prePlots"]] <- origPar;
 
    
    ## labelCoords will have the return data from addNonOverlappingLabels() but only
@@ -402,13 +404,13 @@ volcano_plot <- function
    ##########################################################
    ## Histogram along the top border, set up the details here
    if (do_tophist) {
-      if (length(grep("pval", tophit_cutoffs)) > 0) {
+      if (length(grep("pval", tophist_cutoffs)) > 0) {
          ## Apply P-value filtering
          pvHitsWhich <- met_sig;
       } else {
          pvHitsWhich <- rep(TRUE, nrow(x));
       }
-      if (length(grep("fc|fold", doTopHistCutoffs)) > 0) {
+      if (length(grep("fc|fold", tophist_cutoffs)) > 0) {
          ## Apply fold change filtering
          fcHitsWhich <- met_fold;
       } else {
@@ -441,16 +443,16 @@ volcano_plot <- function
       ## Change margins, then plot the top histogram
       ## default is par(mar=c(5.1, 4.1, 4.1, 2.1));
       par("mar"=c(1, parMar[2], parMar[3], parMar[4]));
-      parList[["preTopHist"]] <- par();
+      parList[["preTopHist"]] <- par(no.readonly=TRUE);
       
       r1 <- as.integer(length(tophist_breaks)/2);
       tophist_col <- rep(tophist_colors, c(r1, r1+1));
-      barplot(topHist$counts,
+      barplot(tophist$counts,
          axes=FALSE,
-         ylim=c(0, max(topHist$counts)),
+         ylim=c(0, max(tophist$counts)),
          space=0,
          col=tophist_col,
-         border=makeColorDarker(tophist_col),
+         border=jamba::makeColorDarker(tophist_col),
          horiz=FALSE,
          las=2,
          cex.axis=1);
@@ -467,7 +469,7 @@ volcano_plot <- function
          outer=FALSE,
          line=0);
       parList[["postTopHist"]] <- par();
-      par("mar"=c(parMar[1], parMar[2], parMar[3]-1.5, parMar[4]));
+      par("mar"=c(parMar[1], parMar[2], 2, parMar[4]));
    }
 
    if (length(xlab) == 0) {
@@ -792,6 +794,7 @@ volcano_plot <- function
       
       ## Overall Title
       par("xpd"=TRUE);
+      font.main <- 1;
       if (length(main) > 0 && nchar(main) > 0) {
          nlines_main <- lengths(strsplit(main, "\n"));
          line_main <- par("mar")[3] - 0.5 - 1.2*nlines_main;
@@ -810,7 +813,7 @@ volcano_plot <- function
    }
    
    
-   if (do_tophist) {
+   if (1 == 2 && do_tophist) {
       par("mar"=origPar$mar);
       par("plt"=origPar$plt);
       par("usr"=origPar$usr);
