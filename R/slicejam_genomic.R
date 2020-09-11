@@ -518,7 +518,7 @@ annotate_gr_by_genome_region <- function
    ## Expand genome_regions if there are multi-gene features
    # begin to annotate peaks by genome_regions
    ## Expand comma-delimited genes from genome_regions
-   gr_expl <- strsplit(values(genome_regions)[[gene_name_colname]], "-");
+   gr_expl <- strsplit(values(genome_regions)[[gene_name_colname]], ",");
    if (any(lengths(gr_expl) > 1)) {
       gr_expi <- rep(seq_along(genome_regions), lengths(gr_expl));
       genome_regions_exp <- unname(genome_regions)[gr_expi];
@@ -555,15 +555,13 @@ annotate_gr_by_genome_region <- function
    
    if ("gene_id" %in% colnames(values(genome_regions_exp))) {
       grdt$gene_id <- values(genome_regions_exp[subjectHits(fco)])$gene_id;
-      grd_colnames <- c(gene_name_colname,
+   }
+   grd_colnames <- intersect(
+      c(gene_name_colname,
          "gene_id",
          feature_type_colname,
-         "gene_feature_type");
-   } else {
-      grd_colnames <- c(gene_name_colname,
-         feature_type_colname,
-         "gene_feature_type");
-   }
+         "gene_feature_type"),
+      colnames(grdt));
    ## Iterate each column, combine multi-row features into one row
    ## then annotate using unique, sorted, comma-delimited values
    grd_vals <- lapply(nameVector(grd_colnames), function(i){
@@ -613,7 +611,7 @@ annotate_gr_by_genome_region <- function
          feature_type_colname,
          gene_name_colname,
          "gene_id"),
-      colnames(grdt0_bestft));
+      colnames(grdt0));
    grdt0_hasbestft <- unique(
       subset(grdt0,
          grdt0[[feature_type_colname]] == grdt0_bestft[grdt0_peak])[,..bestftcolnames]);
@@ -673,6 +671,7 @@ annotate_gr_by_genome_region <- function
          from=keep_genecols,
          to=paste0("nearest_", keep_genecols))
       );
+   
    for (i in c(paste0("nearest_", keep_genecols), "nearest_gene_distance")) {
       #printDebug(i);
       fc_gr_genedist_df1 <- unique(fc_gr_genedist_df[,c(name_colname, i)]);
