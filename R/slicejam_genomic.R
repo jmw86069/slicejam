@@ -512,7 +512,7 @@ annotate_gr_by_genome_region <- function
  genome_regions,
  name_colname="name",
  gene_name_colname="gene_name",
- feature_name_colname="feature_name",
+ feature_type_colname="feature_type",
  ...)
 {
    ## Expand genome_regions if there are multi-gene features
