@@ -577,7 +577,7 @@ annotate_gr_by_genome_region <- function
       print(head(grdt));
    }
    grd_vals <- lapply(nameVector(grd_colnames), function(i){
-      icols <- c("fc", i);
+      icols <- unname(c("fc", i));
       if (verbose) {
          printDebug("annotate_gr_by_genome_region(): ",
             "icols:", icols);
