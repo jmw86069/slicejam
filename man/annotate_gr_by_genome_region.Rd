@@ -10,10 +10,60 @@ annotate_gr_by_genome_region(
   name_colname = "name",
   gene_name_colname = "gene_name",
   feature_type_colname = "feature_type",
+  mask_regions = NULL,
+  feature_grep_order = c("promoter", "tts", "exon", "intron", "intergenic", "."),
   verbose = FALSE,
   ...
 )
 }
+\arguments{
+\item{gr}{\code{GRanges} object to be annotated. The \code{values(gr)}
+should contain a colname that matches \code{name_colname}.}
+
+\item{genome_regions}{\code{GRanges} object as produced by
+\code{genomic_regions_from_gtf()}. The \code{values(genome_regions)}
+should contain a colname that matches \code{gene_name_colname},
+and the feature type should be stored in a colname
+\code{feature_type_colname}.}
+
+\item{name_colname}{\code{character} value that matches one colname
+in \code{values(gr)}.}
+
+\item{gene_name_colname}{\code{character} value that matches one colname
+in \code{values(gr)}.}
+
+\item{feature_type_colname}{\code{character} value that matches one colname
+in \code{values(gr)}, and which contains feature types.}
+
+\item{mask_regions}{\code{character} file that contains mask regions
+in BED format, or \code{GRanges} object. Currently the name is ignored,
+and all entries are considered to be "mask" regions.}
+
+\item{feature_grep_order}{\code{character} vector of grep patterns used
+to match values in \code{feature_type_colname}, to define the priority
+of feature types to use for the "winner".}
+}
 \description{
 Annotate GRanges by genome_regions
+}
+\details{
+This function uses the \code{genome_regions} data defined by
+\code{genomic_regions_from_gtf()} to annotate \code{GRanges} object \code{gr}.
+
+It performs three levels of annotation:
+\enumerate{
+\item Direct overlap. Any overlapping region in \code{genome_regions}
+is added as an annotation column, where multiple regions
+are concatenated by commas.
+\item "Winner" overlap. When there are multiple overlapping
+regions from step 1, the annotation(s) from the best \code{feature_type}
+are called "winner" and appended with column suffix \code{"_winner"}.
+\item Nearest gene. The annotation of any overlapping gene body,
+or nearest gene body to each feature in \code{gr}. Columns
+have the prefix \code{"nearest_"}, and the distance is stored as
+\code{"nearest_gene_distance"}.
+}
+
+When \code{mask_regions} is supplied, one additional column is
+added \code{"mask_region"} with either \code{TRUE} or \code{FALSE}.
 }

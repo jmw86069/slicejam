@@ -41,7 +41,10 @@
 #' 
 #' @return `GRanges` object
 #' 
-#' @param gtf `character` path to a GTF file.
+#' @param gtf `character` path to a GTF file. When `gtf` is
+#'    not supplied, `rdata_file` must be supplied, in which
+#'    case that file is used to load pre-existing `genome_regions`
+#'    GRanges object.
 #' @param upstream_promoter,downstream_promoter `numeric` value
 #'    which defines the distance upstream and downstream relative
 #'    to each gene transcript start site, to be annotated as
@@ -78,16 +81,33 @@
 #' @param save_rdata `logical` indicating whether to save the
 #'    resulting R object in a file with the file extension
 #'    `".genomic_regions.RData"`.
+#' @param rdata_file `character` filename, optionally used to
+#'    define an input file for `genome_regions`, or a specific
+#'    output file to save the RData object. When `force_refresh=TRUE`
+#'    this argument is used to save new RData to a file, without
+#'    re-using any pre-existing data saved in that file.
 #' @param save_txdb `logical` indicating whether to save the
 #'    intermediate `Txdb` R object as a SQLite database, using
 #'    `AnnotationDbi::saveDb()`, using the file extension `".txdb"`.
-#'    When this option is enabled, any previously stored 
+#'    When this option is enabled, any previously stored `TxDb`
+#'    will be re-used, unless `force_refresh=TRUE`.
+#' @param save_bed `logical` indicating whether to save the
+#'    genome_regions also in BED format.
+#' @param force_refresh `logical` indicating whether to force
+#'    a full refresh of the processing steps in this function.
+#'    When `force_refresh=TRUE`, the `rdata_file` input file
+#'    is not re-used, but is created and will overwrite
+#'    the `rdata_file` if it exists.
+#'    When `force_refresh=TRUE`: the GTF file will be read;
+#'    a new TxDb object will be created, optionally saved if
+#'    `save_txdb=TRUE`; and new RData file will be saved if
+#'    `save_rdata=TRUE`.
 #' @param verbose `logical` indicating whether to print verbose output.
 #' @param ... additional arguments are ignored.
 #' 
 #' @export
 genomic_regions_from_gtf <- function
-(gtf,
+(gtf=NULL,
  upstream_promoter=2000,
  downstream_promoter=200,
  upstream_tts=1000,
@@ -99,68 +119,113 @@ genomic_regions_from_gtf <- function
  geneFeatureType="exon",
  txFeatureType="exon",
  save_rdata=TRUE,
+ rdata_file=NULL,
  save_txdb=TRUE,
+ save_bed=TRUE,
+ force_refresh=FALSE,
  verbose=FALSE,
  ...)
 {
    ##
    ## genome_regions may be saved to a file already
-   if (!file.exists(gtf)) {
-      stop(paste0("Input gtf file not found:", gtf));
+   if (length(gtf) == 0 || !file.exists(gtf)) {
+      if (length(rdata_file) == 0 || !file.exists(rdata_file)) {
+         stop("Must supply either a GTF file, or a RData file with 'genome_regions' object.");
+      }
+      if (force_refresh) {
+         stop("Cannot force_refresh when GTF is not supplied.");
+      }
+      if (length(detectedTx) > 0 || length(detectedGenes) > 0) {
+         warning("Note detectedTx and detectedGenes are ignored when no GTF is supplied.");
+      }
    }
-   short_dist_label <- function(x){
-      if (x >= 1000) {
-         paste0(x/1000, "kb")
+   if (length(gtf) > 0) {
+      if (!file.exists(gtf)) {
+         stop(paste0("GTF file not found:", gtf));
+      }
+      gtf_base <- gsub("[.](gff|gtf|gff3)([-_.](zip|gz|Z|tgz|tar.gz)|)$",
+         "",
+         ignore.case=TRUE,
+         gtf);
+      if (length(rdata_file) == 0) {
+         ## Create suitable filename for rdata_file
+         short_dist_label <- function(x){
+            if (x >= 1000) {
+               paste0(x/1000, "kb")
+            } else {
+               paste0(x, "b")
+            }
+         }
+         if (length(mask_regions) > 0) {
+            mask_ext <- "_mask";
+         } else {
+            mask_ext <- "";
+         }
+         save_ext <- paste0(
+            ".",
+            short_dist_label(upstream_promoter),
+            "_tss_",
+            short_dist_label(downstream_promoter),
+            ".",
+            short_dist_label(upstream_tts),
+            "_tts_",
+            short_dist_label(downstream_tts),
+            mask_ext,
+            ".genome_regions.RData");
+         gtf_gr_file <- paste0(gtf_base, save_ext);
+         if (!file.exists(gtf_gr_file) && file.exists(basename(gtf_gr_file))) {
+            gtf_gr_file <- basename(gtf_gr_file);
+         }
+         if (length(detectedTx) > 0 || length(detectedGenes) > 0) {
+            save_rdata <- FALSE;
+         }
       } else {
-         paste0(x, "b")
+         gtf_gr_file <- rdata_file;
       }
    }
-   save_ext <- paste0(
-      ".",
-      short_dist_label(upstream_promoter),
-      "_tss_",
-      short_dist_label(downstream_promoter),
-      ".",
-      short_dist_label(upstream_tts),
-      "_tts_",
-      short_dist_label(downstream_tts),
-      ".genome_regions.RData");
-   gtf_base <- gsub("[.](gff|gtf|gff3)([.]gz|)$",
-      "",
-      ignore.case=TRUE,
-      gtf);
-   gtf_gr_file <- paste0(gtf_base, save_ext);
-   if (!file.exists(gtf_gr_file) && file.exists(basename(gtf_gr_file))) {
-      gtf_gr_file <- basename(gtf_gr_file);
-   }
-   if (length(detectedTx) > 0 || length(detectedGenes) > 0) {
-      save_rdata <- FALSE;
-   }
-   if (file.exists(gtf_gr_file) && save_rdata) {
-      genome_regions_o <- load(gtf_gr_file);
-      if (!exists("genome_regions")) {
-         jamba::printDebug("The RData file '",
-            gtf_gr_file,
-            "' did not contain R object '",
-            "genome_regions", "'.");
-         jamba::printDebug("Instead, it contained these R objects:",
-            genome_regions_o);
+   if (file.exists(gtf_gr_file)) {
+      if (force_refresh) {
+         if (verbose) {
+            jamba::printDebug("genomic_regions_from_gtf(): ",
+               "Refreshing genome_regions into existing RData file:",
+               gtf_gr_file);
+         }
+      } else if (file.exists(gtf_gr_file) && save_rdata) {
+         if (verbose) {
+            jamba::printDebug("genomic_regions_from_gtf(): ",
+               "Reloading genome_regions from RData file:",
+               gtf_gr_file);
+         }
+         genome_regions_o <- load(gtf_gr_file);
+         #if (!exists("genome_regions")) {
+         if (!"genome_regions" %in% genome_regions_o) {
+            jamba::printDebug("The RData file '",
+               gtf_gr_file,
+               "' did not contain R object ",
+               '"genome_regions"', ".");
+            jamba::printDebug("Instead, it contained these R objects:",
+               genome_regions_o);
+            stop("Invalid RData file, no genome_regions object was found.");
+         }
+         if (!"rdata_file" %in% names(attributes(genome_regions))) {
+            attr(genome_regions, "rdata_file") <- gtf_gr_file;
+         }
+         return(genome_regions);
       }
-      return(genome_regions);
    }
-   
+
    ## If genome_regions is not define, create it
    if (!exists("genome_regions")) {
       txdb_file <- paste0(gtf_base, ".txdb");
       refgene_txdb <- NULL;
-      if (save_txdb) {
+      if (!force_refresh && save_txdb) {
          if (!file.exists(txdb_file) && file.exists(basename(txdb_file))) {
             txdb_file <- basename(txdb_file);
          }
          if (file.exists(txdb_file)) {
             if (verbose) {
                jamba::printDebug("genomic_regions_from_gtf(): ",
-                  "Loading from txdb file:",
+                  "Loading existing txdb file:",
                   txdb_file);
             }
             refgene_txdb <- AnnotationDbi::loadDb(txdb_file);
@@ -175,18 +240,19 @@ genomic_regions_from_gtf <- function
          }
          refgene_txdb <- GenomicFeatures::makeTxDbFromGFF(gtf);
          if (save_txdb) {
-            if (verbose) {
-               jamba::printDebug("genomic_regions_from_gtf(): ",
-                  "Saving to txdb file:",
-                  txdb_file);
-            }
             tryCatch({
                AnnotationDbi::saveDb(refgene_txdb,
                   file=txdb_file);
             }, error=function(e){
+               txdb_file <- basename(txdb_file);
                AnnotationDbi::saveDb(refgene_txdb,
-                  file=basename(txdb_file));
+                  file=txdb_file);
             });
+            if (verbose) {
+               jamba::printDebug("genomic_regions_from_gtf(): ",
+                  "Saved txdb to file:",
+                  txdb_file);
+            }
          }
       }
    }
@@ -200,7 +266,7 @@ genomic_regions_from_gtf <- function
       geneAttrNames=geneAttrNames,
       txAttrNames=txAttrNames,
       geneFeatureType=geneFeatureType,
-      verbose=TRUE,
+      verbose=verbose,
       txFeatureType=txFeatureType);
    gene_colname <- head(intersect(geneAttrNames, colnames(tx2geneDF)), 1);
    if (length(gene_colname) == 0) {
@@ -382,6 +448,30 @@ genomic_regions_from_gtf <- function
       exonGeneIntronGene <- unique(pasteByRow(values(exonsOverIntronsA)[,c("gene_name", "intron_gene_name")], sep=":"));
    }
 
+   ## optional mask regions
+   if (1 == 2 && length(mask_regions) > 0) {
+      if ("character" %in% class(mask_regions)) {
+         mask_regions_grl <- GenomicRanges::GRangesList(lapply(mask_regions, function(mask_region){
+            if (file.exists(mask_region)) {
+               if (verbose) {
+                  jamba::printDebug("genomic_regions_from_gtf(): ",
+                     "Importing mask_region from:",
+                     mask_region);
+               }
+               mgr <- rtracklayer::import(mask_region);
+               mgr <- keepSeqlevels(mgr,
+                  intersect(seqlevels(genome_regions),
+                     seqlevels(mgr)));
+            }
+         }));
+         mask_regions_gr <- sort(mask_regions_grl@unlistData);
+         values(mask_regions_gr)$gene_name <- jamba::makeNames(as.character(seqnames(mask_regions_gr)),
+            suffix="_mask");
+         values(mask_regions_gr)$gene_id <- values(mask_regions_gr)$gene_name;
+         #values(mask_regions_gr)[,c("feature_type"
+      }
+   }
+   
    ## Assemble each layer of genomic region
    promoter_name <- paste0("Promoters (-",
       upstream_promoter,
@@ -402,6 +492,8 @@ genomic_regions_from_gtf <- function
       tts=ttsByTx[,c("gene_name", "gene_id")]);
    names(genome_regions_l)[1] <- promoter_name;
    names(genome_regions_l)[4] <- tts_name;
+
+   ## combine list elements into one GRanges object
    genome_regions <- GenomicRanges::GRangesList(genome_regions_l)@unlistData;
    GenomicRanges::values(genome_regions)$feature_type <- rep(names(genome_regions_l),
       lengths(genome_regions_l));
@@ -426,6 +518,32 @@ genomic_regions_from_gtf <- function
                gtf_gr_file);
          }
       });
+      attr(genome_regions, "rdata_file") <- gtf_gr_file;
+   }
+   if (save_bed) {
+      bed_file <- gsub("[.]rdata$",
+         ".bed",
+         ignore.case=TRUE,
+         gtf_gr_file);
+      if (bed_file == gtf_gr_file) {
+         bed_file <- paste0(gtf_gr_file, ".bed");
+      }
+      if (!file.exists(bed_file) || force_refresh) {
+         attr_colnames <- c(
+            head(provigrep(c("gene.*name", "."), geneAttrNames), 1),
+            "feature_type");
+         genome_regions_names <- jamba::pasteByRow(values(
+            genome_regions)[,attr_colnames],
+            sep=" ");
+         names(genome_regions) <- genome_regions_names;
+         rtracklayer::export.bed(object=sort(genome_regions, ignore.strand=TRUE),
+            con=bed_file);
+         if (verbose) {
+            jamba::printDebug("genomic_regions_from_gtf(): ",
+               "Genome regions were saved in BED format:",
+               bed_file);
+         }
+      }
    }
    return(genome_regions);
 }
@@ -506,7 +624,48 @@ statsdf2bed <- function
 
 #' Annotate GRanges by genome_regions
 #' 
+#' Annotate GRanges by genome_regions
+#' 
+#' This function uses the `genome_regions` data defined by
+#' `genomic_regions_from_gtf()` to annotate `GRanges` object `gr`.
+#' 
+#' It performs three levels of annotation:
+#' 
+#' 1. Direct overlap. Any overlapping region in `genome_regions`
+#' is added as an annotation column, where multiple regions
+#' are concatenated by commas.
+#' 2. "Winner" overlap. When there are multiple overlapping
+#' regions from step 1, the annotation(s) from the best `feature_type`
+#' are called "winner" and appended with column suffix `"_winner"`.
+#' 3. Nearest gene. The annotation of any overlapping gene body,
+#' or nearest gene body to each feature in `gr`. Columns
+#' have the prefix `"nearest_"`, and the distance is stored as
+#' `"nearest_gene_distance"`.
+#' 
+#' When `mask_regions` is supplied, one additional column is
+#' added `"mask_region"` with either `TRUE` or `FALSE`.
+#' 
 #' @import data.table
+#' 
+#' @param gr `GRanges` object to be annotated. The `values(gr)`
+#'    should contain a colname that matches `name_colname`.
+#' @param genome_regions `GRanges` object as produced by
+#'    `genomic_regions_from_gtf()`. The `values(genome_regions)`
+#'    should contain a colname that matches `gene_name_colname`,
+#'    and the feature type should be stored in a colname
+#'    `feature_type_colname`.
+#' @param name_colname `character` value that matches one colname
+#'    in `values(gr)`.
+#' @param gene_name_colname `character` value that matches one colname
+#'    in `values(gr)`.
+#' @param feature_type_colname `character` value that matches one colname
+#'    in `values(gr)`, and which contains feature types.
+#' @param mask_regions `character` file that contains mask regions
+#'    in BED format, or `GRanges` object. Currently the name is ignored,
+#'    and all entries are considered to be "mask" regions.
+#' @param feature_grep_order `character` vector of grep patterns used
+#'    to match values in `feature_type_colname`, to define the priority
+#'    of feature types to use for the "winner".
 #' 
 #' @export
 annotate_gr_by_genome_region <- function
@@ -515,6 +674,8 @@ annotate_gr_by_genome_region <- function
  name_colname="name",
  gene_name_colname="gene_name",
  feature_type_colname="feature_type",
+ mask_regions=NULL,
+ feature_grep_order=c("promoter", "tts", "exon", "intron", "intergenic", "."),
  verbose=FALSE,
  ...)
 {
@@ -556,7 +717,7 @@ annotate_gr_by_genome_region <- function
       #gene_id=values(genome_regions_exp[subjectHits(fco)])$gene_id,
       feature_type=factor(
          values(genome_regions_exp[subjectHits(fco)])[[feature_type_colname]],
-         levels=provigrep(c("promoter", "tts", "exon", "intron", "intergenic", "."),
+         levels=provigrep(feature_grep_order,
             unique(values(genome_regions_exp[subjectHits(fco)])[[feature_type_colname]]))),
       gene_feature_type=values(genome_regions_exp[subjectHits(fco)])$gene_feature_type);
    
@@ -722,6 +883,32 @@ annotate_gr_by_genome_region <- function
          } else {
             values(gr)[imatch,i] <- as.character(fc_gr_genedist_df1vals);
          }
+      }
+   }
+   
+   ## Optional mask regions
+   if (length(mask_regions) > 0) {
+      if ("character" %in% class(mask_regions)) {
+         mask_regions_grl <- GenomicRanges::GRangesList(lapply(mask_regions, function(mask_region){
+            if (file.exists(mask_region)) {
+               if (verbose) {
+                  jamba::printDebug("annotate_gr_by_genome_region(): ",
+                     "Importing mask_region from:",
+                     mask_region);
+               }
+               mgr <- rtracklayer::import(mask_region);
+               mgr <- keepSeqlevels(mgr,
+                  intersect(seqlevels(gr),
+                     seqlevels(mgr)));
+            }
+         }));
+         mask_regions_gr <- sort(mask_regions_grl@unlistData);
+      }
+      if ("GRangesList" %in% class(mask_regions_gr)) {
+         mask_regions_gr <- mask_regions_gr@unlistData;
+      }
+      if ("GRanges" %in% class(mask_regions_gr)) {
+         values(gr)$mask <- overlapsAny(gr, mask_regions_gr);
       }
    }
 

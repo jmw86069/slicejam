@@ -5,7 +5,7 @@
 \title{Prepare genomic regions from GTF}
 \usage{
 genomic_regions_from_gtf(
-  gtf,
+  gtf = NULL,
   upstream_promoter = 2000,
   downstream_promoter = 200,
   upstream_tts = 1000,
@@ -17,13 +17,19 @@ genomic_regions_from_gtf(
   geneFeatureType = "exon",
   txFeatureType = "exon",
   save_rdata = TRUE,
+  rdata_file = NULL,
   save_txdb = TRUE,
+  save_bed = TRUE,
+  force_refresh = FALSE,
   verbose = FALSE,
   ...
 )
 }
 \arguments{
-\item{gtf}{\code{character} path to a GTF file.}
+\item{gtf}{\code{character} path to a GTF file. When \code{gtf} is
+not supplied, \code{rdata_file} must be supplied, in which
+case that file is used to load pre-existing \code{genome_regions}
+GRanges object.}
 
 \item{upstream_promoter, downstream_promoter}{\code{numeric} value
 which defines the distance upstream and downstream relative
@@ -69,10 +75,30 @@ a \code{data.frame} that associated transcripts to genes.}
 resulting R object in a file with the file extension
 \code{".genomic_regions.RData"}.}
 
+\item{rdata_file}{\code{character} filename, optionally used to
+define an input file for \code{genome_regions}, or a specific
+output file to save the RData object. When \code{force_refresh=TRUE}
+this argument is used to save new RData to a file, without
+re-using any pre-existing data saved in that file.}
+
 \item{save_txdb}{\code{logical} indicating whether to save the
 intermediate \code{Txdb} R object as a SQLite database, using
 \code{AnnotationDbi::saveDb()}, using the file extension \code{".txdb"}.
-When this option is enabled, any previously stored}
+When this option is enabled, any previously stored \code{TxDb}
+will be re-used, unless \code{force_refresh=TRUE}.}
+
+\item{save_bed}{\code{logical} indicating whether to save the
+genome_regions also in BED format.}
+
+\item{force_refresh}{\code{logical} indicating whether to force
+a full refresh of the processing steps in this function.
+When \code{force_refresh=TRUE}, the \code{rdata_file} input file
+is not re-used, but is created and will overwrite
+the \code{rdata_file} if it exists.
+When \code{force_refresh=TRUE}: the GTF file will be read;
+a new TxDb object will be created, optionally saved if
+\code{save_txdb=TRUE}; and new RData file will be saved if
+\code{save_rdata=TRUE}.}
 
 \item{verbose}{\code{logical} indicating whether to print verbose output.}
 

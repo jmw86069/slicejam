@@ -1,3 +1,23 @@
+# slicejam 0.0.15.900
+
+## changes to existing functions
+
+* `genomic_regions_from_gtf()`
+
+    * returns the RData file
+    saved, as an attribute `"rdata_file"`
+    * new argument `rdata_file`
+    allows defining a specific file to save the resulting
+    `genome_regions` GRanges object. When that file exists,
+    the data will be loaded and used as-is.
+    * new argument `force_refresh` will force re-processing
+    the data even if the output `rdata_file` exists
+    * new argument `mask_regions` will add a column `"mask"`
+    with `TRUE` or `FALSE` indicating whether each `GRange`
+    overlaps any mask region.
+    * new argument `save_bed` will save the genome_regions
+    in BED format.
+
 # slicejam 0.0.14.900
 
 ## new functions
