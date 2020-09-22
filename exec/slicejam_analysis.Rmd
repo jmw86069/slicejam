@@ -337,7 +337,7 @@ if (length(curation_txt) == 0 || nchar(curation_txt) == 0 || !file.exists(curati
          " file was supplied."),
       sep="",
       fgText=c("red", "dodgerblue"));
-   stop("No Group column was recognized.");
+   stop(paste0("No CURATION_TXT file was found: CURATION_TXT:", CURATION_TXT));
 }
 
 ## Use curation_txt if that file exists
@@ -1175,7 +1175,7 @@ if (length(AtacStatsMgm4) > 0) {
 
 #### Venn diagrams (all peaks)
 
-**`r if (length(AtacStats) > 0 && length(dim(AtacStats$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams are skipped.")}`**
+**`r if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams are skipped.")}`**
 
 Venn diagrams are created for all pairs of results, and represent
 directionality of the shared hits.
@@ -1184,7 +1184,7 @@ Note that Venn diagrams are not produced when there is only one
 comparison.
 
 ```{r, venn_pairs, fig.height=10, fig.width=10, dependson=c("run_limma")}
-if (length(AtacStats) > 0 && length(dim(AtacStats$hit_array)[[2]]) > 1) {
+if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
    pair_l <- unlist(recursive=FALSE,
       apply(combn(dimnames(AtacStats$hit_array)[[2]], 2), 2, list));
    
@@ -1204,10 +1204,10 @@ if (length(AtacStats) > 0 && length(dim(AtacStats$hit_array)[[2]]) > 1) {
 
 #### Venn diagrams (subset peaks)
 
-**`r if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped.")}`**
+**`r if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped.")}`**
 
 ```{r, venn_pairs_mgm4, fig.height=10, fig.width=10, dependson=c("run_limma_mgm4")}
-if (length(AtacStatsMgm4) > 0 && length(dim(AtacStatsMgm4$hit_array)[[2]]) > 1) {
+if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) > 1) {
    pair_l_mgm4 <- unlist(recursive=FALSE,
       apply(combn(dimnames(AtacStatsMgm4$hit_array)[[2]], 2), 2, list));
    
