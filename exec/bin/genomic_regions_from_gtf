@@ -1,0 +1,219 @@
+#!/ddn/gs1/biotools/R361/bin/Rscript --vanilla
+#!/usr/bin/env Rscript
+#!/usr/bin/env r
+#
+# script to call slicejam::genomic_regions_from_gtf()
+
+
+.libPaths(c("/ddn/gs1/home/wardjm/R/x86_64-pc-linux-gnu-library/3.6",
+   .libPaths()));
+options("warn"=-1);
+
+if (!suppressPackageStartupMessages(require(docopt))) {
+   install.packages("docopt");
+}
+library(docopt);
+
+
+## configuration for docopt
+doc <- "Annotate BED file with genomic regions from GTF
+
+Description:
+This script performs two analysis steps:
+1. Convert GTF file to annotated genomic regions.
+2. Annotated BED file entries using these genomic regions.
+
+This script will convert a GTF file to a set of genomic regions,
+or will load previously-defined genomic regions for this purpose.
+
+* The transcript start site (TSS) for each entry in the GTF file,
+along with upstream_promoter and downstream_promoter arguments,
+is used to define a set of promoter regions around each TSS.
+* Transcript termination sites (TTS) for each transcript in the
+GTF file, along with upstream_tts and downstream_tts, are used
+to define TTS regions.
+* All exons are annotated by the source gene symbol.
+* Introns are defined for each gene locus by combining sets of
+overlapping transcripts for each gene, and subtracting annotated
+exons.
+
+A subset of transcripts and genes can be provided in a text file,
+using arguments tx or genes. In this case, only the provided
+genes or transcripts will be used.
+
+During the processing, the GTF file is converted to a TxDb database
+which is by default saved to a file (in SQLite format) for more
+rapid re-use.
+
+After processing, the resulting genomic regions are by default
+saved in RData format for rapid re-use. Note that this file will
+only be re-used when the upstream and downstream arguments are
+equivalent, and when no genes nor tx arguments have been defined.
+
+If no BED file is provided, this script will only prepare the
+genomic regions.
+
+Usage:
+   genomic_regions_from_gtf [options]
+
+Options:
+   --gtf FILE                      GTF file with gene annotations.
+   -u --upstream_promoter=<kn>     distance upstream the TSS for promoter regions [default: 2000].
+   -d --downstream_promoter=<kn>   distance downstream the TSS for promoter regions [default: 200].
+   -e --upstream_tts=<kn>          distance upstream the TTS for TTS regions [default: 1000].
+   -f --downstream_tts=<kn>        distance downstream the TTS for TTS regions [default: 1000].
+   -t --tx FILE                    detected transcripts.
+   -g --genes FILE                 detected genes.
+   -m --mask FILE                  BED file with regions to mark as masked.
+   -s --save_rdata BOOL            save genomic_regions RData to a file [default: TRUE]
+   -x --save_txdb BOOL             save GTF TxDb to a file [default: TRUE]
+   -r --rdata_file FILE            specific RData file to save or re-use genome_regions
+   --force_refresh                 force refresh of genome_regions [default: FALSE].
+   -o --outfile FILE               output file, default is derived from input bed file.
+   --debug                         do no processing and only print debug info [default: FALSE].
+   -h --help                       Show this help text.
+   --verbose                       Print verbose output [default: FALSE].
+   -v --version                    Show version.
+   --bed FILE                      BED file.
+";
+
+## docopt parsing
+opt <- docopt(doc,
+   version="genomic_regions_from_gtf v0.2 15sep2020\n\n");
+
+opt_list <- list(gtf=opt$gtf,
+   upstream_promoter=opt$upstream_promoter,
+   downstream_promoter=opt$downstream_promoter,
+   upstream_tts=opt$upstream_tts,
+   downstream_tts=opt$downstream_tts,
+   detectedTx=opt$tx,
+   detectedGenes=opt$genes,
+   mask=opt$mask,
+   save_rdata=opt$save_rdata,
+   rdata_file=opt$rdata_file,
+   force_refresh=opt$force_refresh,
+   save_txdb=opt$save_txdb,
+   outfile=opt$outfile,
+   verbose=opt$verbose,
+   bed=opt$bed);
+
+## convert numeric arguments to numeric class
+numargs <- c("upstream_promoter",
+   "downstream_promoter",
+   "upstream_tts",
+   "downstream_tts");
+for (numarg in numargs) {
+   opt[[numarg]] <- as.numeric(opt[[numarg]]);
+   darg <- paste0("--", numarg);
+   if (darg %in% names(opt)) {
+      opt[[darg]] <- opt[[numarg]];
+   }
+}
+
+## convert numeric arguments to logical class
+boolargs <- c("save_rdata",
+   "save_txdb",
+   "force_refresh",
+   "verbose",
+   "debug");
+for (boolarg in boolargs) {
+   opt[[boolarg]] <- ifelse(grepl("TRUE", ignore.case=TRUE, opt[[boolarg]]),
+      TRUE,
+      FALSE);
+   darg <- paste0("--", boolarg);
+   if (darg %in% names(opt)) {
+      opt[[darg]] <- opt[[boolarg]];
+   }
+}
+
+## confirm that file arguments refer to existing files
+fileargs <- c("tx", "genes", "gtf", "bed", "mask");
+for (i in fileargs) {
+   if (length(opt[[i]]) > 0 && nchar(opt[[i]]) > 0) {
+      if (!file.exists(opt[[i]])) {
+         stop(paste0("'", i, "' file was not found: ",
+            opt[[i]]));
+      }
+   }
+}
+
+verbose <- opt$verbose;
+if (opt$debug) {
+   jamba::printDebug("opt:");
+   print(opt);
+}
+# check files exist
+if (opt$debug) {
+   quit();
+}
+
+if (!suppressPackageStartupMessages(require(jamba))) {
+   remotes::install_github("jmw86069/jamba");
+   stop("The jamba package is required.");
+}
+if (!suppressPackageStartupMessages(require(slicejam))) {
+   remotes::install_github("jmw86069/slicejam");
+   stop("The slicejam package is required.");
+}
+
+system.time({
+   genome_regions <- slicejam::genomic_regions_from_gtf(gtf=opt$gtf,
+      upstream_promoter=opt$upstream_promoter,
+      downstream_promoter=opt$downstream_promoter,
+      upstream_tts=opt$upstream_tts,
+      downstream_tts=opt$downstream_tts,
+      detectedTx=opt$tx,
+      detectedGenes=opt$genes,
+      save_rdata=opt$save_rdata,
+      rdata_file=opt$rdata_file,
+      save_txdb=opt$save_txdb,
+      force_refresh=opt$force_refresh,
+      verbose=opt$verbose);
+})
+
+# Load BED data
+if (length(opt$bed) > 0 && file.exists(opt$bed)) {
+   bed <- opt$bed;
+   #bed <- "/ddn/gs1/project/nextgen/post/archer1/shRNA_KD-Archer-Langer/Workflow_files/rnaseqOutput/BRG1_data_for_James/Processed_files/ATAC/BRG1KD_Strengthened_peaks_q005_FC1_5.bed";
+   system.time(fc_gr <- rtracklayer::import(bed));
+   fc_gr <- GenomeInfoDb::keepSeqlevels(fc_gr,
+      jamba::mixedSort(GenomeInfoDb::seqlevels(fc_gr)));
+   if (anyDuplicated(GenomicRanges::values(fc_gr)$name)) {
+      GenomicRanges::values(fc_gr)$bed_name <- GenomicRanges::values(fc_gr)$name;
+      GenomicRanges::values(fc_gr)$name <- paste0("peak_",
+         jamba::padInteger(seq_along(fc_gr)));
+   }
+   
+   ## annotate using genome_regions
+   system.time(fc_gr2 <- annotate_gr_by_genome_region(gr=fc_gr,
+      genome_regions=genome_regions,
+      mask_regions=opt$mask_regions,
+      verbose=FALSE));
+   
+   if (length(opt$outfile) == 0 || nchar(opt$outfile) == 0) {
+      outfile <- gsub("[.](bed[0-9]*|broadPeak|narrowPeak|peak)$",
+         ignore.case=TRUE,
+         "",
+         bed);
+      outfile <- paste0(outfile,
+         ".genome_regions.",
+         jamba::getDate(),
+         ".txt");
+   } else {
+      outfile - opt$outfile;
+   }
+   #rtracklayer::export.bed(con=outfile,
+   #   object=fc_gr2);
+   data.table::fwrite(x=as.data.frame(fc_gr2),
+      file=outfile,
+      sep="\t");
+   #outfile_rdata <- gsub("[.]txt$", ".RData", outfile);
+   #save(list=c("fc_gr2"), file=outfile_rdata);
+   
+   if (verbose) {
+      jamba::printDebug("Output saved: ",
+         outfile);
+   }
+}
+
+
