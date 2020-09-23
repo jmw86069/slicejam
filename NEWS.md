@@ -1,3 +1,15 @@
+# slicejam 0.0.16.900
+
+## bug fixes
+
+* `slicejam_analysis.Rmd` had one remnant reference to colname
+`"Group"` that needed to be changed to `group_colname`, in
+a lesser-used MA-plot section (`ma_q_group_run`) that organizes
+panels by groups and batches when there are multiple replicates per
+batch. This layout is intended to show whether the batches
+are balanced across groups, and the relative distributions
+relative to each batch.
+
 # slicejam 0.0.15.900
 
 ## changes to existing functions

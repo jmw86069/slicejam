@@ -711,9 +711,9 @@ jp_q_run <- jammaplot(
 )
 ```
 
-#### Quantile-normalized data, centered by "Group", Run"
+#### Quantile-normalized data, centered by "Group", "Batch"
 
-If there are replicates per Group_Run, then MA-plots will
+If there are replicates per Group_Batch, then MA-plots will
 be displayed below, centered by Group and Run.
 
 ```{r, ma_q_group_run, fig.height=10, fig.width=14, dependson=c("norm_quantile", "ma_layout")}
@@ -725,8 +725,11 @@ if (any(grouprun_ct > 1)) {
          newValue=NA),
       ncol=ma_ncol,
       blankPlotPos=blank_pos,
-      maintitle=c("quantile-normalized data", "centered by 'Group','Run'"),
-      centerGroups=pasteByRow(colData(fc_se[,iSamples])[,c("Group","Run")]),
+      maintitle=c("quantile-normalized data",
+         paste0("centered by ",
+            cPaste(paste0("'", c(group_colname, run_colname), "'"))
+         )),
+      centerGroups=pasteByRow(colData(fc_se[,iSamples])[,c(group_colname, run_colname)]),
       groupSuffix="",
       subtitlePreset="bottomleft",
       subtitle=paste0("by ", iGroup[iSamples], ",", Run[iSamples]),
@@ -760,7 +763,10 @@ jp_q_b_run <- jammaplot(
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
-   maintitle=c("quantile-normalized data", "global-centered", "batch-adjusted by 'Run'"),
+   maintitle=c("quantile-normalized data",
+      "global-centered",
+      paste0("batch-adjusted by '", run_colname, "'")
+   ),
    groupSuffix="",
    subtitlePreset="bottomleft",
    subtitle=paste0("adj. by ", Run[iSamples]),
