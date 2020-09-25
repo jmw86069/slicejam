@@ -1,12 +1,34 @@
-#!/ddn/gs1/biotools/R361/bin/Rscript --vanilla
 #!/usr/bin/env Rscript
-#!/usr/bin/env r
 #
-# script to call slicejam::genomic_regions_from_gtf()
+# script to define or load genome_regions
+#    - slicejam::genomic_regions_from_gtf()
+# then optionally use genome_regions to annotate features in a BED file
+#    - slicejam::annotate_gr_by_genome_region()
+#
+#
+# # If your system uses a specific version of R that is
+# # not represented by the default Rscript command above,
+# # define environment variable RHOME using the value of
+# # R_HOME for the correct version of R.
+#
+# # For example, you can run this command in a bash shell
+# # to define RHOME:
+# RHOME=$(R361 --no-save --slave -e 'cat(Sys.getenv("R_HOME"))')
+# export RHOME
+#
+#
+# # To set a custom .libPaths() location, the recommended method
+# # is to define enrivonment variable R_LIBS_USER, and that
+# # location will be prepended at the beginning of .libPaths()
+#
+# # For example:
+# R_LIBS_USER=/ddn/bla1/home/jam/R/x86_64-pc-linux-gnu-library/3.6
+# export R_LIBS_USER
+#
+# # Or determine R_LIBS_USER from the active R session:
+# path.expand(Sys.getenv("R_LIBS_USER"))
+#
 
-
-.libPaths(c("/ddn/gs1/home/wardjm/R/x86_64-pc-linux-gnu-library/3.6",
-   .libPaths()));
 options("warn"=-1);
 
 if (!suppressPackageStartupMessages(require(docopt))) {
@@ -215,5 +237,3 @@ if (length(opt$bed) > 0 && file.exists(opt$bed)) {
          outfile);
    }
 }
-
-

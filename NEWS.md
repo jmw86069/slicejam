@@ -1,3 +1,10 @@
+# slicejam 0.0.17.900
+
+## updates
+
+* updated `genomic_regions_from_gtf()` after command-line testing. More
+work forthcoming to make it as smooth a standalone tool as possible.
+
 # slicejam 0.0.16.900
 
 ## bug fixes
