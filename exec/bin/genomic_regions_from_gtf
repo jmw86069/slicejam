@@ -209,7 +209,12 @@ system.time({
 if (length(opt$bed) > 0 && file.exists(opt$bed)) {
    bed <- opt$bed;
    #bed <- "/ddn/gs1/project/nextgen/post/archer1/shRNA_KD-Archer-Langer/Workflow_files/rnaseqOutput/BRG1_data_for_James/Processed_files/ATAC/BRG1KD_Strengthened_peaks_q005_FC1_5.bed";
-   system.time(fc_gr <- rtracklayer::import(bed));
+   fc_gr <- rtracklayer::import(bed);
+   # make sure "name" column is present
+   if (!"name" %in% colnames(GenomicRanges::values(fc_gr))) {
+      GenomicRanges::values(fc_gr)[,"name"] <- paste0("bed_",
+         jamba::padInteger(seq_along(fc_gr)));
+   }
    fc_gr <- GenomeInfoDb::keepSeqlevels(fc_gr,
       jamba::mixedSort(GenomeInfoDb::seqlevels(fc_gr)));
    if (anyDuplicated(GenomicRanges::values(fc_gr)$name)) {
@@ -221,7 +226,7 @@ if (length(opt$bed) > 0 && file.exists(opt$bed)) {
    ## annotate using genome_regions
    system.time(fc_gr2 <- annotate_gr_by_genome_region(gr=fc_gr,
       genome_regions=genome_regions,
-      mask_regions=opt$mask_regions,
+      mask_regions=opt$mask,
       verbose=FALSE));
    
    if (length(opt$outfile) == 0 || nchar(opt$outfile) == 0) {
