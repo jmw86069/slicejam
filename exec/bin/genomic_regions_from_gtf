@@ -34,7 +34,7 @@ options("warn"=-1);
 if (!suppressPackageStartupMessages(require(docopt))) {
    install.packages("docopt");
 }
-library(docopt);
+suppressPackageStartupMessages(library(docopt));
 
 
 ## configuration for docopt

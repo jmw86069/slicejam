@@ -265,6 +265,9 @@ genomic_regions_from_gtf <- function
    tx2gene_file <- paste0(
       gsub("[.](gff|gff3|gtf)(|[.]gz)$", "", ignore.case=TRUE, gtf),
       ".tx2gene.txt");
+   if (!file.exists(tx2gene_file) && file.exists(basename(tx2gene_file))) {
+      tx2gene_file <- basename(tx2gene_file);
+   }
    if (file.exists(tx2gene_file)) {
       tx2geneDF <- data.table::fread(tx2gene_file,
          sep="\t",
@@ -276,6 +279,16 @@ genomic_regions_from_gtf <- function
          geneFeatureType=geneFeatureType,
          verbose=verbose,
          txFeatureType=txFeatureType);
+      # save to a file
+      tryCatch({
+         data.table::fwrite(tx2geneDF,
+            file=tx2gene_file,
+            sep="\t");
+      }, error=function(e){
+         data.table::fwrite(tx2geneDF,
+            file=basename(tx2gene_file),
+            sep="\t");
+      });
    }
    gene_colname <- head(intersect(geneAttrNames, colnames(tx2geneDF)), 1);
    if (length(gene_colname) == 0) {
@@ -337,6 +350,11 @@ genomic_regions_from_gtf <- function
       exonsByTx <- GenomicFeatures::exonsBy(refgene_txdb,
          by="tx",
          use.names=TRUE);
+      # subset for entries contained in tx2geneDF
+      ikeep <- (names(exonsByTx) %in% tx2geneDF[[tx_colname]]);
+      if (!all(ikeep)) {
+         exonsByTx <- exonsByTx[ikeep];
+      }
       tx_match <- match(names(exonsByTx),
          tx2geneDF[[tx_colname]]);
       GenomicRanges::values(exonsByTx@unlistData)[[gene_colname]] <- rep(
@@ -381,6 +399,18 @@ genomic_regions_from_gtf <- function
          "Creating txByGene.");
    }
    txByGene <- GenomicFeatures::transcriptsBy(refgene_txdb);
+   # subset for tx
+   ikeep <- (GenomicRanges::values(txByGene@unlistData)[[tx_colname]] %in% tx2geneDF[[tx_colname]]);
+   if (!all(ikeep)) {
+      if (verbose) {
+         jamba::printDebug("genomic_regions_from_gtf(): ",
+            "Subsetting txByGene for detectedTx");
+      }
+      txByTx <- subset(txByGene@unlistData,
+         GenomicRanges::values(txByGene@unlistData)[[tx_colname]] %in% detectedTx);
+      txByGene <- split(txByTx,
+         GenomicRanges::values(txByTx)[[gene_colname]]);
+   }
    GenomicRanges::values(txByGene@unlistData) <- jamba::renameColumn(
       GenomicRanges::values(txByGene@unlistData),
       from=c("tx_id", "tx_name"),
@@ -390,14 +420,12 @@ genomic_regions_from_gtf <- function
    for (gene_attr in geneAttrNames) {
       GenomicRanges::values(txByGene@unlistData)[[gene_attr]] <- tx2geneDF[tx_match, gene_attr];
    }
-   if (length(detectedTx) > 0) {
-      txByTx <- subset(txByGene@unlistData,
-         GenomicRanges::values(txByGene@unlistData)[[tx_colname]] %in% detectedTx);
-      txByGene <- split(txByTx,
-         GenomicRanges::values(txByTx)[[gene_colname]]);
-   }
 
    ## TTS per transcript range, extend -1000,+1000 around TTS
+   if (verbose) {
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "Creating ttsByTx.");
+   }
    ttsByTx <- GenomicRanges::flank(
       txByGene@unlistData,
       start=FALSE,
@@ -428,15 +456,16 @@ genomic_regions_from_gtf <- function
       GenomicRanges::values(promoters_gr),
       from=c("tx_id", "tx_name"),
       to=c("internal_tx_id", tx_colname));
+   # subset by tx2gene
+   ikeep <- (GenomicRanges::values(promoters_gr)[[tx_colname]] %in% tx2geneDF[[tx_colname]]);
+   if (!all(ikeep)) {
+      promoters_gr <- promoters_gr[ikeep];
+   }
    promoter_match <- match(
       GenomicRanges::values(promoters_gr)[[tx_colname]],
       tx2geneDF[[tx_colname]]);
    for (gene_attr in geneAttrNames) {
       GenomicRanges::values(promoters_gr)[[gene_attr]] <- tx2geneDF[promoter_match, gene_attr];
-   }
-   if (length(detectedTx) > 0) {
-      promoters_gr <- subset(promoters_gr,
-         GenomicRanges::values(promoters_gr)[[tx_colname]] %in% detectedTx);
    }
 
    ## Introns are everything within a transcript range
@@ -447,7 +476,8 @@ genomic_regions_from_gtf <- function
    }
    intronsByGene <- GenomicRanges::setdiff(txByGene,
       exonsByGene[names(txByGene)]);
-   intron_match <- match(names(intronsByGene), tx2geneDF[[gene_colname]]);
+   intron_match <- match(names(intronsByGene),
+      tx2geneDF[[gene_colname]]);
    for (gene_attr in geneAttrNames) {
       GenomicRanges::values(intronsByGene@unlistData)[[gene_attr]] <- rep(
          tx2geneDF[intron_match, gene_attr],
