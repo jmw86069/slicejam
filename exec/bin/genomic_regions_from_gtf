@@ -178,14 +178,26 @@ if (!suppressPackageStartupMessages(require(slicejam))) {
    stop("The slicejam package is required.");
 }
 
+# check detectedTx file
+detectedTx <- NULL;
+if (length(opt$tx) > 0 && all(file.exists(opt$tx))) {
+   detectedTx <- unname(unique(unlist(lapply(opt$tx, readLines))));
+}
+
+# check detectedGenes file
+detectedGenes <- NULL;
+if (length(opt$genes) > 0 && all(file.exists(opt$genes))) {
+   detectedGenes <- unname(unique(unlist(lapply(opt$genes, readLines))));
+}
+
 system.time({
    genome_regions <- slicejam::genomic_regions_from_gtf(gtf=opt$gtf,
       upstream_promoter=opt$upstream_promoter,
       downstream_promoter=opt$downstream_promoter,
       upstream_tts=opt$upstream_tts,
       downstream_tts=opt$downstream_tts,
-      detectedTx=opt$tx,
-      detectedGenes=opt$genes,
+      detectedTx=detectedTx,
+      detectedGenes=detectedGenes,
       save_rdata=opt$save_rdata,
       rdata_file=opt$rdata_file,
       save_txdb=opt$save_txdb,

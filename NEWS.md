@@ -1,3 +1,11 @@
+# slicejam 0.0.18.900
+
+## updates
+
+* `genomic_regions_from_gtf` was updated to handle `genes` and
+`tx` input as files.
+* All Venn functions will be replaced with new R package `venndir`.
+
 # slicejam 0.0.17.900
 
 ## updates

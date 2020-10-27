@@ -18,11 +18,15 @@ signed_venn <- function
    if (is.character(svims[1,1])) {
       svimsl <- (svims != "") * 1
       svimsl[is.na(svims)] <- 0;
-      svimss <- do.call(paste, lapply(seq_len(ncol(svims)), function(i){rmNA(naValue="", svims[,i])}))
+      svimss <- do.call(paste, lapply(seq_len(ncol(svims)), function(i){
+         jamba::rmNA(naValue="", svims[,i]);
+      }))
    } else {
       svimsl <- (svims != 0) * 1
       svimsl[is.na(svims)] <- 0;
-      svimss <- do.call(paste, lapply(seq_len(ncol(svims)), function(i){rmNA(naValue="0", svims[,i])}))
+      svimss <- do.call(paste, lapply(seq_len(ncol(svims)), function(i){
+         jamba::rmNA(naValue="0", svims[,i]);
+      }))
    }
 
    ## 1.2sec
@@ -31,7 +35,7 @@ signed_venn <- function
    ## concordance
    ## 0.02sec
    svimssu <- unique(svimss);
-   svimssu_concordance <- nameVector(sapply(strsplit(svimssu, " "), function(i){
+   svimssu_concordance <- jamba::nameVector(sapply(strsplit(svimssu, " "), function(i){
       j <- setdiff(i, c("","0"))
       length(unique(j)) == 1;
    }), svimssu)
@@ -41,23 +45,23 @@ signed_venn <- function
    svims_split <- split(svimss, svimsv);
    
    ## Create labels
-   svims_split_names <- sapply(nameVectorN(svims_split), function(i){
+   svims_split_names <- sapply(jamba::nameVectorN(svims_split), function(i){
       paste(collapse="&",
          names(setlist)[strsplit(i, " ")[[1]] %in% "1"])
    })
-   svims_df <- data.frame(rbindList(lapply(strsplit(names(svims_split), " "), as.numeric)),
+   svims_df <- data.frame(jamba::rbindList(lapply(strsplit(names(svims_split), " "), as.numeric)),
       check.names=FALSE);
    colnames(svims_df) <- names(setlist);
    svims_df$sum <- rowSums(svims_df[,names(setlist),drop=FALSE]);
-   svims_df <- mixedSortDF(svims_df, byCols=c("sum", paste0("-", names(setlist))))
+   svims_df <- jamba::mixedSortDF(svims_df, byCols=c("sum", paste0("-", names(setlist))))
    rownames(svims_df) <- apply(svims_df[,names(setlist),drop=FALSE], 1, function(i){
       paste(collapse="&",
          names(setlist)[i != 0])
    })
-   svims_split_names1 <- nameVector(rownames(svims_df),
-      pasteByRow(svims_df[,names(setlist),drop=FALSE], sep=" ", condenseBlanks=FALSE));
-   svims_split_names <- nameVector(
-      pasteByRow(svims_df[,names(setlist),drop=FALSE], sep=" ", condenseBlanks=FALSE),
+   svims_split_names1 <- jamba::nameVector(rownames(svims_df),
+      jamba::pasteByRow(svims_df[,names(setlist),drop=FALSE], sep=" ", condenseBlanks=FALSE));
+   svims_split_names <- jamba::nameVector(
+      jamba::pasteByRow(svims_df[,names(setlist),drop=FALSE], sep=" ", condenseBlanks=FALSE),
       rownames(svims_df))
    
    ret_vals <- list();
@@ -80,8 +84,8 @@ signed_venn <- function
          #data.frame(count=as(rev(table(j)), "matrix"), check.names=FALSE)
          jdf <- data.frame(count=as(table(j), "matrix"), check.names=FALSE);
          if (nrow(jdf) > 1) {
-            jrows <- rev(provigrep(c("mixed", "concordan", "."),
-               mixedSort(rownames(jdf))));
+            jrows <- rev(jamba::provigrep(c("mixed", "concordan", "."),
+               jamba::mixedSort(rownames(jdf))));
             jdf[jrows,,drop=FALSE];
          } else {
             jdf;
@@ -185,7 +189,7 @@ label_venn_polys <- function
       paste0("**",
          venn_spdf$label,
          "**<br>\n",
-         jamba::formatInt(rmNA(naValue=0,
+         jamba::formatInt(jamba::rmNA(naValue=0,
             venn_counts_base))));
    g_text <- gridtext::richtext_grob(
       text=venn_text,
