@@ -361,7 +361,7 @@ genomic_regions_from_gtf <- function
          tx2geneDF[tx_match, gene_colname],
          IRanges::elementNROWS(exonsByTx));
       exonsByGene <- GenomicRanges::reduce(
-         split(exonsByTx@unlistData,
+         GenomicRanges::split(exonsByTx@unlistData,
             GenomicRanges::values(exonsByTx@unlistData)[[gene_colname]]));
       gene_match <- match(names(exonsByGene),
          tx2geneDF[[gene_colname]]);
@@ -408,7 +408,7 @@ genomic_regions_from_gtf <- function
       }
       txByTx <- subset(txByGene@unlistData,
          GenomicRanges::values(txByGene@unlistData)[[tx_colname]] %in% detectedTx);
-      txByGene <- split(txByTx,
+      txByGene <- GenomicRanges::split(txByTx,
          GenomicRanges::values(txByTx)[[gene_colname]]);
    }
    GenomicRanges::values(txByGene@unlistData) <- jamba::renameColumn(
