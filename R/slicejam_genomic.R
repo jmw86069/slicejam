@@ -434,7 +434,6 @@ genomic_regions_from_gtf <- function
       if (verbose) {
          jamba::printDebug("genomic_regions_from_gtf(): ",
             "Subsetting txByGene for detectedTx, table(ikeep):");
-         print(table(ikeep));
       }
       txByTx <- subset(txByGene@unlistData, ikeep);
       tx_match <- match(GenomicRanges::values(txByTx)[[tx_colname]],
@@ -571,6 +570,10 @@ genomic_regions_from_gtf <- function
       ")");
    
    ## define genomic_regions
+   if (verbose) {
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "Creating genome_regions");
+   }
    genome_regions_l <- list(
       promoters=promoters_gr_shr[,c("gene_name", "gene_id")],
       exons=exonsByGene@unlistData[,c("gene_name", "gene_id")],
