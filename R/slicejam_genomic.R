@@ -329,11 +329,19 @@ genomic_regions_from_gtf <- function
    
    ## Process detectedTx and detectedGenes
    if (length(detectedTx) > 0) {
+      if (verbose) {
+         jamba::printDebug("genomic_regions_from_gtf(): ",
+            "Processing the supplied detectedTx");
+      }
       detectedTx <- intersect(detectedTx,
          tx2geneDF[[tx_colname]]);
       tx2geneDF <- subset(tx2geneDF, tx2geneDF[[tx_colname]] %in% detectedTx);
    }
    if (length(detectedGenes) > 0) {
+      if (verbose) {
+         jamba::printDebug("genomic_regions_from_gtf(): ",
+            "Processing the supplied detectedGenes");
+      }
       detectedGenesL <- lapply(geneAttrNames, function(gene_attr){
          (tx2geneDF[[gene_attr]] %in% detectedGenes)
       })
@@ -349,6 +357,10 @@ genomic_regions_from_gtf <- function
       }
       tx2geneDF <- subset(tx2geneDF, detectedGenesT);
       detectedTx <- unique(tx2geneDF[[tx_colname]]);
+   }
+   if (verbose) {
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "nrow(tx2geneDF):", jamba::formatInt(nrow(tx2geneDF)));
    }
    
    ## Exons
@@ -421,17 +433,23 @@ genomic_regions_from_gtf <- function
    if (!all(ikeep)) {
       if (verbose) {
          jamba::printDebug("genomic_regions_from_gtf(): ",
-            "Subsetting txByGene for detectedTx");
+            "Subsetting txByGene for detectedTx, table(ikeep):");
+         print(table(ikeep));
       }
-      txByTx <- subset(txByGene@unlistData,
-         GenomicRanges::values(txByGene@unlistData)[[tx_colname]] %in% detectedTx);
+      txByTx <- subset(txByGene@unlistData, ikeep);
+      tx_match <- match(GenomicRanges::values(txByTx)[[tx_colname]],
+         tx2geneDF[[tx_colname]]);
+      for (gene_attr in geneAttrNames) {
+         GenomicRanges::values(txByTx)[[gene_attr]] <- tx2geneDF[tx_match, gene_attr];
+      }
       txByGene <- GenomicRanges::split(txByTx,
          GenomicRanges::values(txByTx)[[gene_colname]]);
-   }
-   tx_match <- match(GenomicRanges::values(txByGene@unlistData)[[tx_colname]],
-      tx2geneDF[[tx_colname]]);
-   for (gene_attr in geneAttrNames) {
-      GenomicRanges::values(txByGene@unlistData)[[gene_attr]] <- tx2geneDF[tx_match, gene_attr];
+   } else {
+      tx_match <- match(GenomicRanges::values(txByGene@unlistData)[[tx_colname]],
+         tx2geneDF[[tx_colname]]);
+      for (gene_attr in geneAttrNames) {
+         GenomicRanges::values(txByGene@unlistData)[[gene_attr]] <- tx2geneDF[tx_match, gene_attr];
+      }
    }
 
    ## TTS per transcript range, extend -1000,+1000 around TTS
