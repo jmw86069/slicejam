@@ -1932,8 +1932,8 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
          end=newend);
       return(gr);
    }
-   upstream <- 2000;
-   downstream <- 200;
+   upstream <- upstream_promoter;
+   downstream <- downstream_promoter;
    
    tryCatch({
       mgm_promoter_gr <- IRanges::subsetByOverlaps(promoters_gr,

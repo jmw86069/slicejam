@@ -2,12 +2,40 @@
 
 ## updates
 
-* `genomic_regions_from_gtf` was updated to handle `genes` and
+* `genomic_regions_from_gtf` was updated to handle `genes` and/or
 `tx` input as files.
 * All Venn functions will be replaced with new R package `venndir`.
-* `genomic_regions_from_gtf()` was updated to handle using
-`detectedGenes` and `detectedTx` throughout the workflow, fixed
-several issues along the way.
+* `genomic_regions_from_gtf()` calls `GenomicRanges::reduce()` on the
+TTS regions per gene, which effectively collapses all overlapping
+TTS regions for a gene into one contiguous region. This change
+reduces the number of TTS regions to 1/3 the original size, while not
+reducing content.
+* `genomic_regions_from_gtf()` now only keeps unique TSS positions
+used to calculate promoter regions for each gene. It still keeps
+each unique promoter region distinct (different from TTS regions)
+because the slicejam pipeline expects to be able to determine
+the TSS from the promoter region during the "ATAC mode" annotation,
+where a TSS whose promoter region contains an ATAC peak is
+considered an "active TSS".
+
+
+## bug fixes
+
+* `genomic_regions_from_gtf()` was updated to fix several bugs
+when supplied with `detectedGenes` and `detectedTx`.
+* `genomic_regions_from_gtf()` does not try to save `RData` when
+supplied with `detectedGenes` or `detectedTx`. The `RData` is
+intended to represent the full GTF without any subset operations.
+* `genomic_regions_from_gtf()` fixed incomplete TTS range, it only
+correctly extended upstream the TTS and not downstream the TTS.
+* `genomic_regions_from_gtf()` now uses `GenomicRanges::flank()`
+instead of `GenomicRanges::promoters()` to extend the promoter region,
+to keep the subset genes/transcripts consistent when creating
+promoter and TTS regions.
+* `slicejam_analysis.Rmd` now properly uses custom `upstream_promoter`
+and `downstream_promoter` during the "ATAC mode" annotation step,
+previously it used defaults 2000, and 200, respectively.
+
 
 # slicejam 0.0.17.900
 

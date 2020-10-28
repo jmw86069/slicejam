@@ -210,85 +210,97 @@ genomic_regions_from_gtf <- function
          if (!"rdata_file" %in% names(attributes(genome_regions))) {
             attr(genome_regions, "rdata_file") <- gtf_gr_file;
          }
-         return(genome_regions);
+         # only re-use genome_regions if we do not need to subset the data
+         if (length(detectedTx) == 0 && length(detectedGenes) == 0) {
+            return(genome_regions);
+         }
       }
    }
 
    ## If genome_regions is not define, create it
-   if (!exists("genome_regions")) {
-      txdb_file <- paste0(gtf_base, ".txdb");
-      refgene_txdb <- NULL;
-      if (!force_refresh && save_txdb) {
-         if (!file.exists(txdb_file) && file.exists(basename(txdb_file))) {
-            txdb_file <- basename(txdb_file);
-         }
-         if (file.exists(txdb_file)) {
-            if (verbose) {
-               jamba::printDebug("genomic_regions_from_gtf(): ",
-                  "Loading existing txdb file:",
-                  txdb_file);
-            }
-            refgene_txdb <- AnnotationDbi::loadDb(txdb_file);
-         }
+   # if we need to create genome_regions, we need the txdb
+   #if (!exists("genome_regions")) {
+   txdb_file <- paste0(gtf_base, ".txdb");
+   refgene_txdb <- NULL;
+   if (!force_refresh && save_txdb) {
+      if (!file.exists(txdb_file) && file.exists(basename(txdb_file))) {
+         txdb_file <- basename(txdb_file);
       }
-      if (length(refgene_txdb) == 0) {
-         ## 15-20 seconds for human GTF
+      if (file.exists(txdb_file)) {
          if (verbose) {
             jamba::printDebug("genomic_regions_from_gtf(): ",
-               "Creating txdb from gtf:",
-               gtf);
+               "Loading existing txdb file:",
+               txdb_file);
          }
-         refgene_txdb <- GenomicFeatures::makeTxDbFromGFF(gtf);
-         if (save_txdb) {
-            tryCatch({
-               AnnotationDbi::saveDb(refgene_txdb,
-                  file=txdb_file);
-            }, error=function(e){
-               txdb_file <- basename(txdb_file);
-               AnnotationDbi::saveDb(refgene_txdb,
-                  file=txdb_file);
-            });
-            if (verbose) {
+         refgene_txdb <- AnnotationDbi::loadDb(txdb_file);
+      }
+   }
+   if (length(refgene_txdb) == 0) {
+      ## 15-20 seconds for human GTF
+      if (verbose) {
+         jamba::printDebug("genomic_regions_from_gtf(): ",
+            "Creating txdb from gtf:",
+            gtf);
+      }
+      refgene_txdb <- GenomicFeatures::makeTxDbFromGFF(gtf);
+      if (save_txdb) {
+         tryCatch({
+            AnnotationDbi::saveDb(refgene_txdb,
+               file=txdb_file);
+         }, error=function(e){
+            txdb_file <- basename(txdb_file);
+            AnnotationDbi::saveDb(refgene_txdb,
+               file=txdb_file);
+         });
+         if (verbose) {
+            if (file.exists(txdb_file)) {
                jamba::printDebug("genomic_regions_from_gtf(): ",
                   "Saved txdb to file:",
                   txdb_file);
+            } else {
+               jamba::printDebug("genomic_regions_from_gtf(): ",
+                  "Unable to save txdb to file:",
+                  txdb_file);
             }
          }
       }
    }
+   #}
    
    ## tx2geneDF
-   if (verbose) {
-      jamba::printDebug("genomic_regions_from_gtf(): ",
-         "Creating tx2geneDF");
-   }
-   tx2gene_file <- paste0(
-      gsub("[.](gff|gff3|gtf)(|[.]gz)$", "", ignore.case=TRUE, gtf),
-      ".tx2gene.txt");
-   if (!file.exists(tx2gene_file) && file.exists(basename(tx2gene_file))) {
-      tx2gene_file <- basename(tx2gene_file);
-   }
-   if (file.exists(tx2gene_file)) {
-      tx2geneDF <- data.table::fread(tx2gene_file,
-         sep="\t",
-         data.table=FALSE);
-   } else {
-      tx2geneDF <- splicejam::makeTx2geneFromGtf(gtf,
-         geneAttrNames=geneAttrNames,
-         txAttrNames=txAttrNames,
-         geneFeatureType=geneFeatureType,
-         verbose=verbose,
-         txFeatureType=txFeatureType);
-      # save to a file
-      tryCatch({
-         data.table::fwrite(tx2geneDF,
-            file=tx2gene_file,
-            sep="\t");
-      }, error=function(e){
-         data.table::fwrite(tx2geneDF,
-            file=basename(tx2gene_file),
-            sep="\t");
-      });
+   if (!exists("tx2geneDF")) {
+      if (verbose) {
+         jamba::printDebug("genomic_regions_from_gtf(): ",
+            "Creating tx2geneDF");
+      }
+      tx2gene_file <- paste0(
+         gsub("[.](gff|gff3|gtf)(|[.]gz)$", "", ignore.case=TRUE, gtf),
+         ".tx2gene.txt");
+      if (!file.exists(tx2gene_file) && file.exists(basename(tx2gene_file))) {
+         tx2gene_file <- basename(tx2gene_file);
+      }
+      if (file.exists(tx2gene_file)) {
+         tx2geneDF <- data.table::fread(tx2gene_file,
+            sep="\t",
+            data.table=FALSE);
+      } else {
+         tx2geneDF <- splicejam::makeTx2geneFromGtf(gtf,
+            geneAttrNames=geneAttrNames,
+            txAttrNames=txAttrNames,
+            geneFeatureType=geneFeatureType,
+            verbose=verbose,
+            txFeatureType=txFeatureType);
+         # save to a file
+         tryCatch({
+            data.table::fwrite(tx2geneDF,
+               file=tx2gene_file,
+               sep="\t");
+         }, error=function(e){
+            data.table::fwrite(tx2geneDF,
+               file=basename(tx2gene_file),
+               sep="\t");
+         });
+      }
    }
    gene_colname <- head(intersect(geneAttrNames, colnames(tx2geneDF)), 1);
    if (length(gene_colname) == 0) {
@@ -315,7 +327,7 @@ genomic_regions_from_gtf <- function
    }
    txAttrNames <- intersect(txAttrNames, colnames(tx2geneDF));
    
-   ## Handle detectedTx and detectedGenes
+   ## Process detectedTx and detectedGenes
    if (length(detectedTx) > 0) {
       detectedTx <- intersect(detectedTx,
          tx2geneDF[[tx_colname]]);
@@ -399,6 +411,11 @@ genomic_regions_from_gtf <- function
          "Creating txByGene.");
    }
    txByGene <- GenomicFeatures::transcriptsBy(refgene_txdb);
+   # rename colnames
+   GenomicRanges::values(txByGene@unlistData) <- jamba::renameColumn(
+      GenomicRanges::values(txByGene@unlistData),
+      from=c("tx_id", "tx_name"),
+      to=c("internal_tx_id", tx_colname));
    # subset for tx
    ikeep <- (GenomicRanges::values(txByGene@unlistData)[[tx_colname]] %in% tx2geneDF[[tx_colname]]);
    if (!all(ikeep)) {
@@ -411,10 +428,6 @@ genomic_regions_from_gtf <- function
       txByGene <- GenomicRanges::split(txByTx,
          GenomicRanges::values(txByTx)[[gene_colname]]);
    }
-   GenomicRanges::values(txByGene@unlistData) <- jamba::renameColumn(
-      GenomicRanges::values(txByGene@unlistData),
-      from=c("tx_id", "tx_name"),
-      to=c("internal_tx_id", tx_colname));
    tx_match <- match(GenomicRanges::values(txByGene@unlistData)[[tx_colname]],
       tx2geneDF[[tx_colname]]);
    for (gene_attr in geneAttrNames) {
@@ -430,15 +443,31 @@ genomic_regions_from_gtf <- function
       txByGene@unlistData,
       start=FALSE,
       width=-1);
-   ttsByTx <- GenomicRanges::flank(
-      GenomicRanges::flank(
-         ttsByTx,
-         width=downstream_tts,
+   ttsByTx <- GenomicRanges::punion(
+      GenomicRanges::flank(ttsByTx,
+         width=-upstream_tts,
          both=FALSE,
          start=FALSE),
-      width=upstream_tts,
-      both=FALSE,
-      start=TRUE);
+      GenomicRanges::flank(ttsByTx,
+         width=downstream_tts,
+         both=FALSE,
+         start=FALSE)
+   )
+   values(ttsByTx) <- values(txByGene@unlistData);
+   # tts reduce() per gene
+   ttsByGene <- GenomicRanges::split(ttsByTx,
+      GenomicRanges::values(ttsByTx)[[gene_colname]]);
+   ttsByGeneRed <- GenomicRanges::reduce(ttsByGene);
+   GenomicRanges::values(ttsByGeneRed@unlistData)[[gene_colname]] <- rep(
+      names(ttsByGeneRed),
+      lengths(ttsByGeneRed));
+   gene_match <- match(values(ttsByGeneRed@unlistData)[[gene_colname]],
+      values(ttsByGene@unlistData)[[gene_colname]])
+   for (gene_attr in geneAttrNames) {
+      GenomicRanges::values(ttsByGeneRed@unlistData)[[gene_attr]] <- GenomicRanges::values(
+         ttsByGene@unlistData)[[gene_attr]][gene_match];
+   }
+   ttsByTxRed <- ttsByGeneRed@unlistData;
    
    ## promoters
    ## Use default values for GenomicFeatures::promoters()
@@ -447,35 +476,62 @@ genomic_regions_from_gtf <- function
       jamba::printDebug("genomic_regions_from_gtf(): ",
          "Creating promoters_gr.");
    }
-   promoters_gr <- GenomicRanges::promoters(
-      refgene_txdb,
-      upstream=upstream_promoter,
-      downstream=downstream_promoter,
-      use.names=TRUE);
-   GenomicRanges::values(promoters_gr) <- jamba::renameColumn(
-      GenomicRanges::values(promoters_gr),
-      from=c("tx_id", "tx_name"),
-      to=c("internal_tx_id", tx_colname));
-   # subset by tx2gene
-   ikeep <- (GenomicRanges::values(promoters_gr)[[tx_colname]] %in% tx2geneDF[[tx_colname]]);
-   if (!all(ikeep)) {
-      promoters_gr <- promoters_gr[ikeep];
+   # use flank() instead of promoters() to keep same annotation
+   # in the same order as txByGene@unlistData
+   promoters_gr <- GenomicRanges::flank(
+      txByGene@unlistData,
+      start=TRUE,
+      width=-1);
+   promoters_gr <- GenomicRanges::punion(
+      GenomicRanges::flank(promoters_gr,
+         width=-upstream_promoter,
+         both=FALSE,
+         start=TRUE),
+      GenomicRanges::flank(promoters_gr,
+         width=downstream_promoter,
+         both=FALSE,
+         start=TRUE)
+   )
+   values(promoters_gr) <- values(txByGene@unlistData);
+   # promoters_gr shrink() per gene
+   # promoters_gr shrink() per gene
+   gene_chr_start_end <- paste0(
+      GenomicRanges::values(promoters_gr)[[gene_colname]], "_",
+      GenomicRanges::seqnames(promoters_gr), "_",
+      GenomicRanges::start(promoters_gr), "_",
+      GenomicRanges::end(promoters_gr))
+   if (any(duplicated(gene_chr_start_end))) {
+      promoters_gr_shr <- promoters_gr[match(unique(gene_chr_start_end), gene_chr_start_end)];
+   } else {
+      promoters_gr_shr <- promoters_gr
    }
-   promoter_match <- match(
-      GenomicRanges::values(promoters_gr)[[tx_colname]],
-      tx2geneDF[[tx_colname]]);
-   for (gene_attr in geneAttrNames) {
-      GenomicRanges::values(promoters_gr)[[gene_attr]] <- tx2geneDF[promoter_match, gene_attr];
+   # promoters_gr reduce() per gene
+   if (1 == 2) {
+      # this section is disabled for now but kept for future use
+      tssByGene <- GenomicRanges::split(promoters_gr,
+         GenomicRanges::values(promoters_gr)[[gene_colname]]);
+      tssByGeneRed <- GenomicRanges::reduce(tssByGene);
+      GenomicRanges::values(tssByGeneRed@unlistData)[[gene_colname]] <- rep(
+         names(tssByGeneRed),
+         lengths(tssByGeneRed));
+      gene_match <- match(values(tssByGeneRed@unlistData)[[gene_colname]],
+         values(tssByGene@unlistData)[[gene_colname]])
+      for (gene_attr in geneAttrNames) {
+         GenomicRanges::values(tssByGeneRed@unlistData)[[gene_attr]] <- GenomicRanges::values(
+            tssByGene@unlistData)[[gene_attr]][gene_match];
+      }
+      promoters_gr_red <- tssByGeneRed@unlistData;
    }
-
-   ## Introns are everything within a transcript range
-   ## that is not an exon
+   
+   ## Introns
+   ## defined everything within a transcript range that is not an exon
    if (verbose) {
       jamba::printDebug("genomic_regions_from_gtf(): ",
          "Creating intronsByGene.");
    }
+   tx_match <- match(names(txByGene), names(exonsByGene));
    intronsByGene <- GenomicRanges::setdiff(txByGene,
-      exonsByGene[names(txByGene)]);
+      exonsByGene[tx_match]);
    intron_match <- match(names(intronsByGene),
       tx2geneDF[[gene_colname]]);
    for (gene_attr in geneAttrNames) {
@@ -483,44 +539,7 @@ genomic_regions_from_gtf <- function
          tx2geneDF[intron_match, gene_attr],
          IRanges::elementNROWS(intronsByGene));
    }
-   ## curiosity: check gene exons that overlap another gene intron
-   if (1 == 2) {
-      exonsOverIntrons <- subsetByOverlaps(exonsByGene@unlistData, intronsByGene@unlistData);
-      length(unique(GenomicRanges::values(exonsOverIntrons)[[gene_colname]]));
-      intronsOverExons <- subsetByOverlaps(intronsByGene@unlistData, exonsByGene@unlistData);
-      GenomicRanges::values(intronsOverExons) <- jamba::renameColumn(intronsOverExons,
-         from=c("gene_id", "gene_name"),
-         to=c("intron_gene_id", "intron_gene_name"));
-      exonsOverIntronsA <- sort(splicejam::annotateGRfromGR(exonsOverIntrons,
-         intronsOverExons));
-      exonGeneIntronGene <- unique(jamba::pasteByRow(
-         GenomicRanges::values(exonsOverIntronsA)[,c("gene_name", "intron_gene_name")], sep=":"));
-   }
 
-   ## optional mask regions
-   if (1 == 2 && length(mask_regions) > 0) {
-      if ("character" %in% class(mask_regions)) {
-         mask_regions_grl <- GenomicRanges::GRangesList(lapply(mask_regions, function(mask_region){
-            if (file.exists(mask_region)) {
-               if (verbose) {
-                  jamba::printDebug("genomic_regions_from_gtf(): ",
-                     "Importing mask_region from:",
-                     mask_region);
-               }
-               mgr <- rtracklayer::import(mask_region);
-               mgr <- GenomeInfoDb::keepSeqlevels(mgr,
-                  intersect(GenomeInfoDb::seqlevels(genome_regions),
-                     GenomeInfoDb::seqlevels(mgr)));
-            }
-         }));
-         mask_regions_gr <- sort(mask_regions_grl@unlistData);
-         GenomicRanges::values(mask_regions_gr)$gene_name <- jamba::makeNames(as.character(seqnames(mask_regions_gr)),
-            suffix="_mask");
-         GenomicRanges::values(mask_regions_gr)$gene_id <- GenomicRanges::values(mask_regions_gr)$gene_name;
-         #values(mask_regions_gr)[,c("feature_type"
-      }
-   }
-   
    ## Assemble each layer of genomic region
    promoter_name <- paste0("Promoters (-",
       upstream_promoter,
@@ -535,10 +554,10 @@ genomic_regions_from_gtf <- function
    
    ## define genomic_regions
    genome_regions_l <- list(
-      promoters=promoters_gr[,c("gene_name", "gene_id")],
+      promoters=promoters_gr_shr[,c("gene_name", "gene_id")],
       exons=exonsByGene@unlistData[,c("gene_name", "gene_id")],
       introns=intronsByGene@unlistData[,c("gene_name", "gene_id")],
-      tts=ttsByTx[,c("gene_name", "gene_id")]);
+      tts=ttsByTxRed[,c("gene_name", "gene_id")]);
    names(genome_regions_l)[1] <- promoter_name;
    names(genome_regions_l)[4] <- tts_name;
 
@@ -549,7 +568,7 @@ genomic_regions_from_gtf <- function
 
    ## Save to the RData file
    if (save_rdata && length(detectedTx) == 0) {
-      tryCatch({
+      gtf_gr_file <- tryCatch({
          save(list=c("genome_regions", "tx2geneDF"),
             file=gtf_gr_file);
          if (verbose) {
@@ -557,6 +576,7 @@ genomic_regions_from_gtf <- function
                "Genome regions were saved for later re-use:",
                gtf_gr_file);
          }
+         gtf_gr_file
       }, error=function(e){
          save(list=c("genome_regions", "tx2geneDF"),
             file=basename(gtf_gr_file));
@@ -566,24 +586,35 @@ genomic_regions_from_gtf <- function
                "Genome regions were saved for later re-use:",
                gtf_gr_file);
          }
+         gtf_gr_file
       });
       attr(genome_regions, "rdata_file") <- gtf_gr_file;
    }
-   if (save_bed) {
-      bed_file <- gsub("[.]rdata$",
-         ".bed",
-         ignore.case=TRUE,
-         gtf_gr_file);
-      if (bed_file == gtf_gr_file) {
-         bed_file <- paste0(gtf_gr_file, ".bed");
+   bed_file <- NULL;
+   if (length(save_bed) > 0) {
+      if (is.logical(save_bed) && save_bed && length(detectedTx) == 0) {
+         bed_file <- paste0(
+            gsub("[.]rdata$",
+               "",
+               ignore.case=TRUE,
+               gtf_gr_file),
+            ".bed");
+      } else if (is.character(save_bed)) {
+         bed_file <- save_bed;
       }
+   }
+   if (length(bed_file) > 0) {
       if (!file.exists(bed_file) || force_refresh) {
          attr_colnames <- c(
-            head(provigrep(c("gene.*name", "."), geneAttrNames), 1),
+            head(
+               provigrep(c("gene.*name", "."),
+                  c(geneAttrNames, txAttrNames)), 
+               1),
             "feature_type");
+         gr_id <- paste0(seqnames(genome_regions), ":", start(genome_regions), "-", end(genome_regions));
          genome_regions_names <- jamba::pasteByRow(GenomicRanges::values(
             genome_regions)[,attr_colnames],
-            sep=" ");
+            sep="|");
          names(genome_regions) <- genome_regions_names;
          rtracklayer::export.bed(
             object=GenomicRanges::sort(genome_regions, ignore.strand=TRUE),
