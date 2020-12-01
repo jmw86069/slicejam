@@ -5,8 +5,7 @@
 #' 
 #' Directional Venn diagram
 #' 
-#' @export
-venndir <- function
+venndir_deprecated <- function
 (iHitList,
    fill_colors=NULL,
    do_signed=TRUE,

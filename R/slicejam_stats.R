@@ -186,7 +186,6 @@ matrix_normalize <- function
       inorm <- limma::removeBatchEffect(x,
          batch=batch,
          design=designBatchGroup);
-      
    }
    return(inorm);
 }
