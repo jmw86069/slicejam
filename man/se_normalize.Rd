@@ -26,3 +26,13 @@ to an input \code{SummarizedExperiment} object. The normalization is
 applied to one or more matrix data stored in \code{assays(se)},
 each one is run independently.
 }
+\seealso{
+Other slicejam stats: 
+\code{\link{ebayes2dfs}()},
+\code{\link{handle_na_values}()},
+\code{\link{matrix_normalize}()},
+\code{\link{run_limma_replicate}()},
+\code{\link{se_contrast_stats}()},
+\code{\link{voom_jam}()}
+}
+\concept{slicejam stats}

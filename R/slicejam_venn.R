@@ -5,6 +5,8 @@
 #' 
 #' Directional Venn diagram
 #' 
+#' @family slicejam deprecated
+#' 
 venndir_deprecated <- function
 (iHitList,
    fill_colors=NULL,
@@ -224,7 +226,7 @@ venndir_deprecated <- function
          lcol=fillColors,
          lines=fillColors,
          ...);
-      imSigned <- list2im_signed(iHitList);
+      imSigned <- venndir::list2im_value(iHitList);
       imFactor <- jamba::pasteByRow(imSigned, sep=":");
       if (verbose) {
          jamba::printDebug("venndir(): ",
@@ -252,6 +254,10 @@ venndir_deprecated <- function
 #' Define directional Venn counts
 #' 
 #' Define directional Venn counts
+#' 
+#' This function is deprecated in favor of `venndir::signed_overlaps()`.
+#' 
+#' @family slicejam deprecated
 #' 
 #' @examples
 #' L1 <- list(A=c("C","A","B","A"),
@@ -300,9 +306,9 @@ signed_venn_counts <- function
       fixed=TRUE);
    if (verbose) {
       jamba::printDebug("signed_venn_counts(): ",
-         "list2im_signed()");
+         "venndir::list2im_value()");
    }
-   setlistim <- list2im_signed(setlist);
+   setlistim <- venndir::list2im_value(setlist);
    if (return_type %in% "im") {
       return(setlistim);
    }
@@ -339,9 +345,9 @@ signed_venn_counts <- function
          c(setlistim_pos_colv, setlistim_neg_colv),
          c(setlistim_pos_coln, setlistim_neg_coln));
       ## Blend colors
-      element_colors_u <- blend_colors(setlistim_col_l);
+      element_colors_u <- colorjam::blend_colors(setlistim_col_l);
       element_colors <- element_colors_u[u_match];
-      #setlistim_pos_neg_col_bl_u <- blend_colors(setlistim_col_l);
+      #setlistim_pos_neg_col_bl_u <- colorjam::blend_colors(setlistim_col_l);
       #setlistim_pos_neg_col_bl <- setlistim_pos_neg_col_bl_u[u_match];
       if (verbose) {
          jamba::printDebug("signed_venn_counts(): ",
@@ -451,6 +457,10 @@ signed_venn_counts <- function
 
 #' Convert symbol name to UTF8 Unicode
 #' 
+#' Convert symbol name to UTF8 Unicode
+#' 
+#' @family slicejam deprecated
+#' 
 #' @export
 symbol2utf8 <- function
 (x,
@@ -502,6 +512,13 @@ symbol2utf8 <- function
 }
 
 #' Venn plot sets base function
+#' 
+#' Venn plot sets base function
+#' 
+#' This function is deprecated in favor of `venndir::venndir()`
+#' and `venndir::render_venndir()`.
+#' 
+#' @family slicejam deprecated
 #' 
 #' @export
 vennPlotSets <- function
@@ -646,6 +663,10 @@ vennPlotSets <- function
 #' This function was graciously provided by Dr. Thomas Girke,
 #' copied from August 15, 2009 and thereafter adapted by
 #' James M. Ward.
+#' 
+#' This function is deprecated in favor of `venndir::signed_overlaps()`.
+#' 
+#' @family slicejam deprecated
 #' 
 #' @export
 overLapper <- function
@@ -858,6 +879,8 @@ overLapper <- function
 #' 
 #' Optimized list to signed incidence matrix
 #' 
+#' This function is deprecated in favor of `venndir::list2im_value()`.
+#' 
 #' This function converts a list of named vectors into
 #' an incidence matrix with value for each entry
 #' (row) present in each input list (column). The rows
@@ -876,6 +899,8 @@ overLapper <- function
 #' the second list; therefore the absence of "geneA" of a non-zero
 #' value in the second list is not counted as "non-overlapping"
 #' because it was not possible for it to have a non-zero value.
+#' 
+#' @family slicejam deprecated
 #' 
 #' @param setlist `list` of vectors
 #' @param empty default single value used for empty/missing entries,
@@ -927,6 +952,8 @@ list2im_signed <- function
 #' 
 #' Optimized list to signed incidence matrix
 #' 
+#' This function is deprecated in favor of `venndir::list2im_opt()`.
+#' 
 #' This function rapidly converts a list of vectors into
 #' an incidence matrix with value of `1` for each entry
 #' (row) present in each input list (column).
@@ -934,6 +961,8 @@ list2im_signed <- function
 #' Note that the rows in the output matrix are not sorted,
 #' since this step can take several seconds when working with
 #' a list whose vectors contain millions of rows.
+#' 
+#' @family slicejam deprecated
 #' 
 #' @param setlist `list` of vectors
 #' @param empty default single value used for empty/missing entries,
@@ -944,7 +973,7 @@ list2im_signed <- function
 #' @param ... additional arguments are ignored.
 #' 
 #' @export
-list2im_opt <- function
+list2im_opt_deprecated <- function
 (setlist,
  empty=0,
  do_sparse=TRUE,

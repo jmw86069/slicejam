@@ -34,3 +34,17 @@ venndir_deprecated(
 \description{
 Directional Venn diagram
 }
+\seealso{
+Other slicejam deprecated: 
+\code{\link{blend_colors}()},
+\code{\link{label_venn_polys}()},
+\code{\link{list2im_opt_deprecated}()},
+\code{\link{list2im_signed}()},
+\code{\link{mean_angle_deprecated}()},
+\code{\link{overLapper}()},
+\code{\link{signed_venn_counts}()},
+\code{\link{signed_venn}()},
+\code{\link{symbol2utf8}()},
+\code{\link{vennPlotSets}()}
+}
+\concept{slicejam deprecated}

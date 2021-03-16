@@ -27,6 +27,8 @@ the vector values are stored.}
 Optimized list to signed incidence matrix
 }
 \details{
+This function is deprecated in favor of \code{venndir::list2im_value()}.
+
 This function converts a list of named vectors into
 an incidence matrix with value for each entry
 (row) present in each input list (column). The rows
@@ -46,3 +48,17 @@ the second list; therefore the absence of "geneA" of a non-zero
 value in the second list is not counted as "non-overlapping"
 because it was not possible for it to have a non-zero value.
 }
+\seealso{
+Other slicejam deprecated: 
+\code{\link{blend_colors}()},
+\code{\link{label_venn_polys}()},
+\code{\link{list2im_opt_deprecated}()},
+\code{\link{mean_angle_deprecated}()},
+\code{\link{overLapper}()},
+\code{\link{signed_venn_counts}()},
+\code{\link{signed_venn}()},
+\code{\link{symbol2utf8}()},
+\code{\link{vennPlotSets}()},
+\code{\link{venndir_deprecated}()}
+}
+\concept{slicejam deprecated}

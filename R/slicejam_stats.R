@@ -11,6 +11,8 @@
 #' applied to one or more matrix data stored in `assays(se)`,
 #' each one is run independently.
 #' 
+#' @family slicejam stats
+#' 
 #' 
 #' @export
 se_normalize <- function
@@ -84,9 +86,11 @@ se_normalize <- function
    return(se);
 }
 
-#' Normalize numeric data matrix
+#' Normalize a numeric data matrix
 #' 
 #' Normalize a numeric data matrix
+#' 
+#' @family slicejam stats
 #' 
 #' @export
 matrix_normalize <- function
@@ -198,6 +202,8 @@ matrix_normalize <- function
 #' intended to help update function parameters which are defined
 #' as a nested list.
 #' 
+#' @family slicejam utilities
+#' 
 #' @export
 update_function_params <- function
 (function_name=NULL,
@@ -236,6 +242,8 @@ update_function_params <- function
 #' This function may be useful when manipulating lattice or ggplot2
 #' graphical parameters, which are often stored in a nested
 #' list structure.
+#' 
+#' @family slicejam utilities
 #' 
 #' @export
 update_list_elements <- function
@@ -341,6 +349,7 @@ update_list_elements <- function
 #' @param assay_names `character` vector with one or more assay names
 #'    from `names(assays(se))`.
 #' 
+#' @family slicejam stats
 #' 
 #' @export
 se_contrast_stats <- function
@@ -536,6 +545,8 @@ se_contrast_stats <- function
 #' 
 #' Handle NA values in a numeric matrix
 #' 
+#' @family slicejam stats
+#' 
 #' @export
 handle_na_values <- function
 (x,
@@ -615,6 +626,8 @@ handle_na_values <- function
 #' otherwise causes the `stats::lowess()` output to be clearly
 #' incorrect. The correction removes `NA` values during this step,
 #' producing a result as expected.
+#' 
+#' @family slicejam stats
 #' 
 #' @export
 voom_jam <- function
@@ -834,6 +847,42 @@ voom_jam <- function
 
 #' Run limma contrasts with optional probe replicates
 #' 
+#' Run limma contrasts with optional probe replicates
+#' 
+#' This function is called by `se_contrast_stats()` to perform
+#' the comparisons defined as contrasts. The `se_contrast_stats()`
+#' function operates on a `SummarizedExperiment` object,
+#' this function operates on the `numeric` `matrix` values
+#' directly.
+#' 
+#' This function also calls `ebayes2dfs()` which extracts
+#' each contrast result as a `data.frame`, whose column names
+#' are modified to include the contrast names.
+#' 
+#' This function optionally (not yet ported from previous
+#' implementation) detects replicate probes, and performs
+#' the internal correlation calculations recommended by
+#' `limma user guide` for replicate probes. In that case,
+#' it detects each level of probe replication so that
+#' each can be properly calculated. For example, Agilent
+#' human 4x44 arrays often contain a large number of probes
+#' with 8 replicates; a subset of probes with 4 replicates;
+#' then the remaining probes (the majority overall) have
+#' only one replicate each. In that case, this function
+#' splits data into 8-replicate, 4-replicate, and 1-replicate
+#' subsets, calculates correlations on the 8-replicate and
+#' 4-replicate subsets separately, then runs limma calculations
+#' on the three subsets independently, then merges the results
+#' into one large table. The end result is that the
+#' final table contains one row per unique probe after
+#' adjusting for probe replication properly in each scenario.
+#' As the Agilent microarray layout is markedly less widely
+#' used that in past, the priority to port this methodology
+#' is quite low.
+#' 
+#' 
+#' @family slicejam stats
+#' 
 #' @export
 run_limma_replicate <- function
 (imatrix,
@@ -967,8 +1016,12 @@ run_limma_replicate <- function
 #' 
 #' Convert limma eBayes fit to data.frame with annotated hits
 #' 
-#' This function is an extension to `limma::topTable()` except that
+#' This function is called by `run_limma_replicate()` as
+#' an extension to `limma::topTable()`, that differs in that
 #' it is performed for each contrast in the input `lmFit3` object.
+#' 
+#' By default the columns include the contrast, so that each `data.frame`
+#' is self-described.
 #' 
 #' When `define_hits=TRUE`, then statistical thresholds are applied
 #' to define a set of statistical hits. The thresholds available include:
@@ -1010,6 +1063,8 @@ run_limma_replicate <- function
 #'    which were applied.
 #'    When `merge_df=TRUE` the returned data will be one
 #'    `data.frame` object.
+#' 
+#' @family slicejam stats
 #' 
 #' @param lmFit3 object returned by `limma::eBayes()`.
 #' @param lmFit1 object returned by `limma::lmFit()`, optional.

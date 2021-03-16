@@ -38,6 +38,8 @@ by the mean color wheel angle.}
 Blend multiple colors
 }
 \details{
+This function is defunct as it has been moved into \code{colorjam}.
+
 This function blends multiple colors, including several useful
 features:
 \itemize{
@@ -60,6 +62,7 @@ used in electronic monitors, does not meet these criteria.
 mixing red and green would make yellow.)
 }
 \examples{
+require(colorjam)
 blend_colors(c("red", "yellow"), do_plot=TRUE)
 
 blend_colors(c("blue", "yellow"), do_plot=TRUE)
@@ -73,3 +76,17 @@ blend_colors(c("green", "dodgerblue"), do_plot=TRUE)
 blend_colors(c("red", "yellow", "blue"), do_plot=TRUE)
 
 }
+\seealso{
+Other slicejam deprecated: 
+\code{\link{label_venn_polys}()},
+\code{\link{list2im_opt_deprecated}()},
+\code{\link{list2im_signed}()},
+\code{\link{mean_angle_deprecated}()},
+\code{\link{overLapper}()},
+\code{\link{signed_venn_counts}()},
+\code{\link{signed_venn}()},
+\code{\link{symbol2utf8}()},
+\code{\link{vennPlotSets}()},
+\code{\link{venndir_deprecated}()}
+}
+\concept{slicejam deprecated}

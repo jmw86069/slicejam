@@ -108,8 +108,12 @@ When \code{merge_df=TRUE} the returned data will be one
 Convert limma eBayes fit to data.frame with annotated hits
 }
 \details{
-This function is an extension to \code{limma::topTable()} except that
+This function is called by \code{run_limma_replicate()} as
+an extension to \code{limma::topTable()}, that differs in that
 it is performed for each contrast in the input \code{lmFit3} object.
+
+By default the columns include the contrast, so that each \code{data.frame}
+is self-described.
 
 When \code{define_hits=TRUE}, then statistical thresholds are applied
 to define a set of statistical hits. The thresholds available include:
@@ -145,3 +149,13 @@ and allows the \code{data.frame} results to be merged together using
 Indeed, \code{merge_df=TRUE} will cause all \code{data.frame} results to be
 merged into one large \code{data.frame}, using \code{jamba::mergeAllXY()}.
 }
+\seealso{
+Other slicejam stats: 
+\code{\link{handle_na_values}()},
+\code{\link{matrix_normalize}()},
+\code{\link{run_limma_replicate}()},
+\code{\link{se_contrast_stats}()},
+\code{\link{se_normalize}()},
+\code{\link{voom_jam}()}
+}
+\concept{slicejam stats}

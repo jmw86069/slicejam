@@ -39,6 +39,8 @@
 #' by default. If the GTF file uses different attributes, adjust
 #' `geneAttrNames` and `txAttrNames` to match the GTF file.
 #' 
+#' @family slicejam genome regions
+#' 
 #' @return `GRanges` object
 #' 
 #' @param gtf `character` path to a GTF file. When `gtf` is
@@ -748,6 +750,8 @@ statsdf2bed <- function
 #' added `"mask_region"` with either `TRUE` or `FALSE`.
 #' 
 #' @import data.table
+#' 
+#' @family slicejam genome regions
 #' 
 #' @param gr `GRanges` object to be annotated. The `values(gr)`
 #'    should contain a colname that matches `name_colname`.

@@ -1,6 +1,13 @@
 
 #' Signed Venn overlap logic
 #' 
+#' Signed Venn overlap logic
+#' 
+#' This function is deprecated in favor of `venndir::venndir()`
+#' and `venndir::signed_overlaps()`.
+#' 
+#' @family slicejam deprecated
+#' 
 #' @export
 signed_venn <- function
 (setlist,
@@ -116,6 +123,13 @@ signed_venn <- function
 }
 
 #' Label Venn polygons
+#' 
+#' Label Venn polygons
+#' 
+#' This function is deprecated in favor of equivalent functions
+#' in the R package `venndir`, such as `venndir::polygon_label_outside()`.
+#' 
+#' @family slicejam deprecated
 #' 
 #' @export
 label_venn_polys <- function

@@ -5,6 +5,8 @@
 #' 
 #' Blend multiple colors
 #' 
+#' This function is defunct as it has been moved into `colorjam`.
+#' 
 #' This function blends multiple colors, including several useful
 #' features:
 #' 
@@ -24,6 +26,8 @@
 #' (In no logical paint mixing exercise would someone expect that
 #' mixing red and green would make yellow.)
 #' 
+#' @family slicejam deprecated
+#' 
 #' @param x `character` vector of R colors in hex format.
 #' @param preset `character` value indicating the color wheel preset,
 #'    passed to `colorjam::h2hwOptions()`.
@@ -38,6 +42,7 @@
 #' @param ... additional arguments are ignored.
 #' 
 #' @examples
+#' require(colorjam)
 #' blend_colors(c("red", "yellow"), do_plot=TRUE)
 #' 
 #' blend_colors(c("blue", "yellow"), do_plot=TRUE)
@@ -143,6 +148,8 @@ blend_colors <- function
 #' 
 #' Calculate the mean angle
 #' 
+#' This function is defunct as it has been moved into `colorjam`.
+#' 
 #' This function takes a vector of angles in degrees (0 to 360 degrees)
 #' and returns the mean angle based upon the average of unit vectors.
 #' 
@@ -159,6 +166,8 @@ blend_colors <- function
 #' argument, the default `lens=-5` has a tendency to increase intermediate
 #' color saturation.
 #' 
+#' @family slicejam deprecated
+#' 
 #' @return `numeric` vector that contains
 #'    * `degree` the mean angle in degrees
 #'    * `radius` the actual radius based upon mean unit vectors
@@ -172,7 +181,7 @@ blend_colors <- function
 #' @param ... additional arguments are ignored
 #' 
 #' @export
-mean_angle <- function
+mean_angle_deprecated <- function
 (x,
  w=NULL,
  do_plot=FALSE,
@@ -198,7 +207,7 @@ mean_angle <- function
       xCeiling=1,
       lens=lens);
    
-   x_deg <- rad2deg(atan2(x=xy_mean["y"], y=xy_mean["x"])) %% 360;
+   x_deg <- jamba::rad2deg(atan2(x=xy_mean["y"], y=xy_mean["x"])) %% 360;
    
    if (do_plot) {
       jamba::nullPlot(xlim=c(-1,1),

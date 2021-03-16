@@ -29,3 +29,13 @@ otherwise causes the \code{stats::lowess()} output to be clearly
 incorrect. The correction removes \code{NA} values during this step,
 producing a result as expected.
 }
+\seealso{
+Other slicejam stats: 
+\code{\link{ebayes2dfs}()},
+\code{\link{handle_na_values}()},
+\code{\link{matrix_normalize}()},
+\code{\link{run_limma_replicate}()},
+\code{\link{se_contrast_stats}()},
+\code{\link{se_normalize}()}
+}
+\concept{slicejam stats}

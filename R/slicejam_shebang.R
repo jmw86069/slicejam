@@ -10,6 +10,12 @@
 #' on a command-line by pointing directly to the correct
 #' `Rscript` utility.
 #' 
+#' Note this function is somewhat experimental, since the
+#' process of updating an installed R package script with
+#' a shebang line should be a formal part of the build
+#' process, but this process is not well documented.
+#' 
+#' @family slicejam commandline
 #' 
 #' @export
 update_slicejam_shebang <- function

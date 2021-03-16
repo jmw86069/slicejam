@@ -19,6 +19,9 @@ signed_venn_counts(
 \description{
 Define directional Venn counts
 }
+\details{
+This function is deprecated in favor of \code{venndir::signed_overlaps()}.
+}
 \examples{
 L1 <- list(A=c("C","A","B","A"),
    D=c("D","E","F","D"),
@@ -37,3 +40,17 @@ signed_venn_counts(L2)
 signed_venn_counts(L2, return_type="setlist_arrows")
 
 }
+\seealso{
+Other slicejam deprecated: 
+\code{\link{blend_colors}()},
+\code{\link{label_venn_polys}()},
+\code{\link{list2im_opt_deprecated}()},
+\code{\link{list2im_signed}()},
+\code{\link{mean_angle_deprecated}()},
+\code{\link{overLapper}()},
+\code{\link{signed_venn}()},
+\code{\link{symbol2utf8}()},
+\code{\link{vennPlotSets}()},
+\code{\link{venndir_deprecated}()}
+}
+\concept{slicejam deprecated}

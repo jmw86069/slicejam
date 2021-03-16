@@ -76,5 +76,5 @@ this table are expected to be peaks, or sliced peaks, where peaks are
 sliced based upon maximum allowed width.
 
 The available options, and more details about the exact workflow, are
-described in the file `"slicejam_setup.html"`.
-[slicejam\_setup.html](https://jmw86069.github.io/slicejam/slicejam_setup.html)
+described in the file `"how_to_slicejam.md"`.
+[how\_to\_slicejam.md](https://jmw86069.github.io/slicejam/how_to_slicejam.md)

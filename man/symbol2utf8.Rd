@@ -9,3 +9,17 @@ symbol2utf8(x, ...)
 \description{
 Convert symbol name to UTF8 Unicode
 }
+\seealso{
+Other slicejam deprecated: 
+\code{\link{blend_colors}()},
+\code{\link{label_venn_polys}()},
+\code{\link{list2im_opt_deprecated}()},
+\code{\link{list2im_signed}()},
+\code{\link{mean_angle_deprecated}()},
+\code{\link{overLapper}()},
+\code{\link{signed_venn_counts}()},
+\code{\link{signed_venn}()},
+\code{\link{vennPlotSets}()},
+\code{\link{venndir_deprecated}()}
+}
+\concept{slicejam deprecated}

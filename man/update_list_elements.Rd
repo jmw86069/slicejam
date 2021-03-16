@@ -25,3 +25,8 @@ This function may be useful when manipulating lattice or ggplot2
 graphical parameters, which are often stored in a nested
 list structure.
 }
+\seealso{
+Other slicejam utilities: 
+\code{\link{update_function_params}()}
+}
+\concept{slicejam utilities}

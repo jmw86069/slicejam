@@ -22,4 +22,20 @@ Compute set overlaps
 This function was graciously provided by Dr. Thomas Girke,
 copied from August 15, 2009 and thereafter adapted by
 James M. Ward.
+
+This function is deprecated in favor of \code{venndir::signed_overlaps()}.
 }
+\seealso{
+Other slicejam deprecated: 
+\code{\link{blend_colors}()},
+\code{\link{label_venn_polys}()},
+\code{\link{list2im_opt_deprecated}()},
+\code{\link{list2im_signed}()},
+\code{\link{mean_angle_deprecated}()},
+\code{\link{signed_venn_counts}()},
+\code{\link{signed_venn}()},
+\code{\link{symbol2utf8}()},
+\code{\link{vennPlotSets}()},
+\code{\link{venndir_deprecated}()}
+}
+\concept{slicejam deprecated}

@@ -17,3 +17,13 @@ handle_na_values(
 \description{
 Handle NA values in a numeric matrix
 }
+\seealso{
+Other slicejam stats: 
+\code{\link{ebayes2dfs}()},
+\code{\link{matrix_normalize}()},
+\code{\link{run_limma_replicate}()},
+\code{\link{se_contrast_stats}()},
+\code{\link{se_normalize}()},
+\code{\link{voom_jam}()}
+}
+\concept{slicejam stats}

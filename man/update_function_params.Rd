@@ -20,3 +20,8 @@ This function is a minor extension to \code{update_list_elements()}
 intended to help update function parameters which are defined
 as a nested list.
 }
+\seealso{
+Other slicejam utilities: 
+\code{\link{update_list_elements}()}
+}
+\concept{slicejam utilities}

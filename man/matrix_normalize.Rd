@@ -2,7 +2,7 @@
 % Please edit documentation in R/slicejam_stats.R
 \name{matrix_normalize}
 \alias{matrix_normalize}
-\title{Normalize numeric data matrix}
+\title{Normalize a numeric data matrix}
 \usage{
 matrix_normalize(
   x,
@@ -23,3 +23,13 @@ matrix_normalize(
 \description{
 Normalize a numeric data matrix
 }
+\seealso{
+Other slicejam stats: 
+\code{\link{ebayes2dfs}()},
+\code{\link{handle_na_values}()},
+\code{\link{run_limma_replicate}()},
+\code{\link{se_contrast_stats}()},
+\code{\link{se_normalize}()},
+\code{\link{voom_jam}()}
+}
+\concept{slicejam stats}

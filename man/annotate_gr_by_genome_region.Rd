@@ -67,3 +67,8 @@ have the prefix \code{"nearest_"}, and the distance is stored as
 When \code{mask_regions} is supplied, one additional column is
 added \code{"mask_region"} with either \code{TRUE} or \code{FALSE}.
 }
+\seealso{
+Other slicejam genome regions: 
+\code{\link{genomic_regions_from_gtf}()}
+}
+\concept{slicejam genome regions}

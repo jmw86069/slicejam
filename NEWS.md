@@ -1,3 +1,28 @@
+# slicejam 0.0.19.900
+
+## new functions
+
+Three new functions associated with peak overlap calculations:
+
+* `peakoverlap_calcs()` performs all-by-all overlap calculations,
+using several relevant metrics. The example includes preparing
+a multiple-panel heatmap to compare metric.
+* `peakoverlap_heatmap()` is a helper function that prepares
+a heatmap using one metric from `peakoverlap_calcs()`. It
+can optionally include a label in each cell with other metrics.
+* `cell_fun_label()` is a helper function that adds a text 
+label to each cell in a heatmap via `ComplexHeatmap::Heatmap()`.
+
+## removed defunct files
+
+* `"slicejam_setup.md"` and `"slicejam_setup.html"` were removed as
+the information is defunct. The replacement is `"how_to_slicejam.md"`.
+* Marked a number of R functions "defunct" with description comment
+that points to the recommended R function replacement. In most
+cases these functions were used internally so the changes are
+not visible to R users.
+
+
 # slicejam 0.0.18.900
 
 ## updates

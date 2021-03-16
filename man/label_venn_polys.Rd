@@ -9,3 +9,21 @@ label_venn_polys(venn_spdf, venn_counts = NULL, label_style = 1, ...)
 \description{
 Label Venn polygons
 }
+\details{
+This function is deprecated in favor of equivalent functions
+in the R package \code{venndir}, such as \code{venndir::polygon_label_outside()}.
+}
+\seealso{
+Other slicejam deprecated: 
+\code{\link{blend_colors}()},
+\code{\link{list2im_opt_deprecated}()},
+\code{\link{list2im_signed}()},
+\code{\link{mean_angle_deprecated}()},
+\code{\link{overLapper}()},
+\code{\link{signed_venn_counts}()},
+\code{\link{signed_venn}()},
+\code{\link{symbol2utf8}()},
+\code{\link{vennPlotSets}()},
+\code{\link{venndir_deprecated}()}
+}
+\concept{slicejam deprecated}

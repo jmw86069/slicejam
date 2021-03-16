@@ -27,3 +27,21 @@ vennPlotSets(
 \description{
 Venn plot sets base function
 }
+\details{
+This function is deprecated in favor of \code{venndir::venndir()}
+and \code{venndir::render_venndir()}.
+}
+\seealso{
+Other slicejam deprecated: 
+\code{\link{blend_colors}()},
+\code{\link{label_venn_polys}()},
+\code{\link{list2im_opt_deprecated}()},
+\code{\link{list2im_signed}()},
+\code{\link{mean_angle_deprecated}()},
+\code{\link{overLapper}()},
+\code{\link{signed_venn_counts}()},
+\code{\link{signed_venn}()},
+\code{\link{symbol2utf8}()},
+\code{\link{venndir_deprecated}()}
+}
+\concept{slicejam deprecated}

@@ -148,3 +148,8 @@ create a \code{data.frame} which relates \code{transcript_id} to each \code{gene
 by default. If the GTF file uses different attributes, adjust
 \code{geneAttrNames} and \code{txAttrNames} to match the GTF file.
 }
+\seealso{
+Other slicejam genome regions: 
+\code{\link{annotate_gr_by_genome_region}()}
+}
+\concept{slicejam genome regions}
