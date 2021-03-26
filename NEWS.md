@@ -1,3 +1,26 @@
+# slicejam 0.0.20.900
+
+## bug fixes
+
+* `volcano_plot()` fixed bug where applying fold change ceiling
+forced points to exponentiated max values instead of log2
+values. This bug affected visual display and not the
+determination of points above the fold ceiling threshold,
+which caused points to be placed outside the viewing area.
+
+## updates to existing functions
+
+* `volcano_plot()`
+
+    * Help docs were updated to describe all function arguments.
+    * New argument `mar_min` to enforce at least a minimum margin
+    around the plot panel, to allow room for block arrows.
+    * New arguments `min_sig_range` and `min_fold_range` so the
+    plot will at least span a reasonable range of significance and
+    fold changes, even with data that has low significance
+    or small fold changes.
+
+
 # slicejam 0.0.19.900
 
 ## new functions

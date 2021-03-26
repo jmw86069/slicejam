@@ -1,6 +1,9 @@
 # TODO items for Slicejam
 
+
 ## Minor convenience fixes
+
+These are ideas without clear path to implement yet.
 
 * `run_slicejam.R` should add file path when not specified, to protect
 against directory changes.
@@ -8,12 +11,16 @@ against directory changes.
 from github (if needed) then copies the two files from the package
 directory to the current directory.
 
+
 ## Refactoring R code
 
-* Migrate from `heatmap.3()` to `ComplexHeatmap::Heatmap()`.
-* Move genomic regions to its own stand-alone R function.
-* Move volcano plot functions into this package (for now.)
-* Move Venn diagram functions into this package (for now.)
+* COMPLETE: Migrate from `heatmap.3()` to `ComplexHeatmap::Heatmap()`.
+* COMPLETE: Move genomic regions to its own stand-alone R function.
+* COMPLETE: Move volcano plot functions into this package (for now.)
+* COMPLETE: Move Venn diagram functions into this package (for now.)
+
+   * Moved functions to new package `venndir` on Github.
+
 
 ## Enhancements
 

@@ -3,7 +3,10 @@
 
 #' Volcano plot
 #' 
-#' Volcano plot
+#' Draw a volcano plot using a reasonably robust set of default
+#' arguments, and with a large number of customization options.
+#' The default plot uses smooth scatter plot for much improved
+#' display of point density.
 #' 
 #' This function produces a volcano plot, which consists of
 #' change on the x-axis, and significance on the y-axis.
@@ -33,6 +36,21 @@
 #' level of signal, a threshold `expr_cutoff` requires an entry to
 #' have signal at or above this value to be considered "detected".
 #' 
+#' The default behavior of `volcano_plot()` is to render a
+#' smooth scatter plot. A smooth scatter plot is much more
+#' effective at representing the true point density along
+#' the figure, which is one of the primary reasons to produce
+#' the plot.
+#' 
+#' ## Highlighting points
+#' 
+#' The argument `hi_points` can be used to highlight a specific
+#' subset of points on the figure, even when `smooth=TRUE`.
+#' 
+#' Alternatively, `hi_hits=TRUE` will render all statistical
+#' hits as points, which will appear on top of the smooth
+#' scatter plot when `smooth=TRUE`.
+#' 
 #' @examples
 #' n <- 150;
 #' set.seed(12);
@@ -53,6 +71,170 @@
 #' 
 #' volcano_plot(x, hi_hits=TRUE);
 #' 
+#' @param x `data.frame` that contains statistical results with at
+#'    least a P-value, and fold change or log2 fold change. It is
+#'    useful to contain a column with mean expression, and a column
+#'    with a relevant label.
+#' @param n `integer` indicating the number of subset points to plot
+#'    for testing purposes.
+#' @param lfc_colname `character` string or vector used to match
+#'    `colnames(x)` whose values should be log2 fold changes.
+#'    A direct match to `colnames(x)` is performed
+#'    first, then if no column is found, the values are used as
+#'    regular expression patterns in order until the first
+#'    matching colname is found. Note that `lfc_colname` is used
+#'    in preference to `fold_colname`.
+#'    The colname used will appear as the x-axis label.
+#' @param fold_colname `character` string or vector used to match
+#'    `colnames(x)` whose values should be fold changes. Note that
+#'    if `lfc_colname` successfully finds a value, the `fold_colname`
+#'    is not used.
+#'    The colname if used will appear as the x-axis label.
+#' @param sig_colname `character` string or vector used to match
+#'    `colnames(x)` whose values should contain P-values of significance.
+#'    The P-values can be unadjusted (raw) P-values, or adjusted
+#'    P-values. The P-values are expected not to be `-log10()`
+#'    transformed.
+#'    The colname used will appear as the y-axis label.
+#' @param expr_colname `character` string or vector used to match
+#'    `colnames(x)` whose values should contain expression mean values.
+#'    This column is only used when `expr_cutoff` is defined and
+#'    is applied to the filter criteria for statistical hits.
+#' @param label_colname `character` string or vector used to match
+#'    `colnames(x)` whose values should contain a useful label,
+#'    for example gene symbol or assay identifier.
+#' @param sig_cutoff `numeric` threshold for values in `sig_colname`,
+#'    where values at or below `sig_cutoff` can be considered
+#'    statistically significant.
+#' @param fold_cutoff `numeric` threshold for values in `lfc_colname`
+#'    or `fold_cutoff`, where normal fold change values at or above
+#'    `fold_cutoff` can be considered statistically significant.
+#'    Note that when `lfc_colname` is being used, its values are
+#'    converted to normal fold change before applying this filter.
+#' @param expr_cutoff `numeric` threshold for values in `expr_colname`
+#'    when `expr_colname` is defined, where values in `expr_colname`
+#'    at or above `expr_cutoff` can be considered statistically
+#'    significant. This threshold is useful to filter out potential
+#'    statistical hits whose signal is below a noise signal threshold.
+#' @param main `character` string used as the main title of the figure.
+#' @param submain `character` string used as a sub-title of the figure.
+#' @param symmetric_axes `logical` indicating whether the x-axis
+#'    log fold change range should be symmetric above and below zero.
+#' @param do_cutoff_caption `logical` indicating whether to include
+#'    a text caption with the statistical cutoff values used.
+#' @param caption_cex `numeric` caption font size adjustment.
+#' @param sig_floor `numeric` value indicating the lowest P-value to
+#'    display on the y-axis, where values below `sig_floor` are
+#'    fixed to the top of the y-axis range. This value is useful
+#'    when extremely low P-values (1e-100) compress the useful
+#'    range of P-values on the y-axis.
+#' @param min_sig_range `numeric` value indicating a y-axis P-value
+#'    the must be included in the visual range. This argument is useful
+#'    when P-values are not very significant, and you want to make
+#'    sure the y-axis range shows a minimum amount of the significant
+#'    region to be visually interpretable in that context.
+#' @param fold_ceiling `numeric` value indicating the maximum fold
+#'    change range displayed on the x-axis, useful to prevent extremely
+#'    large fold changes from compressing the useful visible range
+#'    of the figure.
+#' @param min_fold_range `numeric` indicating the lowest fold change
+#'    to include in the x-axis visual range. This argument is useful
+#'    when fold changes are low and the x-axis range would otherwise
+#'    be too small to be very useful.
+#' @param n_x_labels,n_y_labels `integer` used by `pretty()` to determine
+#'    the approximate number of x-axis and y-axis labels to display,
+#'    respectively.
+#' @param xlim,ylim `numeric` used to define specific `xlim` and `ylim`
+#'    axis ranges. When `NULL` the ranges are defined automatically,
+#'    and when not `NULL` the `xlim` or `ylim` values are used directly.
+#' @param pt_cex,pt_pch `numeric` used to define point size and shape,
+#'    used only when individual points are displayed.
+#' @param hit_type `character` string used to label points that meet
+#'    the statistical cutoffs as `"hits"`, but where it may be useful
+#'    to indicate the type of entry being tested. For example,
+#'    `hit_type="genes"` indicates that each row represents a gene;
+#'    `hit_type="probes"` indicates each row represents a probe;
+#'    `hit_type="transcripts"` indicates each row represents a transcript.
+#' @param color_set `character` vector of R colors, used only when individual
+#'    points are display. The names override default values, and may include:
+#'    * `"base"` - the base color of all points on the plot
+#'    * `"up"` - the color for up-regulated points that meet all
+#'    statistical cutoffs to be a "hit".
+#'    * `"down"` - the color for down-regulated points that meet all cutoffs
+#'    * `"hi"` - base color for highlighted points, used when `hi_points`
+#'    is defined.
+#'    * `"hi_up"` - color for highlighted up-regulated points.
+#'    * `"hi_down"` - color for highlighted down-regulated points.
+#' @param border_set `NULL` or `character` vector of R colors, used to
+#'    define point border colors such as `pch=21` which is a filled circle
+#'    with border. When `border_set=NULL` then it is defined by
+#'    `jamba::makeColorDarker(color_set)`.
+#' @param point_colors,border_colors optional `character` vector of R colors
+#'    recycled to length `nrow(x)`, used to specify the exact color of each
+#'    point in `x`. This argument is useful to colorize certain specific
+#'    points that may otherwise not meet statistical criteria.
+#' @param abline_color `character` string with R color used to color
+#'    the abline that indicates the x-axis `fold_cutoff` value, and
+#'    y-axis `sig_cutoff` value.
+#' @param smooth `logical` indicating whether points should be drawn
+#'    as a smooth scatter plot, using `jamba::plotSmoothScatter()`.
+#'    When `smooth=FALSE` individual points are drawn, using
+#'    `point_colors`, or when `point_colors` is not defined the
+#'    default is to use `color_set` to colorize points based upon
+#'    statistical cutoffs.
+#' @param smooth_func `function` used to plot points when `smooth=TRUE`,
+#'    by default `jamba::plotSmoothScatter()` which has some benefits
+#'    over default `graphics::smoothScatter()`.
+#' @param smooth_ramp `character` vector of R colors which defines
+#'    the color gradient to use when `smooth=TRUE`.
+#' @param blockarrow `logical` indicating whether block arrows should
+#'    be displayed and used to indicate the number of statistical hits.
+#' @param blockarrow_colors,blockarrow_font,blockarrow_label,blockarrow_shadowtext
+#'    arguments used when `blockarrow=TRUE`.
+#' @param tophist `logical` indicating whether to display a histogram
+#'    at the top of the volcano plot figure.
+#' @param tophist_cutoffs,tophist_breaks,tophist_fraction,tophist_by
+#'    arguments used when `tophist=TRUE`.
+#' @param hi_points `character` vector indicating points to highlight
+#'    in the volcano plot, where values should match `rownames(x)`.
+#'    This argument is useful to highlight a specific subset of points of
+#'    interest on the figure. Note that `hi_points` are always
+#'    rendered as individual points even when `smooth=TRUE`.
+#' @param hi_hits `logical` indicating whether rows that meet all
+#'    statistical cutoffs and are considered "hits" should also be
+#'    treated as `hi_points` for the purpose of rendering individual
+#'    points.
+#' @param hi_cex `numeric` size adjustment for highlight points,
+#'    relative to the size of other points in the figure.
+#' @param do_both `logical` indicating whether to draw both a smooth
+#'    scatter and individual points on the same figure.
+#' @param label_hits `logical` indicating whether to add a text label
+#'    for points that are statistical hits.
+#' @param add_plot `logical` indicating whether the plot should be
+#'    added to an existing plot, or when `add_plot=FALSE` a new
+#'    plot is created. This argument is useful to re-run the
+#'    same volcano plot with alternate parameters, for example
+#'    to display different subsets of highlighted points.
+#' @param xlab,ylab `character` strings used to specify the exact
+#'    x-axis label and y-axis label. When either value is `NULL`
+#'    the default is to use the relevant colname: x-axis uses
+#'    either `lfc_colname` or `fold_colname`; y-axis uses `sig_colname`.
+#' @param cex.axis `numeric` adjustment for axis label font sizes.
+#' @param include_axis_prefix `logical` indicating whether to include
+#'    a prefix for the x-axis and y-axis labels: x-axis `"Change"`;
+#'    y-axis `"Significance"`.
+#' @param `numeric` vector used to ensure that each margin size is
+#'    at least a minimum value, applied to `par("mar")` via
+#'    the function `pmax()`.
+#' @param verbose `logical` indicating whether to print verbose output.
+#' @param transformation `function` passed to `smooth_func` used to
+#'    adjust the visual contrast of the resulting density plot.
+#' @param nbin `numeric` value passed to `smooth_func` and used
+#'    by `jamba::plotSmoothScatter()` to adjust the number of
+#'    bins used to display the density of points, where a higher
+#'    value shows more detail, and a lower value shows less detail.
+#'    
+#' 
 #' @export
 volcano_plot <- function
 (x,
@@ -68,17 +250,18 @@ volcano_plot <- function
  main="Volcano Plot",
  submain=NULL,
  symmetric_axes=TRUE,
- pt_cex=0.9,
- pt_pch=21,
  do_cutoff_caption=TRUE,
  caption_cex=0.8,
- min_sig=1e-20,
  sig_floor=1e-20,
+ min_sig_range=1e-4,
  fold_ceiling=64,
+ min_fold_range=8,
  n_x_labels=12,
  n_y_labels=7,
  xlim=NULL,
  ylim=NULL,
+ pt_cex=0.9,
+ pt_pch=21,
  hit_type="hits",
  color_set=c(base="#77777777",
     up="#99000088",
@@ -102,7 +285,7 @@ volcano_plot <- function
  blockarrow_label_cex=1,
  #blockarrow_label_color="#FFFFAA", blockArrowLabelUpColor="#FFFFAA", blockArrowLabelDownColor="#FFFFAA",
  blockarrow_shadowtext=TRUE,
- do_tophist=FALSE,
+ tophist=FALSE,
  tophist_cutoffs=c("pvalue", "foldchange"),
  tophist_breaks=100,
  tophist_color="#000099FF",
@@ -118,10 +301,10 @@ volcano_plot <- function
  ylab=NULL,
  cex.axis=1.2,
  include_axis_prefix=TRUE,
+ mar_min=c(5, 4, 7, 5),
  verbose=FALSE,
  transformation=function(x){x^0.24;}, # use 0.14 for very large datasets
  nbin=256,
- nrpoints=0,
  ...)
 {
 
@@ -334,7 +517,7 @@ volcano_plot <- function
    if (length(fold_ceiling) == 1 && !is.na(fold_ceiling)) {
       lfc_cap <- (!is.na(lfc_values) & abs(lfc_values) > log2(fold_ceiling));
       if (any(lfc_cap)) {
-         lfc_values[lfc_cap] <- fold_ceiling * sign(lfc_values[lfc_cap]);
+         lfc_values[lfc_cap] <- log2(fold_ceiling) * sign(lfc_values[lfc_cap]);
       }
    }
    x_values <- lfc_values;
@@ -361,16 +544,20 @@ volcano_plot <- function
 
    if (length(xlim) == 0) {
       fold_min <- log2(max(c(fold_cutoff, 2)) * 1.3) * c(-1, 1);
-      xlim <- range(c(x_values, fold_min));
+      min_fold_range <- log2(head(abs(min_fold_range), 1)) * c(-1, 1);
+      xlim <- range(c(x_values,
+         min_fold_range,
+         fold_min));
    }
    if (symmetric_axes) {
       xlim <- max(abs(xlim)) * c(-1, 1);
    }
    if (length(ylim) == 0) {
       sig_min <- max(-log10(c(sig_cutoff, 0.05))) * 1.3;
+      # min_sig_range
       ylim <- range(c(0,
          max(y_values),
-         -log10(sig_cutoff/5)));
+         -log10(min_sig_range)));
    }
 
    if (any(hi_points)) {
@@ -401,9 +588,13 @@ volcano_plot <- function
    ## labelCoords will have the return data from addNonOverlappingLabels() but only
    ## if we end up calling that method
    labelCoords <- NULL;
+   parMar <- par("mar");
+   if (length(mar_min) > 0) {
+      parMar <- pmax(parMar, mar_min);
+   }
    ##########################################################
    ## Histogram along the top border, set up the details here
-   if (do_tophist) {
+   if (tophist) {
       if (length(grep("pval", tophist_cutoffs)) > 0) {
          ## Apply P-value filtering
          pvHitsWhich <- met_sig;
@@ -421,7 +612,6 @@ volcano_plot <- function
       
       ## Color the bars consistent with the block arrows
       tophist_colors <- blockarrow_colors[c("down", "up")];
-      parMar <- par("mar");
       tophist_breaks <- seq(from=xlim[1],
          to=xlim[2],
          by=tophist_by);
@@ -680,7 +870,7 @@ volcano_plot <- function
             s=0.75, 
             v=0.9, 
             alpha=1);
-         if (do_tophist) {
+         if (tophist) {
             right_adj <- 1.2;
          } else {
             right_adj <- 1;
@@ -813,7 +1003,7 @@ volcano_plot <- function
    }
    
    
-   if (1 == 2 && do_tophist) {
+   if (1 == 2 && tophist) {
       par("mar"=origPar$mar);
       par("plt"=origPar$plt);
       par("usr"=origPar$usr);

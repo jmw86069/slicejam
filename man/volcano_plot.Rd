@@ -18,17 +18,18 @@ volcano_plot(
   main = "Volcano Plot",
   submain = NULL,
   symmetric_axes = TRUE,
-  pt_cex = 0.9,
-  pt_pch = 21,
   do_cutoff_caption = TRUE,
   caption_cex = 0.8,
-  min_sig = 1e-20,
   sig_floor = 1e-20,
+  min_sig_range = 1e-04,
   fold_ceiling = 64,
+  min_fold_range = 8,
   n_x_labels = 12,
   n_y_labels = 7,
   xlim = NULL,
   ylim = NULL,
+  pt_cex = 0.9,
+  pt_pch = 21,
   hit_type = "hits",
   color_set = c(base = "#77777777", up = "#99000088", down = "#00009988", hi =
     "#FFDD55FF", hi_up = "#FFDD55FF", hi_down = "#FFDD55FF"),
@@ -46,7 +47,7 @@ volcano_plot(
   blockarrow_cex = c(1.2, 1.2),
   blockarrow_label_cex = 1,
   blockarrow_shadowtext = TRUE,
-  do_tophist = FALSE,
+  tophist = FALSE,
   tophist_cutoffs = c("pvalue", "foldchange"),
   tophist_breaks = 100,
   tophist_color = "#000099FF",
@@ -62,15 +63,228 @@ volcano_plot(
   ylab = NULL,
   cex.axis = 1.2,
   include_axis_prefix = TRUE,
+  mar_min = c(5, 4, 7, 5),
   verbose = FALSE,
   transformation = function(x) {     x^0.24 },
   nbin = 256,
-  nrpoints = 0,
   ...
 )
 }
+\arguments{
+\item{x}{\code{data.frame} that contains statistical results with at
+least a P-value, and fold change or log2 fold change. It is
+useful to contain a column with mean expression, and a column
+with a relevant label.}
+
+\item{n}{\code{integer} indicating the number of subset points to plot
+for testing purposes.}
+
+\item{lfc_colname}{\code{character} string or vector used to match
+\code{colnames(x)} whose values should be log2 fold changes.
+A direct match to \code{colnames(x)} is performed
+first, then if no column is found, the values are used as
+regular expression patterns in order until the first
+matching colname is found. Note that \code{lfc_colname} is used
+in preference to \code{fold_colname}.
+The colname used will appear as the x-axis label.}
+
+\item{fold_colname}{\code{character} string or vector used to match
+\code{colnames(x)} whose values should be fold changes. Note that
+if \code{lfc_colname} successfully finds a value, the \code{fold_colname}
+is not used.
+The colname if used will appear as the x-axis label.}
+
+\item{sig_colname}{\code{character} string or vector used to match
+\code{colnames(x)} whose values should contain P-values of significance.
+The P-values can be unadjusted (raw) P-values, or adjusted
+P-values. The P-values are expected not to be \code{-log10()}
+transformed.
+The colname used will appear as the y-axis label.}
+
+\item{expr_colname}{\code{character} string or vector used to match
+\code{colnames(x)} whose values should contain expression mean values.
+This column is only used when \code{expr_cutoff} is defined and
+is applied to the filter criteria for statistical hits.}
+
+\item{label_colname}{\code{character} string or vector used to match
+\code{colnames(x)} whose values should contain a useful label,
+for example gene symbol or assay identifier.}
+
+\item{sig_cutoff}{\code{numeric} threshold for values in \code{sig_colname},
+where values at or below \code{sig_cutoff} can be considered
+statistically significant.}
+
+\item{fold_cutoff}{\code{numeric} threshold for values in \code{lfc_colname}
+or \code{fold_cutoff}, where normal fold change values at or above
+\code{fold_cutoff} can be considered statistically significant.
+Note that when \code{lfc_colname} is being used, its values are
+converted to normal fold change before applying this filter.}
+
+\item{expr_cutoff}{\code{numeric} threshold for values in \code{expr_colname}
+when \code{expr_colname} is defined, where values in \code{expr_colname}
+at or above \code{expr_cutoff} can be considered statistically
+significant. This threshold is useful to filter out potential
+statistical hits whose signal is below a noise signal threshold.}
+
+\item{main}{\code{character} string used as the main title of the figure.}
+
+\item{submain}{\code{character} string used as a sub-title of the figure.}
+
+\item{symmetric_axes}{\code{logical} indicating whether the x-axis
+log fold change range should be symmetric above and below zero.}
+
+\item{do_cutoff_caption}{\code{logical} indicating whether to include
+a text caption with the statistical cutoff values used.}
+
+\item{caption_cex}{\code{numeric} caption font size adjustment.}
+
+\item{sig_floor}{\code{numeric} value indicating the lowest P-value to
+display on the y-axis, where values below \code{sig_floor} are
+fixed to the top of the y-axis range. This value is useful
+when extremely low P-values (1e-100) compress the useful
+range of P-values on the y-axis.}
+
+\item{min_sig_range}{\code{numeric} value indicating a y-axis P-value
+the must be included in the visual range. This argument is useful
+when P-values are not very significant, and you want to make
+sure the y-axis range shows a minimum amount of the significant
+region to be visually interpretable in that context.}
+
+\item{fold_ceiling}{\code{numeric} value indicating the maximum fold
+change range displayed on the x-axis, useful to prevent extremely
+large fold changes from compressing the useful visible range
+of the figure.}
+
+\item{min_fold_range}{\code{numeric} indicating the lowest fold change
+to include in the x-axis visual range. This argument is useful
+when fold changes are low and the x-axis range would otherwise
+be too small to be very useful.}
+
+\item{n_x_labels, n_y_labels}{\code{integer} used by \code{pretty()} to determine
+the approximate number of x-axis and y-axis labels to display,
+respectively.}
+
+\item{xlim, ylim}{\code{numeric} used to define specific \code{xlim} and \code{ylim}
+axis ranges. When \code{NULL} the ranges are defined automatically,
+and when not \code{NULL} the \code{xlim} or \code{ylim} values are used directly.}
+
+\item{pt_cex, pt_pch}{\code{numeric} used to define point size and shape,
+used only when individual points are displayed.}
+
+\item{hit_type}{\code{character} string used to label points that meet
+the statistical cutoffs as \code{"hits"}, but where it may be useful
+to indicate the type of entry being tested. For example,
+\code{hit_type="genes"} indicates that each row represents a gene;
+\code{hit_type="probes"} indicates each row represents a probe;
+\code{hit_type="transcripts"} indicates each row represents a transcript.}
+
+\item{color_set}{\code{character} vector of R colors, used only when individual
+points are display. The names override default values, and may include:
+\itemize{
+\item \code{"base"} - the base color of all points on the plot
+\item \code{"up"} - the color for up-regulated points that meet all
+statistical cutoffs to be a "hit".
+\item \code{"down"} - the color for down-regulated points that meet all cutoffs
+\item \code{"hi"} - base color for highlighted points, used when \code{hi_points}
+is defined.
+\item \code{"hi_up"} - color for highlighted up-regulated points.
+\item \code{"hi_down"} - color for highlighted down-regulated points.
+}}
+
+\item{border_set}{\code{NULL} or \code{character} vector of R colors, used to
+define point border colors such as \code{pch=21} which is a filled circle
+with border. When \code{border_set=NULL} then it is defined by
+\code{jamba::makeColorDarker(color_set)}.}
+
+\item{point_colors, border_colors}{optional \code{character} vector of R colors
+recycled to length \code{nrow(x)}, used to specify the exact color of each
+point in \code{x}. This argument is useful to colorize certain specific
+points that may otherwise not meet statistical criteria.}
+
+\item{abline_color}{\code{character} string with R color used to color
+the abline that indicates the x-axis \code{fold_cutoff} value, and
+y-axis \code{sig_cutoff} value.}
+
+\item{smooth}{\code{logical} indicating whether points should be drawn
+as a smooth scatter plot, using \code{jamba::plotSmoothScatter()}.
+When \code{smooth=FALSE} individual points are drawn, using
+\code{point_colors}, or when \code{point_colors} is not defined the
+default is to use \code{color_set} to colorize points based upon
+statistical cutoffs.}
+
+\item{smooth_func}{\code{function} used to plot points when \code{smooth=TRUE},
+by default \code{jamba::plotSmoothScatter()} which has some benefits
+over default \code{graphics::smoothScatter()}.}
+
+\item{smooth_ramp}{\code{character} vector of R colors which defines
+the color gradient to use when \code{smooth=TRUE}.}
+
+\item{blockarrow}{\code{logical} indicating whether block arrows should
+be displayed and used to indicate the number of statistical hits.}
+
+\item{blockarrow_colors, blockarrow_font, blockarrow_label, blockarrow_shadowtext}{arguments used when \code{blockarrow=TRUE}.}
+
+\item{tophist}{\code{logical} indicating whether to display a histogram
+at the top of the volcano plot figure.}
+
+\item{tophist_cutoffs, tophist_breaks, tophist_fraction, tophist_by}{arguments used when \code{tophist=TRUE}.}
+
+\item{hi_points}{\code{character} vector indicating points to highlight
+in the volcano plot, where values should match \code{rownames(x)}.
+This argument is useful to highlight a specific subset of points of
+interest on the figure. Note that \code{hi_points} are always
+rendered as individual points even when \code{smooth=TRUE}.}
+
+\item{hi_hits}{\code{logical} indicating whether rows that meet all
+statistical cutoffs and are considered "hits" should also be
+treated as \code{hi_points} for the purpose of rendering individual
+points.}
+
+\item{hi_cex}{\code{numeric} size adjustment for highlight points,
+relative to the size of other points in the figure.}
+
+\item{do_both}{\code{logical} indicating whether to draw both a smooth
+scatter and individual points on the same figure.}
+
+\item{label_hits}{\code{logical} indicating whether to add a text label
+for points that are statistical hits.}
+
+\item{add_plot}{\code{logical} indicating whether the plot should be
+added to an existing plot, or when \code{add_plot=FALSE} a new
+plot is created. This argument is useful to re-run the
+same volcano plot with alternate parameters, for example
+to display different subsets of highlighted points.}
+
+\item{xlab, ylab}{\code{character} strings used to specify the exact
+x-axis label and y-axis label. When either value is \code{NULL}
+the default is to use the relevant colname: x-axis uses
+either \code{lfc_colname} or \code{fold_colname}; y-axis uses \code{sig_colname}.}
+
+\item{cex.axis}{\code{numeric} adjustment for axis label font sizes.}
+
+\item{include_axis_prefix}{\code{logical} indicating whether to include
+a prefix for the x-axis and y-axis labels: x-axis \code{"Change"};
+y-axis \code{"Significance"}.}
+
+\item{verbose}{\code{logical} indicating whether to print verbose output.}
+
+\item{transformation}{\code{function} passed to \code{smooth_func} used to
+adjust the visual contrast of the resulting density plot.}
+
+\item{nbin}{\code{numeric} value passed to \code{smooth_func} and used
+by \code{jamba::plotSmoothScatter()} to adjust the number of
+bins used to display the density of points, where a higher
+value shows more detail, and a lower value shows less detail.}
+
+\item{`numeric`}{vector used to ensure that each margin size is
+at least a minimum value, applied to \code{par("mar")} via
+the function \code{pmax()}.}
+}
 \description{
-Volcano plot
+Draw a volcano plot using a reasonably robust set of default
+arguments, and with a large number of customization options.
+The default plot uses smooth scatter plot for much improved
+display of point density.
 }
 \details{
 This function produces a volcano plot, which consists of
@@ -101,6 +315,21 @@ using a P-value below which entries are marked "significant".
 Finally, since some statistical criteria also include a minimum
 level of signal, a threshold \code{expr_cutoff} requires an entry to
 have signal at or above this value to be considered "detected".
+
+The default behavior of \code{volcano_plot()} is to render a
+smooth scatter plot. A smooth scatter plot is much more
+effective at representing the true point density along
+the figure, which is one of the primary reasons to produce
+the plot.
+\subsection{Highlighting points}{
+
+The argument \code{hi_points} can be used to highlight a specific
+subset of points on the figure, even when \code{smooth=TRUE}.
+
+Alternatively, \code{hi_hits=TRUE} will render all statistical
+hits as points, which will appear on top of the smooth
+scatter plot when \code{smooth=TRUE}.
+}
 }
 \examples{
 n <- 150;
