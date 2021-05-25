@@ -10,7 +10,7 @@ handle_na_values(
   handle_na = c("partial", "full", "none"),
   na_value = 0,
   na_weight = 0,
-  verbose = TRUE,
+  verbose = FALSE,
   ...
 )
 }

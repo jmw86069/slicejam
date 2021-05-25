@@ -1,3 +1,23 @@
+# slicejam 0.0.21.900
+
+## updates to existing functions
+
+* `matrix_normalize()` new argument `enforce_norm_floor=TRUE`
+re-applies the `floor` value to the normalized output data.
+The effect is that when input data is zero, the output data
+is also zero and is not allowed to be adjusted above or below
+zero. The assumption for this default is that a value of zero
+is not a measurement but represents the lack of a measurement.
+Similarly, the intent of `floor` is a numeric threshold at or
+below there is no confidence in the reported measurement, therefore
+values at or below this threshold are treated as equivalent
+to the threshold for the purpose of downstream analyses.
+* `matrix_normalize()` help docs were edited with substantially
+more text, and set of examples with simulated data showing
+several characteristics of normalization and MA-plots using
+`jamma::jammaplot()`.
+
+
 # slicejam 0.0.20.900
 
 ## bug fixes

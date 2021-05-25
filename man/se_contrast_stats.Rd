@@ -28,7 +28,7 @@ se_contrast_stats(
   robust = FALSE,
   handle_na = c("partial", "full", "none"),
   collapse_by_gene = FALSE,
-  verbose = TRUE,
+  verbose = FALSE,
   ...
 )
 }

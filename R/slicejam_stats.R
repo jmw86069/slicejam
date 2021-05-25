@@ -11,8 +11,54 @@
 #' applied to one or more matrix data stored in `assays(se)`,
 #' each one is run independently.
 #' 
+#' For example if `assay_names` contains two assay names,
+#' and `method` contains two methods, the output will include
+#' four normalizations, where each assay name is normalized two ways.
+#' The output assay names will be something like `"assay1_method1"`,
+#' `"assay1_method2"`, `"assay2_method1"`, `"assay2_method2"`.
+#' It is not always necessary to normalize data by multiple different
+#' methods, however when two methods are similar and need to be
+#' compared, the `SummarizedExperiment` object is a convenient
+#' place to store different normalization results for downstream
+#' comparison. Further, the method `se_contrast_stats()` is able
+#' to apply equivalent statistical contrasts to each normalization,
+#' and returns an array of statistical hits which is convenient
+#' for direct comparison of results.
+#' 
+#' This method calls `matrix_normalize()` to perform each normalization
+#' step, see that function description for details on each method.
+#' 
 #' @family slicejam stats
 #' 
+#' @return `SummarizedExperiment` object where the normalized output
+#'    is added to `assays(se)` using the naming format `method_assayname`.
+#' 
+#' @param se `SummarizedExperiment` object
+#' @param method `character` vector indicating which normalization method(s)
+#'    to apply.
+#' @param assay_names `character` vector or one or more `names(assays(se))`
+#'    that indicates which numeric matrix to use during normalization. When
+#'    multiple values are provided, each matrix is normalized independently
+#'    by each `method`.
+#' @param genes `character` vector (optional) used to define a subset of
+#'    gene rows in `se` to use for normalization.
+#'    Values must match `rownames(se)`.
+#' @param samples `character vector (optional) used to define a subset of
+#'    sample columns in `se` to use for normalization.
+#'    Values must match `colnames(se)`.
+#' @param params `list` (optional) passed to `matrix_normalize()`, see
+#'    that function description for examples.
+#' @param output_sep `character` string used as a delimited between the
+#'    `method` and the `assay_names` to define the output assay name,
+#'    for example when `assay_name="counts"`, `method="quantile"`,
+#'    and `output_sep="_"` the new assay name will be `"quantile_counts"`.
+#' @param override `logical` indicating whether to override any pre-existing
+#'    matrix values with the same output assay name. When `override=FALSE`
+#'    and the output assay name already exists, the normalization will
+#'    not be performed.
+#' @param verbose `logical` indicating whether to print verbose output.
+#' @param ... additional arguments are passed to `matrix_normalize()`.
+#'    
 #' 
 #' @export
 se_normalize <- function
@@ -77,7 +123,8 @@ se_normalize <- function
          imatrix <- assays(se[genes, samples])[[assay_name]];
          inorm <- matrix_normalize(imatrix,
             method=imethod,
-            params=params);
+            params=params,
+            ...);
          assays(se)[[output_assay_name]] <- assays(se)[[assay_name]];
          assays(se)[[output_assay_name]][] <- NA;
          assays(se[genes, samples])[[output_assay_name]] <- inorm[genes, samples];
@@ -90,7 +137,193 @@ se_normalize <- function
 #' 
 #' Normalize a numeric data matrix
 #' 
+#' This function is a wrapper for several relevant normalization
+#' methods that operate on a numeric matrix.
+#' 
+#' # Normalization Methods Implemented:
+#' 
+#' ## method='quantile'
+#' 
+#' Quantile-normalization performed by
+#' `limma::normalizeQuantiles()`. This method has one
+#' parameter `"ties"` passed to `limma::normalizeQuantiles()`,
+#' the default here `ties=TRUE` which handles tied numeric
+#' expression values in a robust way to avoid unpredictability
+#' otherwise. This option is especially relevant with expression
+#' count data, where integer counts cause a large number
+#' of values to be represented multiple times.
+#' 
+#' ## method='jammanorm'
+#' 
+#' Median-normalization performed by
+#' `jamma::jammanorm()`. This method shifts expression
+#' data as shown on MA-plots, so the median expression
+#' is zero across all samples, using only the rows that
+#' meet the relevant criteria.
+#' 
+#' Some relevant criteria to
+#' define rows used for normalization:
+#' 
+#' * `controlGenes` defines specific genes to use for
+#' normalization, such as housekeeper genes. It may also
+#' be useful to use detected genes here, so the normalization
+#' only considers those genes defined as detected by
+#' the protocol.
+#' * `minimum_mean` sets a numeric threshold and requires
+#' the mean expression (shown on the x-axis of the MA-plot)
+#' to be at least this value.
+#' 
+#' Note that when both `controlGenes` and `minimum_mean`
+#' are defined, both criteria are enforced. So the `controlGenes`
+#' are also required to have expression of at least `minimum_mean`.
+#' 
+#' Also note that all rows of data are normalized by this method,
+#' only the subset of rows defined by `controlGenes` and `minimum_mean`
+#' are used to compute the normalization factor.
+#' 
+#' 
+#' ## method='limma_batch_adjust'
+#' 
+#' Batch adjustment performed by
+#' `limma::removeBatchEffect()` which is intended to apply
+#' batch-adjustment as a form of normalization, but which
+#' does not represent full normalization itself. There are
+#' two relevant parameters: `"batch"` which is a vector of
+#' batch values in order of `colnames(x)`, and `"group"`
+#' which is a vector of sample groups in order of `colnames(x)`.
+#' 
+#' # Other useful parameters
+#' 
+#' Note the `floor` and `enforce_norm_floor` have recommended
+#' default values `floor=0` and `enforce_norm_floor=TRUE`. These
+#' defaults will set any assay value at or below `0` to `0`,
+#' and after normalization any values whose input values were
+#' at or below `0` will also be set to `0` to prevent normalizing
+#' a value of `0` to non-zero. Any normalized value at or
+#' below `0` will also be set to `0` to prevent results from
+#' containing negative normalized values.
+#' 
+#' The assumption for this default is that a value of zero
+#' is not a measurement but represents the lack of a measurement.
+#' Similarly, the intent of `floor` is a numeric threshold at or
+#' below there is no confidence in the reported measurement, therefore
+#' values at or below this threshold are treated as equivalent
+#' to the threshold for the purpose of downstream analyses.
+#' 
+#' Some platforms like QPCR for example, have substantially lower
+#' confidence at high CT values, where expression values
+#' using the equation `2^(40-CT)` might impose a noise threshold
+#' at expression 32 or lower. This noise threshold for QPCR
+#' means any expression measurement of 32 or lower is as likely
+#' to be `32` as it is to be `2`, and therefore any differences
+#' between reported expression of `32` and `2` should not be
+#' considered relevant. Applying `floor=32` in this case
+#' accomplishes this goal by setting all values at or below
+#' `32` to `32`. Of course when using this method `matrix_normalize()`
+#' the data should be log2 transformed, which means the `floor`
+#' should also be log2 transformed, e.g. `floor=log2(32)`
+#' which is `floor=5`.
+#' 
+#' One alternative might be to set values at or below zero to `NA`
+#' prior to normalization, and before calling `matrix_normalize()`.
+#' In this case, only non-NA values will be used during
+#' normalization according to the `method` being used.
+#' 
+#' @return `numeric` matrix with the same dimensions as the
+#'    input matrix `x`. Some normalization methods return
+#'    additional information in `attributes(x)`, for example
+#'    `method="jammanorm"` will return the vector of housekeeper
+#'    genes used in `attr(x, "hk")` for normalization of each sample
+#'    when supplied with `controlGenes` values.
+#' 
 #' @family slicejam stats
+#' 
+#' @param x `numeric` matrix with sample columns, and typically
+#'    gene rows, but any measured assay row will meet the assumptions
+#'    of the method.
+#' @param method `character` string indicating which normalization
+#'    method to apply.
+#' @param apply_log2 `character` string indicating whether to apply
+#'    log2 transformation: `"ifneeded"` will apply log2 transform
+#'    when any absolute value is greater than 40; `"no"` will not
+#'    apply log2 transformation; `"always"` will apply log2 transform.
+#'    Note the log2 transform is applied with `jamba::log2signed(x, offset=1)`
+#'    which is equivalent to `log(1 + x)` except that negative values
+#'    are also transformed using the absolute value, then multiplied
+#'    by their original sign.
+#' @param floor `numeric` value indicating the lowest accepted numeric
+#'    value, below which values are assigned to this floor. The default
+#'    `floor=0` requires all values are `0`, and any values below `0` are
+#'    assigned `0`. Note that the `floor` is applied after log2 transform,
+#'    when the log2 transform is performed.
+#' @param enforce_norm_floor `logical` indicating whether to enforce the
+#'    `floor` for the normalized results, default is `TRUE`. For example,
+#'    when `floor=0` any values at or below `0` are set to `0` before
+#'    normalization. After normalization some of these values will be
+#'    above or below `0`. When `enforce_norm_floor=TRUE` these values
+#'    will again be set to `0` because they are considered to be
+#'    below the noise threshold of the protocol, and adjustments
+#'    are not relevant; also any normalized values below the `floor`
+#'    will also be set to `floor`.
+#' @param params `list` of parameters relevant to the `method` of
+#'    normalization. The `params` should be a `list` named by the `method`,
+#'    whose values are a list named by the relevant method parameter.
+#'    See examples.
+#' @param verbose `logical` indicating whether to print verbose output.
+#' 
+#' @examples
+#' # simulate reasonably common expression matrix
+#' set.seed(123);
+#' x <- matrix(rnorm(9000)/4, ncol=9);
+#' colnames(x) <- paste0("sample", LETTERS[1:9]);
+#' rownames(x) <- paste0("gene", jamba::padInteger(seq_len(nrow(x))))
+#' rowmeans <- rbeta(nrow(x), shape1=2, shape2=5)*14+2;
+#' x <- x + rowmeans;
+#' for (i in 1:9) {
+#'    x[,i] <- x[,i] + rnorm(1);
+#' }
+#' 
+#' # display MA-plot with jamma::jammaplot()
+#' jamma::jammaplot(x)
+#' 
+#' # normalize by jammanorm
+#' xnorm <- matrix_normalize(x, method="jammanorm")
+#' jamma::jammaplot(xnorm, maintitle="method='jammanorm'")
+#' 
+#' # normalize by jammanorm with housekeeper genes
+#' hk_genes <- sample(rownames(x), 10);
+#' xnormhk <- matrix_normalize(x, method="jammanorm", verbose=TRUE,
+#'    params=list(jammanorm=list(controlGenes=hk_genes)))
+#' jamma::jammaplot(xnormhk, maintitle="method='jammanorm' with housekeeper genes",
+#'    highlightPoints=list(housekeepers=hk_genes),
+#'    highlightColor="green");
+#' 
+#' xnormhk6 <- matrix_normalize(x, method="jammanorm", verbose=TRUE,
+#'    params=list(jammanorm=list(controlGenes=hk_genes, minimum_mean=6)))
+#' jamma::jammaplot(xnormhk6, maintitle="method='jammanorm' with housekeeper genes, minimum_mean=6",
+#'    highlightPoints=list(housekeepers=hk_genes, hk_used=attr(xnormhk6, "hk")[[1]]),
+#'    highlightColor=c("red", "green"))
+#' 
+#' # normalize by quantile
+#' xquant <- matrix_normalize(x, method="quantile")
+#' jamma::jammaplot(xquant, maintitle="method='quantile'")
+#' 
+#' # simulate higher noise for lower signal
+#' rownoise <- rnorm(prod(dim(x))) * (3 / ((rowmeans*1.5) - 1.5));
+#' xnoise <- x;
+#' xnoise <- xnoise + rownoise;
+#' jamma::jammaplot(xnoise, maintitle="simulated higher noise at lower signal");
+#' 
+#' # simulate non-linearity across signal
+#' # sin(seq(from=pi*4/10, to=pi*7/10, length.out=100))-0.8
+#' rowadjust <- (sin(pi * jamba::normScale(rowmeans, from=3.5/10, to=5.5/10)) -0.9) * 20;
+#' xwarp <- xnoise;
+#' xwarp[,3] <- xnoise[,3] + rowadjust;
+#' jamma::jammaplot(xwarp, maintitle="signal-dependent noise and non-linear effects");
+#' 
+#' # quantile-normalization is indicated for this scenario
+#' xwarpnorm <- matrix_normalize(xwarp, method="quantile");
+#' jp <- jamma::jammaplot(xwarpnorm, maintitle="quantile-normalized: signal-dependent noise and non-linear effects");
 #' 
 #' @export
 matrix_normalize <- function
@@ -98,16 +331,15 @@ matrix_normalize <- function
  method=c("quantile", "jammanorm", "limma_batch_adjust"),
  apply_log2=c("ifneeded", "no", "always"),
  floor=0,
+ enforce_norm_floor=TRUE,
  params=list(
-   `vsn`=list(lts.quantile=0.5),
-   `rsn`=list(excludeFold=2,
-      span=0.03),
-   cyclicLoess=list(method="default",
-      span=0.8),
-   `median`=list(Qrange=c(0.5,1.0),
-      Irange=NULL,
-      HKgenes=NULL,
-      useMean=FALSE),
+   #`vsn`=list(lts.quantile=0.5),
+   #`rsn`=list(excludeFold=2,
+   #   span=0.03),
+   #cyclicLoess=list(method="default",
+   #   span=0.8),
+   `quantile`=list(
+      ties=TRUE),
    `jammanorm`=list(controlGenes=NULL,
       minimum_mean=0,
       controlSamples=NULL,
@@ -115,10 +347,6 @@ matrix_normalize <- function
       useMean=TRUE,
       noise_floor=NULL,
       noise_floor_value=NULL),
-   `HK`=list(Qrange=NULL,
-      Irange=NULL,
-      useMean=FALSE,
-      HKgenes=c("ACTB", "GAPD", "PPIA", "RPL19")),
    `limma_batch_adjust`=list(
       batch=NULL,
       group=NULL)),
@@ -134,19 +362,41 @@ matrix_normalize <- function
       params,
       verbose=FALSE);
 
-   if (length(floor) > 0 & any(x < floor)) {
-      if (verbose) {
-         jamba::printDebug("matrix_normalize(): ",
-            c("Applying floor:", floor),
-            sep="");
-      }
-      x[x < floor] <- floor;
-   }
+   # apply log2 transform if needed
    if ("ifneeded" %in% apply_log2) {
       if (any(abs(x) > 40)) {
          x <- jamba::log2signed(x,
             offset=1);
+         if (verbose) {
+            jamba::printDebug("matrix_normalize(): ",
+               c("Applied ",
+                  "jamba::log2signed(x, offset=1)",
+                  " because ",
+                  "any(abs(x) > 40)"),
+               sep="");
+         }
       }
+   } else if ("always" %in% apply_log2) {
+      x <- jamba::log2signed(x,
+         offset=1);
+      if (verbose) {
+         jamba::printDebug("matrix_normalize(): ",
+            c("Applied ", "jamba::log2signed(x, offset=1)"),
+            sep="");
+      }
+   }
+   
+   # apply optional floor
+   if (length(floor) > 0 & any(x <= floor)) {
+      x_floored <- (x <= floor);
+      x[x_floored] <- floor;
+      if (verbose) {
+         jamba::printDebug("matrix_normalize(): ",
+            c("Applied floor:", floor),
+            sep="");
+      }
+   } else {
+      x_floored <- FALSE
    }
    
    if ("quantile" %in% method) {
@@ -191,6 +441,12 @@ matrix_normalize <- function
          batch=batch,
          design=designBatchGroup);
    }
+   
+   # enforce the floor for output matrix
+   if (enforce_norm_floor && any(x_floored)) {
+      inorm[x_floored | inorm <= floor] <- floor;
+   }
+   
    return(inorm);
 }
 
@@ -250,7 +506,7 @@ update_list_elements <- function
 (source_list,
  update_list,
  list_layer_num=1,
- verbose=TRUE,
+ verbose=FALSE,
  ...)
 {
    ## Purpose is to update elements in a list, allowing for multi-layered lists
@@ -376,7 +632,7 @@ se_contrast_stats <- function
  robust=FALSE,
  handle_na=c("partial", "full", "none"),
  collapse_by_gene=FALSE,
- verbose=TRUE,
+ verbose=FALSE,
  ...)
 {
    handle_na <- match.arg(handle_na);
@@ -554,7 +810,7 @@ handle_na_values <- function
  handle_na=c("partial", "full", "none"),
  na_value=0,
  na_weight=0,
- verbose=TRUE,
+ verbose=FALSE,
  ...)
 {
    handle_na <- match.arg(handle_na);

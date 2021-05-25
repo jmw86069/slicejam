@@ -580,7 +580,7 @@ volcano_plot <- function
    }
    
    origPar <- par(no.readonly=TRUE);
-   #on.exit(par(origPar));
+   on.exit(par(origPar));
    parList <- list();
    parList[["prePlots"]] <- origPar;
 
@@ -660,6 +660,8 @@ volcano_plot <- function
          line=0);
       parList[["postTopHist"]] <- par();
       par("mar"=c(parMar[1], parMar[2], 2, parMar[4]));
+   } else {
+      par("mar"=parMar);
    }
 
    if (length(xlab) == 0) {

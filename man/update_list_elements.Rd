@@ -8,7 +8,7 @@ update_list_elements(
   source_list,
   update_list,
   list_layer_num = 1,
-  verbose = TRUE,
+  verbose = FALSE,
   ...
 )
 }
