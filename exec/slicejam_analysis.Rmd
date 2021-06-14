@@ -1781,10 +1781,10 @@ if (length(AtacStats) > 0) {
    dimnames1 <- dimnames(AtacStats$hit_array)[[1]];
    dimnames2 <- dimnames(AtacStats$hit_array)[[2]];
    peak_hits <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStats$hit_array[head(dimnames1, 1), i, 1])
+      names(AtacStats$hit_array[head(dimnames1, 1), i, 1][[1]])
    })));
    peak_hits_q <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStats$hit_array[tail(dimnames1, 1), i, 1])
+      names(AtacStats$hit_array[tail(dimnames1, 1), i, 1][[1]])
    })));
 }
 if (length(AtacStatsMgm4) > 0) {
@@ -1792,10 +1792,10 @@ if (length(AtacStatsMgm4) > 0) {
    mgm_dimnames1 <- dimnames(AtacStatsMgm4$hit_array)[[1]];
    mgm_dimnames2 <- dimnames(AtacStatsMgm4$hit_array)[[2]];
    peak_hits_mgm4 <- unique(unlist(lapply(mgm_dimnames2, function(i){
-      names(AtacStatsMgm4$hit_array[head(mgm_dimnames1, 1), i, 1])
+      names(AtacStatsMgm4$hit_array[head(mgm_dimnames1, 1), i, 1][[1]])
    })));
    peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
-      names(AtacStatsMgm4$hit_array[tail(mgm_dimnames1, 1), i, 1])
+      names(AtacStatsMgm4$hit_array[tail(mgm_dimnames1, 1), i, 1][[1]])
    })));
 
    if (denovo_controls) {
@@ -1813,7 +1813,6 @@ if (length(AtacStatsMgm4) > 0) {
       #    feature_type_winner %in% "promoter")$Geneid;
       # iM <- iMatrixQBctr[peak_hits_mgm4_q_p,];
       # hc_p <- hcluster(iM, link="ward", method="euclidean");
-      
       hm_mgm4 <- heatmap.3(iM,
       #   Colv=FALSE,
          main=paste0("Hits (MGM >= ", MGM, ")"),
