@@ -115,6 +115,7 @@ jamba::printDebug("fc_file path: ", fc_filepath);
 jamba::printDebug("CURATION_TXT: ", CURATION_TXT);
 jamba::printDebug("GTF:          ", GTF);
 jamba::printDebug("GTFNAME:      ", GTFNAME);
+jamba::printDebug("ATAC:         ", ATAC);
 Sys.setenv(FC_FILE=fc_filepath);
 Sys.setenv(CACHEDIR=cache_dir);
 
@@ -123,6 +124,16 @@ if (!"0" %in% DRYRUN) {
    stop("Exiting due to DRYRUN=1, set DRYRUN=0 to proceed.");
 }
 
+# confirm slicejam_analysis.Rmd is in the current directory
+Rmd_file <- system.file(package="slicejam", "exec/slicejam_analysis.Rmd");
+if (!file.exists("slicejam_analysis.Rmd")) {
+   file.copy(from=Rmd_file,
+      to="slicejam_analysis.Rmd");
+}
+
+if (!file.exists("slicejam_analysis.Rmd")) {
+   stop("slicejam_analysis.Rmd file does not exist in the current directory.");
+}
 rmarkdown::render("slicejam_analysis.Rmd",
    output_format="html_document",
    knit_root_dir=knit_root_dir,

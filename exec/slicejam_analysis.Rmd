@@ -2019,27 +2019,16 @@ if (suppressPackageStartupMessages(require(genejam))) {
       for (genecol in genecols) {
          genenamecol <- gsub("gene_id", "gene_name", genecol);
          genedescol <- gsub("gene_id", "gene_description", genecol);
-         jamba::printDebug(c("Converting from '", genecol, "' to '", genedescol, "'"), sep="");
-         genedf1 <- genejam::freshenGenes(data.frame(gene_id=values(fc_gr)[[genecol]]),
-            try_list=c("SYMBOL"),
-            final=NULL);
-         if (genenamecol %in% colnames(values(fc_gr))) {
-            jamba::printDebug(c("   Including values from '", genenamecol, "'"), sep="");
-            genedf1[,genenamecol] <- values(fc_gr)[[genenamecol]];
-            genedf1 <- renameColumn(genedf1[,c("found",genenamecol),drop=FALSE],
-               from="found", to="gene_id_found");
-         } else {
-            genedf1 <- renameColumn(genedf1[,"found",drop=FALSE],
-               from="found", to="gene_id_found");
-         }
-         genedf2 <- genejam::freshenGenes(genedf1,
-            try_list=c("SYMBOL2EG", "ALIAS2EG"),
+         jamba::printDebug(c("Converting from '", genecol,
+            "' to '", genedescol, "'"), sep="");
+         genedf0 <- genejam::freshenGenes(
+            data.frame(intermediate=values(fc_gr)[[genecol]],
+               stringsAsFactors=FALSE),
+            try_list=NULL,
             sep=";",
-            final=c("SYMBOL", "GENENAME"))
-         genedf3 <- data.frame(check.names=FALSE,
-            genedf1,
-            genedf2[,c("intermediate", "SYMBOL", "GENENAME"),drop=FALSE]);
-         genedf3 <- trim_multigenedesc(genedf3, 4);
+            intermediate="intermediate",
+            final=c("SYMBOL", "GENENAME"));
+         genedf3 <- trim_multigenedesc(genedf0, 4);
          if (any(nchar(genedf3$GENENAME) > 0)) {
             values(fc_gr)[[genedescol]] <- genedf3$GENENAME;
          } else {
@@ -2050,15 +2039,16 @@ if (suppressPackageStartupMessages(require(genejam))) {
       genecols <- head(rev(vigrep("gene_name", colnames(values(fc_gr)))), 1);
       for (genecol in genecols) {
          genedescol <- gsub("gene_name", "gene_description", genecol);
-         jamba::printDebug(c("Converting from '", genecol, "' to '", genedescol, "'"), sep="");
-         genedf2 <- genejam::freshenGenes(data.frame(gene_id=values(fc_gr)[[genecol]]),
+         jamba::printDebug(c("Converting from '", genecol,
+            "' to '", genedescol, "'"), sep="");
+         genedf2 <- genejam::freshenGenes(
+            data.frame(gene_id=values(fc_gr)[[genecol]],
+               stringsAsFactors=FALSE),
             try_list=c("SYMBOL2EG", "ALIAS2EG"),
             sep=";",
+            intermediate="intermediate",
             final=c("SYMBOL", "GENENAME"))
-         genedf3 <- data.frame(check.names=FALSE,
-            genedf1,
-            genedf2[,c("intermediate", "SYMBOL", "GENENAME"),drop=FALSE]);
-         genedf3 <- trim_multigenedesc(genedf3, 4);
+         genedf3 <- trim_multigenedesc(genedf2[,c("intermediate", "SYMBOL", "GENENAME"),drop=FALSE], 4);
          if (any(nchar(genedf3$GENENAME) > 0)) {
             values(fc_gr)[[genedescol]] <- genedf3$GENENAME;
          } else {

@@ -1,3 +1,14 @@
+# slicejam 0.0.22.900
+
+## updates to Rmarkdown
+
+* In `slicejam_analysis.Rmd` the section `add_gene_names`
+was updated for more streamlined logic
+when adding gene description to an existing row.
+* The file `run_slicejam.R` was updated to print the `ATAC`
+variable, and to copy `slicejam_analysis.Rmd` to the current
+working directory if it does not already exist.
+
 # slicejam 0.0.21.900
 
 ## updates to existing functions
