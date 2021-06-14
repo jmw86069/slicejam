@@ -2233,38 +2233,40 @@ if (length(AtacStatsMgm4) > 0) {
       statsbed <- statsdf2bed(iDF_all2,
          MGM=MGM,
          type="all");
-      bed_ext <- paste0(".stats_mgm",
-         MGM,
-         ifelse(ATAC, "_atac1", ""),
-         ".", iSig, ".bed");
-      bed_file <- file.path(OUTDIR,
-         gsub("[.]fc$|[.]fc[.]txt$",
-            ignore.case=TRUE,
-            bed_ext,
-            basename(fc_file)));
-      ## Add track header line
-      trackname <- paste0(
-         format(Sys.time(), "%Y%m%d%H%M"),
-         "mgm");
-      trackline <- paste0('track name=',
-         trackname,
-         ' description="',
-         format(Sys.time(), "%Y%m%d%H%M"),
-         ' mgm', MGM, ' peaks"');
-      writeLines(text=trackline,
-         con=bed_file);
-      data.table::fwrite(
-         x=statsbed,
-         file=bed_file,
-         append=TRUE,
-         sep="\t",
-         col.names=FALSE);
+      if (length(statsbed) > 0) {
+         bed_ext <- paste0(".stats_mgm",
+            MGM,
+            ifelse(ATAC, "_atac1", ""),
+            ".", iSig, ".bed");
+         bed_file <- file.path(OUTDIR,
+            gsub("[.]fc$|[.]fc[.]txt$",
+               ignore.case=TRUE,
+               bed_ext,
+               basename(fc_file)));
+         ## Add track header line
+         trackname <- paste0(
+            format(Sys.time(), "%Y%m%d%H%M"),
+            "mgm");
+         trackline <- paste0('track name=',
+            trackname,
+            ' description="',
+            format(Sys.time(), "%Y%m%d%H%M"),
+            ' mgm', MGM, ' peaks"');
+         writeLines(text=trackline,
+            con=bed_file);
+         data.table::fwrite(
+            x=statsbed,
+            file=bed_file,
+            append=TRUE,
+            sep="\t",
+            col.names=FALSE);
+      }
       
       ## Save all peaks in BED format
       statsbed <- statsdf2bed(iDF_all2,
          MGM=MGM,
          type="hits");
-      if (nrow(statsbed) > 0) {
+      if (length(statsbed) > 0) {
          bed_ext <- paste0(".stathits_mgm",
             MGM,
             ifelse(ATAC, "_atac1", ""),
