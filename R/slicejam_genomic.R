@@ -693,6 +693,9 @@ statsdf2bed <- function
       hits_v <- Reduce("|", hits_l);
       statsdf <- subset(statsdf, hits_v);
    }
+   if (nrow(statsdf) == 0) {
+      return(NULL)
+   }
    
    hits_im <- as.matrix(statsdf[,hit_cols_use,drop=FALSE]);
    hits_score <- rowSums(abs(hits_im));
