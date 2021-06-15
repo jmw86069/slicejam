@@ -1842,7 +1842,7 @@ if (length(AtacStatsMgm4) > 0) {
 
 ### Heatmap of peak hits
 
-```{r, heatmap_hits, fig.height=14, fig.width=10}
+```{r, heatmap_hits, fig.height=14, fig.width=3 + sqrt(length(iSamplesUse))}
 if (length(AtacStats) > 0) {
    stats_dim <- dim(AtacStats$hit_array);
    dimnames1 <- dimnames(AtacStats$hit_array)[[1]];
@@ -1879,6 +1879,7 @@ if (length(AtacStatsMgm4) > 0) {
          name="log2Fold",
          column_split=iGroup[iSamplesUse],
          show_row_names=FALSE,
+         show_row_dend=nrow(iM) < 2500,
          cluster_column_slices=FALSE,
          col=colorjam::col_div_xf(iMq99,
             lens=5),
@@ -1939,7 +1940,7 @@ if (length(AtacStatsMgm4) > 0) {
 ### Heatmap of peak hits using group means
 
 
-```{r, heatmap_groupmeans, fig.height=14, fig.width=10}
+```{r, heatmap_groupmeans, fig.height=14, fig.width=length(unique(iGroup[iSamplesUse])) * 1 + 2}
 if (length(AtacStatsMgm4) > 0) {
    if (denovo_controls) {
       iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
@@ -1955,8 +1956,8 @@ if (length(AtacStatsMgm4) > 0) {
       hm_mgm4 <- ComplexHeatmap::Heatmap(iM_grp,
          border=TRUE,
          name="log2Fold",
-         column_split=iGroup[iSamplesUse],
          show_row_names=FALSE,
+         show_row_dend=nrow(iM_grp) < 2500,
          cluster_column_slices=FALSE,
          col=colorjam::col_div_xf(iMq99,
             lens=5),
