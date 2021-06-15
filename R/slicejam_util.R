@@ -442,10 +442,8 @@ printDebugList <- function
    
    for (i in seq_along(printlist)) {
       if (is.list(printlist[[i]])) {
-         print(paste0("list entry, i:", i));
          print_list_arg(printlist, i, indent);
       } else {
-         print(paste0("non-list entry, i:", i));
          if (length(names(printlist)) > 0 && nchar(names(printlist)[i]) > 0) {
             pname <- paste0(names(printlist)[i], ":");
          } else {
