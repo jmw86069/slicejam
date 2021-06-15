@@ -330,7 +330,7 @@ get_slicejam_args <- function
       paste0(basename(fc_base),  ".html"));
    fc_filepath <- normalizePath(fc_file);
    # cache directory
-   cache_dir <- file.path(fc_basedir, "cache", "");
+   CACHEDIR <- file.path(knit_root_dir, "cache", "");
    
    sliceargs <- list();
    sliceargs$fc_file <- fc_file;
@@ -361,7 +361,6 @@ get_slicejam_args <- function
    sliceargs$fc_basedir <- fc_basedir;
    sliceargs$fc_html <- fc_html;
    sliceargs$knit_root_dir <- knit_root_dir;
-   sliceargs$cache_dir <- cache_dir;
    if (verbose) {
       printDebugList(sliceargs);
    }

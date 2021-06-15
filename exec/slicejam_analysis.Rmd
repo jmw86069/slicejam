@@ -25,6 +25,54 @@ This document can be reproduced using the R code displayed in
 this document. The initial steps involve loading R packages
 into memory.
 
+#### Rmarkdown options
+
+```{r, setup, include=TRUE}
+#    css: liao_style.css
+## To render this page:
+## In the farrisSeq folder run:
+## rmarkdown::render("Adam19_Rnaseq_Analysis_vM21.Rmd", "html_document", knit_root_dir=getwd(), output_dir=getwd());
+##    css: /Users/wardjm/Projects/R-scripts/liao_style.css
+
+## Define the cache so it is dependent upon:
+## - the versions of a few R packages,
+## - the environmental variable FC_FILE
+knitr::opts_chunk$set(cache=TRUE,
+   autodep=TRUE,
+   dev=c("png", "cairo_pdf"),
+   dev.args=list(
+      pointsize=14
+   ),
+   fig.align="center",
+   pdf.options(encoding="ISOLatin9.enc"),
+   cache.path=Sys.getenv("CACHEDIR", "cache"),
+   cache.extra=list(
+      packageVersion("jamba"),
+      packageVersion("jamma"),
+      packageVersion("splicejam"),
+      packageVersion("slicejam"),
+      paste0("FC_FILE:", Sys.getenv("FC_FILE")),
+      paste0("CURATION_TXT:", Sys.getenv("CURATION_TXT")),
+      paste0("GTF:", Sys.getenv("GTF"))
+   )
+);
+
+options("kable_styling_position"="left",
+   "kable_styling_full_width"=FALSE,
+   "kable_styling_bootstrap_options"=c("striped",
+      "hover",
+      "condensed",
+      "responsive")
+);
+## Set font to Arial which helps compatibility in Adobe Illustrator,
+## and helps display of up and down arrow characters in Venn diagrams
+par("family"="Arial",
+   "lend"="square",
+   "ljoin"="mitre");
+```
+
+#### SliceJam analysis parameters
+
 ```{r, slicejam_args, include=TRUE, cache=TRUE}
 sliceargs <- slicejam::get_slicejam_args(verbose=TRUE);
 
@@ -58,118 +106,10 @@ fc_base <- sliceargs$fc_base;
 fc_basedir <- sliceargs$fc_basedir;
 fc_html <- sliceargs$fc_html;
 knit_root_dir <- sliceargs$knit_root_dir;
-cache_dir <- sliceargs$cache_dir;
-
-if (FALSE) {
-   OUTDIR <- Sys.getenv("OUTDIR");
-   if (length(OUTDIR) == 0 || nchar(OUTDIR) == 0) {
-      OUTDIR <- ".";
-   }
-   CACHEDIR <- Sys.getenv("CACHEDIR");
-   if (length(CACHEDIR) == 0 || nchar(CACHEDIR) == 0) {
-      CACHEDIR <- file.path(OUTDIR, "cache", "");
-   }
-   if (length(grep("/$", CACHEDIR)) == 0) {
-      CACHEDIR <- file.path(CACHEDIR, "");
-   }
-   SAVE_RDATA <- Sys.getenv("SAVE_RDATA");
-   if (length(SAVE_RDATA) == 0 || nchar(SAVE_RDATA) == 0 || SAVE_RDATA %in% c("0", "FALSE", "F")) {
-      SAVE_RDATA <- FALSE;
-   } else {
-      SAVE_RDATA <- TRUE;
-   }
-   ATAC <- Sys.getenv("ATAC");
-   if (length(ATAC) == 0 || nchar(ATAC) == 0 || is.na(ATAC) || ATAC %in% c(0, "0", "F", "NA", "N", "n")) {
-      ATAC <- FALSE;
-   } else {
-      ATAC <- TRUE;
-   }
-   GROUPCHECK <- Sys.getenv("GROUPCHECK");
-   if (length(GROUPCHECK) == 0 ||
-         nchar(GROUPCHECK) == 0 || 
-         is.na(GROUPCHECK) || 
-         GROUPCHECK %in% c(0, "0", "F", "NA", "N", "n")) {
-      GROUPCHECK <- FALSE;
-   } else {
-      GROUPCHECK <- TRUE;
-   }
-   GTF <- Sys.getenv("GTF");
-   if (length(GTF) == 0 || nchar(GTF) == 0) {
-      #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/EA_Jul052017_RNAseq/hg19_refgene_041619_minimus_exons.gtf";
-      #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Copied_Intersections/110519_ATAC_broadpeak/To_James/hg19_refgene_041619_minimus_exons_v2.gtf";
-      #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Adelman/Scripts/fetch_refGene_gtf/test/hg19_121619_genes.gtf"; # 20dec2019
-      stop("The GTF environment variable is required.");
-   }
-   if (!file.exists(GTF)) {
-      stop(paste0("The GTF was not found:", GTF));
-   }
-   
-   upstream_promoter <- as.numeric(Sys.getenv("UPSTREAM_PROMOTER", 2000));
-   downstream_promoter <- as.numeric(Sys.getenv("DOWNSTREAM_PROMOTER", 200));
-   upstream_tts <- as.numeric(Sys.getenv("UPSTREAM_TTS", 1000));
-   downstream_tts <- as.numeric(Sys.getenv("DOWNSTREAM_TTS", 1000));
-   
-   ## Optional detectedTx, detectedGenes
-   detectedTx_file <- Sys.getenv("DETECTED_TX");
-   if (length(detectedTx_file) > 0 && nchar(detectedTx_file) > 0 && file.exists(detectedTx_file)) {
-      detectedTx <- readLines(detectedTx_file);
-   } else {
-      detectedTx <- NULL;
-   }
-   detectedGenes_file <- Sys.getenv("DETECTED_GENES");
-   if (length(detectedGenes_file) > 0 && nchar(detectedGenes_file) > 0 && file.exists(detectedGenes_file)) {
-      detectedGenes <- readLines(detectedGenes_file);
-   } else {
-      detectedGenes <- NULL;
-   }
-}
 
 ```
 
-```{r, setup, include=TRUE}
-#    css: liao_style.css
-## To render this page:
-## In the farrisSeq folder run:
-## rmarkdown::render("Adam19_Rnaseq_Analysis_vM21.Rmd", "html_document", knit_root_dir=getwd(), output_dir=getwd());
-##    css: /Users/wardjm/Projects/R-scripts/liao_style.css
-
-## Define the cache so it is dependent upon:
-## - the versions of a few R packages,
-## - the environmental variable FC_FILE
-knitr::opts_chunk$set(cache=TRUE,
-   autodep=TRUE,
-   dev=c("png", "cairo_pdf"),
-   dev.args=list(
-      pointsize=14
-   ),
-   fig.align="center",
-   pdf.options(encoding="ISOLatin9.enc"),
-   cache.path=CACHEDIR,
-   cache.extra=list(
-      packageVersion("jamba"),
-      packageVersion("jamma"),
-      packageVersion("splicejam"),
-      packageVersion("slicejam"),
-      paste0("FC_FILE:", Sys.getenv("FC_FILE")),
-      paste0("CURATION_TXT:", Sys.getenv("CURATION_TXT")),
-      paste0("GTF:", Sys.getenv("GTF"))
-   )
-);
-
-options("kable_styling_position"="left",
-   "kable_styling_full_width"=FALSE,
-   "kable_styling_bootstrap_options"=c("striped",
-      "hover",
-      "condensed",
-      "responsive")
-);
-## Set font to Arial which helps compatibility in Adobe Illustrator,
-## and helps display of up and down arrow characters in Venn diagrams
-par("family"="Arial",
-   "lend"="square",
-   "ljoin"="mitre");
-```
-
+#### R package initialization
 
 ```{r, r_initialization, cache=FALSE}
 ## Prepend a common R package install location to .libPaths()

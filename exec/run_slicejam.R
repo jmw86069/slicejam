@@ -54,7 +54,7 @@ fc_base <- sliceargs$fc_base;
 fc_basedir <- sliceargs$fc_basedir;
 fc_html <- sliceargs$fc_html;
 knit_root_dir <- sliceargs$knit_root_dir;
-cache_dir <- sliceargs$cache_dir;
+CACHEDIR <- sliceargs$CACHEDIR;
 
 if (FALSE) {
    DRYRUN <- Sys.getenv("DRYRUN");
@@ -157,8 +157,12 @@ jamba::printDebug("CURATION_TXT: ", CURATION_TXT);
 jamba::printDebug("GTF:          ", GTF);
 jamba::printDebug("GTFNAME:      ", GTFNAME);
 jamba::printDebug("ATAC:         ", ATAC);
+
 Sys.setenv(FC_FILE=fc_filepath);
-Sys.setenv(CACHEDIR=cache_dir);
+Sys.setenv(OUTDIR=OUTDIR);
+Sys.setenv(CACHEDIR=CACHEDIR);
+Sys.setenv(CURATION_TXT=CURATION_TXT);
+Sys.setenv(GTF=GTF);
 
 if (DRYRUN) {
    jamba::printDebug("DRYRUN mode.");
