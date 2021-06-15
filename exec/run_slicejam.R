@@ -35,7 +35,7 @@
 ## Figures will include PNG images rendered in the HTML file, and
 ## PDF versions of each figure, for more accurate editing.
 
-sliceargs <- slicejam::get_slicejam_args();
+sliceargs <- slicejam::get_slicejam_args(verbose=TRUE);
 
 DRYRUN <- sliceargs$DRYRUN;
 ATAC <- sliceargs$ATAC;

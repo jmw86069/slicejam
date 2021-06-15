@@ -373,18 +373,26 @@ get_slicejam_args <- function
 #' 
 #' @export
 printDebugList <- function
-(maxprint=50, ...)
+(...,
+ maxprint=50)
 {
    # determine which arguments are intended for jamba::printDebug()
    # all others will be printed onscreen
    fnames <- setdiff(names(formals(jamba::printDebug)), "...");
    inplist <- list(...);
-   printlist <- inplist[!names(inplist) %in% fnames];
-   arglist <- inplist[names(inplist) %in% fnames];
+   if (length(names(inplist)) == 0) {
+      printlist <- inplist;
+      arglist <- NULL;
+   } else {
+      printlist <- inplist[!names(inplist) %in% fnames];
+      arglist <- inplist[names(inplist) %in% fnames];
+   }
    
    if (FALSE) {
       print("names(inplist):");
       print(names(inplist));
+      print("inplist:");
+      print(inplist);
       print("printlist:");
       print(printlist);
       print("arglist:");
@@ -432,18 +440,20 @@ printDebugList <- function
    
    for (i in seq_along(printlist)) {
       if (is.list(printlist[[i]])) {
+         print(paste0("list entry, i:", i));
          print_list_arg(printlist, i, indent);
       } else {
+         print(paste0("non-list entry, i:", i));
          if (length(names(printlist)) > 0 && nchar(names(printlist)[i]) > 0) {
             pname <- paste0(names(printlist)[i], ":");
          } else {
             pname <- NULL;
          }
          printvals <- printlist[[i]];
-         if (length(printvals) > maxprint) {
-            printvals <- c(head(printvals, maxprint),
-               paste0("... (", jamba::formatInt(length(printvals)), " total)"));
-         }
+         #if (length(printvals) > maxprint) {
+         #   printvals <- c(head(printvals, maxprint),
+         #      paste0("... (", jamba::formatInt(length(printvals)), " total)"));
+         #}
          do.call(jamba::printDebug,
             c(arglist,
                list(pname), list(printvals)));

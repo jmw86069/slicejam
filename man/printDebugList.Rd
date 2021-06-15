@@ -4,7 +4,7 @@
 \alias{printDebugList}
 \title{Print debug with list input}
 \usage{
-printDebugList(maxprint = 50, ...)
+printDebugList(..., maxprint = 50)
 }
 \description{
 Print debug with list input
