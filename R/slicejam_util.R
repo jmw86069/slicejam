@@ -83,12 +83,12 @@ get_slicejam_args <- function
    if ("CURATION_TXT" %in% names(inplist)) {
       CURATION_TXT <- inplist$CURATION_TXT;
    } else {
-      curation_txt <- Sys.getenv("CURATION_TXT",
+      CURATION_TXT <- Sys.getenv("CURATION_TXT",
          "curation.txt");
    }
-   if (length(curation_txt) == 0 ||
-         nchar(curation_txt) == 0 ||
-         !file.exists(curation_txt)) {
+   if (length(CURATION_TXT) == 0 ||
+         nchar(CURATION_TXT) == 0 ||
+         !file.exists(CURATION_TXT)) {
       jamba::printDebug("Error: ",
          c("No ",
             "CURATION_TXT",
