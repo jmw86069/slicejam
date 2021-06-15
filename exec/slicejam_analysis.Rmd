@@ -2239,7 +2239,7 @@ if (length(AtacStats) > 0) {
          stringsAsFactors=FALSE,
          iDF_all[,1,drop=FALSE],
          coord_df,
-         iDFall[,-1,drop=FALSE]);
+         iDF_all[,-1,drop=FALSE]);
 
       txt_ext <- paste0(".stats_nomgm",
          ifelse(ATAC, "_atac1", ""),
