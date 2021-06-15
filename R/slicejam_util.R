@@ -149,7 +149,7 @@ get_slicejam_args <- function
    } else {
       GROUPCHECK <- Sys.getenv("GROUPCHECK");
    }
-   if (nchar(GROUPCHECK) == 0 || any(c("1", "true", "yes", "t") %in% tolower(GROUPCHECK))) {
+   if (nchar(GROUPCHECK) > 0 && any(c("1", "true", "yes", "t", "y") %in% tolower(GROUPCHECK))) {
       GROUPCHECK <- TRUE;
    } else {
       GROUPCHECK <- FALSE;
