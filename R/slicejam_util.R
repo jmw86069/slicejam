@@ -306,25 +306,28 @@ get_slicejam_args <- function
    if (!ATAC %in% c(0)) {
       fc_base <- paste0(fc_base, "_atac", ATAC);
    }
-
+   # add the GTF stem to the base name
+   fc_base <- paste0(fc_base, gtf_stem);
+   
    # knitr root path auto-generated or using OUTDIR directly
    # - either way it uses a fully described file path
    if (nchar(OUTDIR) == 0) {
-      fc_base <- paste0(fc_base, gtf_stem);
       fc_basedir <- paste0(fc_base,  "_analysis");
-      # knitr root directory
       knit_root_dir <- file.path(
-         getwd(),
-         fc_basedir);
-   } else {
-      fc_base <- normalizePath(OUTDIR);
-      fc_basedir <- fc_base;
+         normalizePath(fc_basedir));
       # knitr root directory
-      knit_root_dir <- fc_basedir;
+      OUTDIR <- knit_root_dir;
+   } else {
+      OUTDIR <- normalizePath(OUTDIR);
+      fc_base <- OUTDIR;
+      fc_basedir <- OUTDIR;
+      # knitr root directory
+      knit_root_dir <- OUTDIR;
    }
    
    # html output filename
-   fc_html <- paste0(fc_base,  ".html");
+   fc_html <- file.path(fc_basedir,
+      paste0(basename(fc_base),  ".html"));
    fc_filepath <- normalizePath(fc_file);
    # cache directory
    cache_dir <- file.path(fc_basedir, "cache", "");
