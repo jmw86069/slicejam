@@ -1,3 +1,46 @@
+# slicejam 0.0.23.900
+
+## Normalization update
+
+Normalization is configurable, initially adding median
+normalization based upon `jamma::jammanorm()` which normalizes
+the signal equivalent from an MA-plot, using median signal
+at or above a minimum expression threshold. This method
+is appropriate when normalization should not alter the
+distribution of signal, instead should just shift the
+signal up or down relative to other samples. The minimum
+expression should be defined by the point in the MA-plot
+where signal is clearly horizontal, and where the center
+of such signal represents a stable frame of reference
+for normalization.
+
+* `run_slicejam.R` new argument `NORM` passed by environment
+variable:
+
+    * `NORM="quantile"` uses the default quantile normalization
+    * `NORM="median"` uses median normalization
+    * `NORM="mediangroup"` uses median normalization within group
+    * `NORM="none"` performs no additional normalization
+* `slicejam_analysis.Rmd` was refactored:
+
+    * to apply the appropriate MGM to the initial unfiltered
+    limma-voom analysis, where previously all peaks were tested
+    but a default MGM=4 was applied to statistical hits.
+    * to handle alternative
+    normalizations, with appropriate plot labels indicating the
+    method used.
+    * to use `slicejam::volcano_plot()` instead of the proprietary
+    `volcanoPlot()` used internally.
+    * to use `ComplexHeatmap::Heatmap()` to migrate from using the
+    never-released internal version of `heatmap.3()`.
+
+## new functions
+
+* `get_slicejam_args()` is a wrapper function to manage all
+the input parameters sent by environment variable or directly
+by R function argument. It is used for consistency in both
+`run_slicejam.R` and `slicejam_analysis.Rmd`.
+
 # slicejam 0.0.22.900
 
 ## updates to Rmarkdown

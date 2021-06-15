@@ -26,66 +26,102 @@ this document. The initial steps involve loading R packages
 into memory.
 
 ```{r, outdir}
-OUTDIR <- Sys.getenv("OUTDIR");
-if (length(OUTDIR) == 0 || nchar(OUTDIR) == 0) {
-   OUTDIR <- ".";
-}
-CACHEDIR <- Sys.getenv("CACHEDIR");
-if (length(CACHEDIR) == 0 || nchar(CACHEDIR) == 0) {
-   CACHEDIR <- file.path(OUTDIR, "cache", "");
-}
-if (length(grep("/$", CACHEDIR)) == 0) {
-   CACHEDIR <- file.path(CACHEDIR, "");
-}
-SAVE_RDATA <- Sys.getenv("SAVE_RDATA");
-if (length(SAVE_RDATA) == 0 || nchar(SAVE_RDATA) == 0 || SAVE_RDATA %in% c("0", "FALSE", "F")) {
-   SAVE_RDATA <- FALSE;
-} else {
-   SAVE_RDATA <- TRUE;
-}
-ATAC <- Sys.getenv("ATAC");
-if (length(ATAC) == 0 || nchar(ATAC) == 0 || is.na(ATAC) || ATAC %in% c(0, "0", "F", "NA", "N", "n")) {
-   ATAC <- FALSE;
-} else {
-   ATAC <- TRUE;
-}
-GROUPCHECK <- Sys.getenv("GROUPCHECK");
-if (length(GROUPCHECK) == 0 ||
-      nchar(GROUPCHECK) == 0 || 
-      is.na(GROUPCHECK) || 
-      GROUPCHECK %in% c(0, "0", "F", "NA", "N", "n")) {
-   GROUPCHECK <- FALSE;
-} else {
-   GROUPCHECK <- TRUE;
-}
-GTF <- Sys.getenv("GTF");
-if (length(GTF) == 0 || nchar(GTF) == 0) {
-   #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/EA_Jul052017_RNAseq/hg19_refgene_041619_minimus_exons.gtf";
-   #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Copied_Intersections/110519_ATAC_broadpeak/To_James/hg19_refgene_041619_minimus_exons_v2.gtf";
-   #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Adelman/Scripts/fetch_refGene_gtf/test/hg19_121619_genes.gtf"; # 20dec2019
-   stop("The GTF environment variable is required.");
-}
-if (!file.exists(GTF)) {
-   stop(paste0("The GTF was not found:", GTF));
-}
+sliceargs <- get_slicejam_args(verbose=TRUE);
 
-upstream_promoter <- as.numeric(Sys.getenv("UPSTREAM_PROMOTER", 2000));
-downstream_promoter <- as.numeric(Sys.getenv("DOWNSTREAM_PROMOTER", 200));
-upstream_tts <- as.numeric(Sys.getenv("UPSTREAM_TTS", 1000));
-downstream_tts <- as.numeric(Sys.getenv("DOWNSTREAM_TTS", 1000));
+DRYRUN <- sliceargs$DRYRUN;
+ATAC <- sliceargs$ATAC;
+fc_file <- sliceargs$fc_file;
+fc_filepath <- sliceargs$fc_filepath;
+CURATION_TXT <- sliceargs$CURATION_TXT;
+GTF <- sliceargs$GTF;
+GTFNAME <- sliceargs$GTFNAME;
+DRYRUN <- sliceargs$DRYRUN;
+OUTDIR <- sliceargs$OUTDIR;
+CACHEDIR <- sliceargs$CACHEDIR;
+ATAC <- sliceargs$ATAC;
+MGM <- sliceargs$MGM;
+NORM <- sliceargs$NORM;
+NORMMIN <- sliceargs$NORMMIN;
+NORMSHORT <- sliceargs$NORMSHORT;
+GROUPCHECK <- sliceargs$GROUPCHECK;
+SAVE_RDATA <- sliceargs$SAVE_RDATA;
 
-## Optional detectedTx, detectedGenes
-detectedTx_file <- Sys.getenv("DETECTED_TX");
-if (length(detectedTx_file) > 0 && nchar(detectedTx_file) > 0 && file.exists(detectedTx_file)) {
-   detectedTx <- readLines(detectedTx_file);
-} else {
-   detectedTx <- NULL;
-}
-detectedGenes_file <- Sys.getenv("DETECTED_GENES");
-if (length(detectedGenes_file) > 0 && nchar(detectedGenes_file) > 0 && file.exists(detectedGenes_file)) {
-   detectedGenes <- readLines(detectedGenes_file);
-} else {
-   detectedGenes <- NULL;
+detectedTx <- sliceargs$DETECTED_TX;
+detectedGenes <- sliceargs$DETECTED_GENES;
+
+upstream_promoter <- sliceargs$UPSTREAM_PROMOTER;
+downstream_promoter <- sliceargs$DOWNSTREAM_PROMOTER;
+upstream_tts <- sliceargs$UPSTREAM_TTS;
+downstream_tts <- sliceargs$DOWNSTREAM_TTS;
+
+fc_base <- sliceargs$fc_base;
+fc_basedir <- sliceargs$fc_basedir;
+fc_html <- sliceargs$fc_html;
+knit_root_dir <- sliceargs$knit_root_dir;
+cache_dir <- sliceargs$cache_dir;
+
+if (FALSE) {
+   OUTDIR <- Sys.getenv("OUTDIR");
+   if (length(OUTDIR) == 0 || nchar(OUTDIR) == 0) {
+      OUTDIR <- ".";
+   }
+   CACHEDIR <- Sys.getenv("CACHEDIR");
+   if (length(CACHEDIR) == 0 || nchar(CACHEDIR) == 0) {
+      CACHEDIR <- file.path(OUTDIR, "cache", "");
+   }
+   if (length(grep("/$", CACHEDIR)) == 0) {
+      CACHEDIR <- file.path(CACHEDIR, "");
+   }
+   SAVE_RDATA <- Sys.getenv("SAVE_RDATA");
+   if (length(SAVE_RDATA) == 0 || nchar(SAVE_RDATA) == 0 || SAVE_RDATA %in% c("0", "FALSE", "F")) {
+      SAVE_RDATA <- FALSE;
+   } else {
+      SAVE_RDATA <- TRUE;
+   }
+   ATAC <- Sys.getenv("ATAC");
+   if (length(ATAC) == 0 || nchar(ATAC) == 0 || is.na(ATAC) || ATAC %in% c(0, "0", "F", "NA", "N", "n")) {
+      ATAC <- FALSE;
+   } else {
+      ATAC <- TRUE;
+   }
+   GROUPCHECK <- Sys.getenv("GROUPCHECK");
+   if (length(GROUPCHECK) == 0 ||
+         nchar(GROUPCHECK) == 0 || 
+         is.na(GROUPCHECK) || 
+         GROUPCHECK %in% c(0, "0", "F", "NA", "N", "n")) {
+      GROUPCHECK <- FALSE;
+   } else {
+      GROUPCHECK <- TRUE;
+   }
+   GTF <- Sys.getenv("GTF");
+   if (length(GTF) == 0 || nchar(GTF) == 0) {
+      #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/EA_Jul052017_RNAseq/hg19_refgene_041619_minimus_exons.gtf";
+      #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Copied_Intersections/110519_ATAC_broadpeak/To_James/hg19_refgene_041619_minimus_exons_v2.gtf";
+      #GTF <- "/ddn/gs1/project/nextgen/post/archer1/gokey_working/Adelman/Scripts/fetch_refGene_gtf/test/hg19_121619_genes.gtf"; # 20dec2019
+      stop("The GTF environment variable is required.");
+   }
+   if (!file.exists(GTF)) {
+      stop(paste0("The GTF was not found:", GTF));
+   }
+   
+   upstream_promoter <- as.numeric(Sys.getenv("UPSTREAM_PROMOTER", 2000));
+   downstream_promoter <- as.numeric(Sys.getenv("DOWNSTREAM_PROMOTER", 200));
+   upstream_tts <- as.numeric(Sys.getenv("UPSTREAM_TTS", 1000));
+   downstream_tts <- as.numeric(Sys.getenv("DOWNSTREAM_TTS", 1000));
+   
+   ## Optional detectedTx, detectedGenes
+   detectedTx_file <- Sys.getenv("DETECTED_TX");
+   if (length(detectedTx_file) > 0 && nchar(detectedTx_file) > 0 && file.exists(detectedTx_file)) {
+      detectedTx <- readLines(detectedTx_file);
+   } else {
+      detectedTx <- NULL;
+   }
+   detectedGenes_file <- Sys.getenv("DETECTED_GENES");
+   if (length(detectedGenes_file) > 0 && nchar(detectedGenes_file) > 0 && file.exists(detectedGenes_file)) {
+      detectedGenes <- readLines(detectedGenes_file);
+   } else {
+      detectedGenes <- NULL;
+   }
 }
 
 ```
@@ -184,25 +220,8 @@ suppressPackageStartupMessages(library(multienrichjam));
 
 * Curate filename columns by one of two processes:
 
-    * If environment variable `"CURATE_YAML"` is defined, and points to
-    a file that exists, the yaml curation workflow is used.
-    * Otherwise the following rules are used to derive Sample, Group, Run,
-    assuming the colnames are in the rough format **RUN**_*GROUP*_**REP**:
-    
-        * Samples are defined by calling `basename()` to remove the
-         directory of each file (if it exists), then removing
-         the file stem, and any recognized keywords such as `"dedup"`,
-         `"cutadapt"`, `"fastq"`, etc.
-        * Sample is split using the delimiter `"[-_.]"` and the
-         first word is used for `"Run"`, the second word is used
-         for `"Group"`.
-        * The delimiter therefore can be any of: hyphen `"-"`,
-         underscore `"_"`, or decimal `"."`.
-        * Group is converted to factor, whose levels are ordered
-         so that several recognized control labels are first:
-         `"Control","ctrl","ctl","veh","blank","ntc","Luc"`,
-         followed by the groups in the order they appear as column
-         names in the featureCounts file.
+    * A file defined by `"CURATION_TXT"` is used to parse the colnames
+    in the featureCounts file into three columns: `"Sample"`, `"Group"`, `"Run"`
 
 * An R object `SummarizedExperiment` is created, using the columns
 from featureCounts to populate rows, such as
@@ -211,25 +230,25 @@ from featureCounts to populate rows, such as
 
 * Normalization and batch adjustment
 
-    * Quantile-normalize peak counts across all samples.
-    * When the `"Run"` column contains more than one unique value,
+    * Normalize peak counts across all samples using the method defined by `NORM`.
+    * When `"Run"` contains more than one unique value,
     apply batch adjustment using the `"Run"` column to define batch,
-    and `"Group"` to define groups, using the quantile-normalized data.
+    and `"Group"` to define groups, using normalized data.
 
 * Create MA-plots:
 
     * un-normalized data, global-centered
     * un-normalized data, centered by "Run"
-    * quantile-normalized data, global-centered
-    * quantile-normalized data, centered by "Run"
-    * quantile-normalized data, centered by "Group","Run"
-    * quantile-normalizeddata, global-centered, batch-adjusted by "Run"
+    * normalized data, global-centered
+    * normalized data, centered by "Run"
+    * normalized data, centered by "Group","Run"
+    * normalizeddata, global-centered, batch-adjusted by "Run"
 
 * Create sample correlation heatmaps:
 
-   * quantile-normalized data, centered by the first factor level
+   * normalized data, centered by the first factor level
    in "Group", intended to act as a control group.
-   * quantile-normalized data, batch-adjusted by "Run", centered by the
+   * normalized data, batch-adjusted by "Run", centered by the
    first factor level in "Group".
 
 * Statistical comparisons
@@ -239,7 +258,7 @@ from featureCounts to populate rows, such as
        * Note that contrasts are limited to comparisons to the first
        `"Group"` level.
    
-   * Use quantile-normalized, batch-adjusted counts.
+   * Use normalized, batch-adjusted counts.
    * Apply cutoffs: maxGroupMean >= 4; fold change >= 1.5; adjusted P-value <= 0.05
    * Apply secondary max group mean filtering with MGM=**`r MGM`**, to
    reduce the number of peaks used for statistical testing
@@ -297,20 +316,6 @@ variable is not defined, it searches for the first `".fc"`
 file in the current working directory.
 
 ```{r, import_fc}
-## Try to use FC_FILE
-fc_env <- Sys.getenv("FC_FILE");
-if (nchar(fc_env) > 0) {
-   if (!file.exists(fc_env)) {
-      stop(paste0("FC_FILE does not exist as a file:", fc_env,
-         " in working directory:", getwd()));
-   }
-   fc_file <- fc_env;
-} else {
-   fc_file <- head(list.files(pattern="[.]fc$"), 1);
-}
-printDebug("Using fc_file:",
-   fc_file);
-
 ## Import
 fc_data <- import_featurecounts(fc_file);
 
@@ -327,20 +332,9 @@ if (length(fc_colnames) == 0) {
       jamba::cPaste(fc_colnames)));
 }
 
-curation_txt <- Sys.getenv("CURATION_TXT",
-   "curation.txt");
-
-if (length(curation_txt) == 0 || nchar(curation_txt) == 0 || !file.exists(curation_txt)) {
-   jamba::printDebug("Error: ",
-      c("No ",
-         "CURATION_TXT",
-         " file was supplied."),
-      sep="",
-      fgText=c("red", "dodgerblue"));
-   stop(paste0("No CURATION_TXT file was found: CURATION_TXT:", CURATION_TXT));
-}
 
 ## Use curation_txt if that file exists
+curation_txt <- CURATION_TXT;
 curation_df <- data.table::fread(curation_txt,
    data.table=FALSE,
    sep="\t");
@@ -445,6 +439,9 @@ if (any(!sapply(c("iSamples", "Run", "iGroup"), exists))) {
 }
 
 ## Rename featureCounts columns to match iSamples
+jamba::printDebug("Renaming featureCounts colnames",
+   "\nfrom:", filenames,
+   "\nto:", iSamples);
 fc_data <- jamba::renameColumn(fc_data,
    from=filenames,
    to=iSamples);
@@ -467,10 +464,10 @@ iGroup <- nameVector(colData(fc_se)[[group_colname]],
 ## Define sample colors
 g_levels <- levels(colData(fc_se)[[group_colname]]);
 n_levels <- length(g_levels);
-sample_colors <- jamba::nameVector(
+group_colors <- jamba::nameVector(
    head(colorjam::rainbowJam(n_levels), n_levels),
    g_levels);
-color_sub1 <- nameVector(sample_colors[colData(fc_se)[[group_colname]]],
+color_sub1 <- nameVector(group_colors[colData(fc_se)[[group_colname]]],
    colData(fc_se)[[sample_colname]]);
 run_colors <- group2colors(unique(Run));
 
@@ -540,28 +537,89 @@ if ("Length" %in% colnames(rowData(fc_se))) {
 }
 ```
 
+### Define Max Group Mean (MGM) Threshold
 
-### Apply quantile normalization
+The maxGroupMean threshold is defined by the environmental
+variable `MGM`, used to customize the threshold during the stats
+tests, applied to signal log2-transformed with `log2(1 + x)`,
+and therefore the default `MGM=4` defines a threshold of `15 counts`
+in normal space, using `( 2^MGM ) - 1` to reverse the
+transform: `log2(1 + x)`
 
+
+```{r, mgm_arg}
+## Get maxGroupMean threshold argument
+MGM <- Sys.getenv("MGM", 4);
+MGM <- jamba::rmNA(as.numeric(unlist(strsplit(MGM, "[ ,]+"))));
+if (length(MGM) == 0) {
+   MGM <- c(4);
+}
+if (length(MGM) > 1) {
+   jamba::printDebug("maxGroupMean thresholds: ", MGM);
+} else {
+   jamba::printDebug("maxGroupMean threshold: ", MGM);
+}
+```
+
+The max group mean threshold is: **`r print(MGM)`**
+
+
+### Apply Normalization
+
+The normalization method defined is **`r print(NORM)`** normalization.
 
 ```{r, norm_quantile, dependson="import_fc"}
 ## Raw data
 iMatrix <- assays(fc_se[,iSamples])[["counts"]];
 
-## Evaluate quantile normalization
-fc_se <- se_normalize(fc_se,
-   assay_names="counts",
-   method=c("quantile"));
+## Perform normalization
+if ("median" %in% NORM) {
+   fc_se <- se_normalize(fc_se,
+      assay_names="counts",
+      method=c("jammanorm"),
+      param=list(
+         jammanorm=list(
+            minimum_mean=NORMMIN,
+            useMean=FALSE)
+      )
+   );
+   normname <- "jammanorm_counts";
+} else if ("mediangroup" %in% NORM) {
+   fc_se <- se_normalize(fc_se,
+      assay_names="counts",
+      method=c("jammanorm"),
+      param=list(
+         jammanorm=list(
+            minimum_mean=NORMMIN,
+            centerGroups=iGroup,
+            controlSamples=iSamples,
+            useMean=FALSE)
+      )
+   );
+   normname <- "jammanorm_counts";
+} else if ("quantile" %in% NORM) {
+   ## Evaluate quantile normalization
+   fc_se <- se_normalize(fc_se,
+      assay_names="counts",
+      method=c("quantile"));
+   normname <- "quantile_counts";
+} else if ("none" %in% NORM) {
+   normname <- "counts";
+}
 
-## Quantile-normalized data
-iMatrixQ <- assays(fc_se[,iSamples])[["quantile_counts"]];
+## Normalized data
+iMatrixQ <- assays(fc_se[,iSamples])[[normname]];
 
 ```
 
 ### Apply batch-adjustment by "Run", grouped by "Group"
 
+This section performs batch adjustment when there are multiple
+distinct values in the `"Run"` column.
+
 ```{r, batch_adjust_run, dependson="norm_quantile"}
 ## Batch adjustment
+batch_adjusted <- FALSE;
 if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
    fc_batch <- nameVector(colData(fc_se[,iSamples])[[run_colname]],
       iSamples);
@@ -569,7 +627,7 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
       iSamples);
    fc_se_b <- tryCatch({
       se_normalize(fc_se,
-         assay_names=c("counts", "quantile_counts"),
+         assay_names=unique(c("counts", normname)),
          method=c("limma_batch_adjust"),
          params=list(
             limma_batch_adjust=list(batch=fc_batch,
@@ -580,18 +638,21 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
       print(e);
       NULL;
    });
+   bnormname <- paste0("limma_batch_adjust_", normname);
    if (length(fc_se_b) > 0) {
+      batch_adjusted <- TRUE;
       ## batch-adjusted raw data
       iMatrixB <- assays(fc_se_b[,iSamples])[["limma_batch_adjust_counts"]];
       ## quantile-normalized data, batch-adjusted
-      iMatrixQB <- assays(fc_se_b[,iSamples])[["limma_batch_adjust_quantile_counts"]];
+      iMatrixQB <- assays(fc_se_b[,iSamples])[[bnormname]];
    } else {
       ## Do not perform batch adjustment
       fc_se_b <- fc_se;
       ## batch-adjusted raw data
       iMatrixB <- assays(fc_se[,iSamples])[["counts"]];
       ## quantile-normalized data, batch-adjusted
-      iMatrixQB <- assays(fc_se[,iSamples])[["quantile_counts"]];
+      bnormname <- normname;
+      iMatrixQB <- assays(fc_se[,iSamples])[[bnormname]];
    }
 } else {
    ## Do not perform batch adjustment
@@ -599,7 +660,8 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
    ## batch-adjusted raw data
    iMatrixB <- assays(fc_se[,iSamples])[["counts"]];
    ## quantile-normalized data, batch-adjusted
-   iMatrixQB <- assays(fc_se[,iSamples])[["quantile_counts"]];
+   bnormname <- normname;
+   iMatrixQB <- assays(fc_se[,iSamples])[[bnormname]];
 }
 
 
@@ -634,7 +696,8 @@ jp_raw <- jammaplot(
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
-   maintitle=c("un-normalized data", "global-centered"),
+   maintitle=c("data (counts)",
+      "global-centered"),
    groupSuffix="",
    subtitlePreset="bottomleft",
    subtitle=Run[iSamples],
@@ -648,13 +711,16 @@ jp_raw <- jammaplot(
 #### Un-normalized data, centered by "Run"
 
 ```{r, ma_raw_run, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+# Only create when there are multiple Run values
+if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
 jp_raw_run <- jammaplot(
    noiseFloor(iMatrix[,iSamples,drop=FALSE],
       minimum=1,
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
-   maintitle=c("un-normalized data", "centered by 'Run'"),
+   maintitle=c("data (counts)",
+      "centered by 'Run'"),
    centerGroups=colData(fc_se[,iSamples])[[run_colname]],
    groupSuffix="",
    subtitlePreset="bottomleft",
@@ -664,9 +730,10 @@ jp_raw_run <- jammaplot(
    ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
 )
+}
 ```
 
-#### Quantile-normalized data, global-centered
+#### Normalized data, global-centered
 
 ```{r, ma_q_global, fig.height=10, fig.width=14, dependson=c("norm_quantile", "ma_layout")}
 jp_q <- jammaplot(
@@ -675,7 +742,8 @@ jp_q <- jammaplot(
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
-   maintitle=c("quantile-normalized data", "global-centered"),
+   maintitle=c(paste0("data (", normname, ")"),
+      "global-centered"),
    groupSuffix="",
    subtitlePreset="bottomleft",
    subtitle=Run[iSamples],
@@ -688,16 +756,19 @@ jp_q <- jammaplot(
 )
 ```
 
-#### Quantile-normalized data, centered by "Run"
+#### Normalized data, centered by "Run"
 
 ```{r, ma_q_run, fig.height=10, fig.width=14, dependson=c("norm_quantile", "ma_layout")}
+# Only create when there are multiple Run values
+if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
 jp_q_run <- jammaplot(
    noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
       minimum=1,
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
-   maintitle=c("quantile-normalized data", "centered by 'Run'"),
+   maintitle=c(paste0("data (", normname, ")"),
+      "centered by 'Run'"),
    centerGroups=colData(fc_se[,iSamples])[[run_colname]],
    groupSuffix="",
    subtitlePreset="bottomleft",
@@ -709,23 +780,28 @@ jp_q_run <- jammaplot(
    ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
 )
+}
 ```
 
-#### Quantile-normalized data, centered by "Group", "Batch"
+#### Normalized data, centered by "Group", "Run"
 
-If there are replicates per Group_Batch, then MA-plots will
+If there are replicates per Group_Run, then MA-plots will
 be displayed below, centered by Group and Run.
 
 ```{r, ma_q_group_run, fig.height=10, fig.width=14, dependson=c("norm_quantile", "ma_layout")}
-grouprun_ct <- tcount(pasteByRow(colData(fc_se[,iSamples])[,c(group_colname,run_colname)]));
+grouprun_ct <- tcount(pasteByRow(colData(fc_se[,iSamples])[,c(group_colname, run_colname)]));
 if (any(grouprun_ct > 1)) {
+   subtitle_color_set <- as.list(as.data.frame(
+      t(cbind(color_sub1[iSamples], run_colors1[iSamples]))));
+   subtitle_colors <- colorjam::blend_colors(subtitle_color_set);
+   
    jp_q_group_run <- jammaplot(
       noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
          minimum=1,
          newValue=NA),
       ncol=ma_ncol,
       blankPlotPos=blank_pos,
-      maintitle=c("quantile-normalized data",
+      maintitle=c(paste0("data (", normname, ")"),
          paste0("centered by ",
             cPaste(paste0("'", c(group_colname, run_colname), "'"))
          )),
@@ -733,9 +809,7 @@ if (any(grouprun_ct > 1)) {
       groupSuffix="",
       subtitlePreset="bottomleft",
       subtitle=paste0("by ", iGroup[iSamples], ",", Run[iSamples]),
-      subtitleBoxColor=get("blendColors", envir=CBioRUtils)(
-         color_sub1[iSamples],
-         run_colors1[iSamples]),
+      subtitleBoxColor=subtitle_colors,
       useMean=TRUE,
       displayMAD=TRUE,
       outlierMAD=2,
@@ -745,9 +819,11 @@ if (any(grouprun_ct > 1)) {
 }
 ```
 
-#### Quantile-normalized data, global-centered, batch-adjusted by "Run"
+#### Normalized data, global-centered, batch-adjusted by "Run"
 
-This set of MA-plots represents the data used for statistical comparisons.
+This set of MA-plots represents the data used for statistical comparisons
+(where applicable).
+
 Note that panels display the MAD factor, which is a multiple of
 variability of each sample to the median variability across all samples.
 The threshold "2x MAD" is defined as one replicate having at least
@@ -763,7 +839,7 @@ jp_q_b_run <- jammaplot(
       newValue=NA),
    ncol=ma_ncol,
    blankPlotPos=blank_pos,
-   maintitle=c("quantile-normalized data",
+   maintitle=c(paste0("data (", bnormname, ")"),
       "global-centered",
       paste0("batch-adjusted by '", run_colname, "'")
    ),
@@ -773,7 +849,7 @@ jp_q_b_run <- jammaplot(
    subtitleBoxColor=run_colors1[iSamples],
    useMean=TRUE,
    displayMAD=TRUE,
-   outlierMAD=1.951,
+   outlierMAD=2,
    ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
 )
@@ -793,7 +869,7 @@ printDebug("Using samples:", iSamplesUse);
 ### Sample Correlation Heatmaps
 
 
-#### Quantile-normalized data, centered by Group control
+#### Normalized data, centered by Group control
 
 ```{r, cor_hm, fig.height=12, fig.width=12, dependson=c("norm_quantile", "sample_outliers")}
 ## Define centering control samples
@@ -823,7 +899,30 @@ iCorM_hc <- tryCatch({
    FALSE;
 });
 
+## ComplexHeatmap
+hm_cor <- ComplexHeatmap::Heatmap(iCorM,
+   border=TRUE,
+   col=colorjam::col_div_xf(1, lens=5),
+   cluster_rows=iCorM_hc,
+   cluster_columns=iCorM_hc,
+   heatmap_legend_param=list(
+      color_bar="discrete",
+      border=TRUE),
+   top_annotation=ComplexHeatmap::HeatmapAnnotation(
+      border=TRUE,
+      annotation_legend_param=list(
+         border=TRUE),
+      df=data.frame(
+         Run=Run[iSamplesUse],
+         Group=iGroup[iSamplesUse]),
+      col=list(Group=group_colors,
+         Run=run_colors))
+)
+ComplexHeatmap::draw(hm_cor,
+   column_title=paste0("Counts (", normname, ")"))
+
 ## Heatmap
+if (FALSE) {
 heatmap.3(
    iCorM,
    hclCutoff=60,
@@ -844,6 +943,7 @@ heatmap.3(
    main=c("quantile-normalized data"),
    subMain=paste0("centered by ", iControl)
 )
+}
 ```
 
 
@@ -869,7 +969,30 @@ iCorMB_hc <- tryCatch({
    FALSE;
 });
 
+## ComplexHeatmap
+hm_corb <- ComplexHeatmap::Heatmap(iCorMB,
+   border=TRUE,
+   col=colorjam::col_div_xf(1, lens=5),
+   cluster_rows=iCorMB_hc,
+   cluster_columns=iCorMB_hc,
+   heatmap_legend_param=list(
+      color_bar="discrete",
+      border=TRUE),
+   top_annotation=ComplexHeatmap::HeatmapAnnotation(
+      border=TRUE,
+      annotation_legend_param=list(
+         border=TRUE),
+      df=data.frame(
+         Run=Run[iSamplesUse],
+         Group=iGroup[iSamplesUse]),
+      col=list(Group=group_colors,
+         Run=run_colors))
+)
+ComplexHeatmap::draw(hm_corb,
+   column_title=paste0("Counts (", bnormname, ")"))
+
 ## Heatmap
+if (FALSE) {
 heatmap.3(
    iCorMB,
    hclCutoff=60,
@@ -890,6 +1013,7 @@ heatmap.3(
    main=c("quantile-normalized data", "batch-adjusted by 'Run'"),
    subMain=paste0("centered by ", iControl)
 )
+}
 ```
 
 
@@ -976,12 +1100,12 @@ Limma uses a "moderated t-test" for statistics, and the method
 below enables "limma-voom" which is intended for
 use with count-based data.
 
+Note that Voom is disabled when each group contains n=1.
+
 ```{r, run_limma, dependson=c("stats_design")}
 ## Find best available signal
-assay_names <- head(
-   provigrep(c("limma_batch_adjust_quantile_counts", "quantile_counts"),
-      names(assays(fc_se_b))),
-   1);
+assay_names <- head(intersect(c(bnormname, normname),
+   names(assays(fc_se_b))), 1);
 ## Use all peaks
 iPeaks <- rownames(fc_se);
 
@@ -993,6 +1117,7 @@ if (all(colSums(iDesign) == 1)) {
 
 ## Stats using all batches
 mgm_cutoff <- 4;
+mgm_cutoff <- MGM;
 AtacStats <- tryCatch({
    se_contrast_stats(se=fc_se_b[,iSamplesUse],
       assay_names=assay_names,
@@ -1014,17 +1139,18 @@ AtacStats <- tryCatch({
 });
 if (length(AtacStats) > 0) {
    printDebug("Stats hits by contrast and hit criteria:");
-   AtacStats$hit_array;
+   print(aperm(AtacStats$hit_array, c(2, 1, 3)));
 }
 ```
 
 #### Limma stats with subset peaks by signal threshold
 
 The method below is identical to that used above, except that
-peaks are filtered by minimum signal, since we apply a minimum
-signal threshold for candidate peak hits. Peak mean counts
-(normalized, batch-adjusted) are required to be at least
-this same threshold in at least one sample group to be
+peaks are filtered by minimum signal first, since we also apply
+a minimum signal threshold for candidate peak hits.
+
+Peak mean counts (normalized, batch-adjusted) are required
+to be at least this same threshold in at least one sample group to be
 included in the moderated t-test.
 
 The default threshold is **4** after `log2(1+x)` transformation,
@@ -1033,25 +1159,7 @@ across replicates in each sample group. This same threshold
 is reflected in the MA-plots above, since the x-axis minimum
 value is also **4**.
 
-The maxGroupMean threshold is defined by the environmental
-variable `MGM`, used to customize the threshold during the stats
-tests:
-
-```{r, mgm_arg}
-## Get maxGroupMean threshold argument
-MGM <- Sys.getenv("MGM", 4);
-MGM <- jamba::rmNA(as.numeric(unlist(strsplit(MGM, "[ ,]+"))));
-if (length(MGM) == 0) {
-   MGM <- c(4);
-}
-if (length(MGM) > 1) {
-   jamba::printDebug("maxGroupMean thresholds: ", MGM);
-} else {
-   jamba::printDebug("maxGroupMean threshold: ", MGM);
-}
-```
-
-The max group mean threshold is: **`r MGM`**
+The max group mean threshold: **`r MGM`**
 
 ```{r, run_limma_mgm4, dependson=c("stats_design","run_limma","mgm_arg")}
 ## Use the lmFit1 coefficients directly, which ensures
@@ -1107,7 +1215,7 @@ if (length(AtacStats) > 0) {
       printDebug("Stats hits by contrast and hit criteria ",
          c("(", "MGM ", ">= ", MGM, ")"), ":",
          sep="");
-      AtacStatsMgm4$hit_array;
+      print(aperm(AtacStatsMgm4$hit_array, c(2, 1, 3)));
    }
 }
 ```
@@ -1121,20 +1229,20 @@ if (length(AtacStats) > 0) {
       for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
          iDF <- AtacStats$stats_dfs[[iSig]][[iCon]];
          par("mar"=c(7,7,4,3));
-         vp1 <- volcanoPlot(iDF,
-            pvalueCutoff=0.05,
-            fcCutoff=log2(1.5),
-            intensityCutoff=0,
+         vp1p <- volcano_plot(iDF,
+            sig_cutoff=0.05,
+            fold_cutoff=1.5,
+            expr_cutoff=MGM,
             main=iCon,
-            subMain="All peaks",
-            pvCol="P.Value");
-         volcanoPlot(iDF,
-            pvalueCutoff=0.05,
-            fcCutoff=log2(1.5),
-            intensityCutoff=0,
+            submain="All peaks",
+            sig_colname="P.Value");
+         vp1adjp <- volcano_plot(iDF,
+            sig_cutoff=0.05,
+            fold_cutoff=1.5,
+            expr_cutoff=MGM,
             main=iCon,
-            subMain="All peaks",
-            pvCol="adj.P.Val");
+            submain="All peaks",
+            sig_colname="adj.P.Val");
       }
    }
 }
@@ -1153,22 +1261,22 @@ if (length(AtacStatsMgm4) > 0) {
          iDF <- AtacStatsMgm4$stats_dfs[[iSig]][[iCon]];
          par("mar"=c(7,7,4,3))
          tryCatch({
-            volcanoPlot(iDF,
-               pvalueCutoff=0.05,
-               fcCutoff=log2(1.5),
-               intensityCutoff=MGM,
+            vp2p <- volcano_plot(iDF,
+               sig_cutoff=0.05,
+               fold_cutoff=1.5,
+               expr_cutoff=MGM,
                main=iCon,
-               subMain=paste0("Subset peaks mgm >= ", MGM),
-               pvCol="P.Value");
-            volcanoPlot(iDF,
-               pvalueCutoff=0.05,
-               fcCutoff=log2(1.5),
-               intensityCutoff=MGM,
+               submain=paste0("Subset peaks mgm >= ", MGM),
+               sig_colname="P.Value");
+            vp2adjp <- volcano_plot(iDF,
+               sig_cutoff=0.05,
+               fold_cutoff=1.5,
+               expr_cutoff=MGM,
                main=iCon,
-               subMain=paste0("Subset peaks mgm >= ", MGM),
-               pvCol="adj.P.Val");
+               submain=paste0("Subset peaks mgm >= ", MGM),
+               sig_colname="adj.P.Val");
          }, error=function(e){
-            jamba::printDebug("Error during volcanoPlot(), skipping.");
+            jamba::printDebug("Error during volcano_plot(), skipping.");
             jamba::printDebug("iSig:", iSig);
             jamba::printDebug("iCon:", iCon);
             print(e);
@@ -1193,15 +1301,22 @@ comparison.
 if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
    pair_l <- unlist(recursive=FALSE,
       apply(combn(dimnames(AtacStats$hit_array)[[2]], 2), 2, list));
+   contrast_colors <- group2colors(dimnames(AtacStats$hit_array)[[2]]);
    
    par("mar"=c(5,4,4,2));
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStats$hit_array)[[1]]) {
          for (iCon in pair_l) {
-            statsHitsAvenn(AtacStats$hit_array,
-               iCon=iCon,
-               iHit=iHit,
-               iSig=iSig);
+            venndir::venndir(AtacStats$hit_array[iHit, pair_l, iSig],
+               set_colors=contrast_colors[pair_l],
+               main=paste0("signal:", iSig,
+                  "\nthreshold:", iHit));
+            if (FALSE) {
+               statsHitsAvenn(AtacStats$hit_array,
+                  iCon=iCon,
+                  iHit=iHit,
+                  iSig=iSig);
+            }
          }
       }
    }
@@ -1216,15 +1331,22 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
 if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) > 1) {
    pair_l_mgm4 <- unlist(recursive=FALSE,
       apply(combn(dimnames(AtacStatsMgm4$hit_array)[[2]], 2), 2, list));
+   contrast_colors <- group2colors(dimnames(AtacStatsMgm4$hit_array)[[2]]);
    
    par("mar"=c(5,4,4,2));
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStatsMgm4$hit_array)[[1]]) {
          for (iCon in pair_l_mgm4) {
-            statsHitsAvenn(AtacStatsMgm4$hit_array,
-               iCon=iCon,
-               iHit=iHit,
-               iSig=iSig);
+            venndir::venndir(AtacStatsMgm4$hit_array[iHit, pair_l, iSig],
+               set_colors=contrast_colors[pair_l],
+               main=paste0("signal:", iSig,
+                  "\nthreshold:", iHit));
+            if (FALSE) {
+               statsHitsAvenn(AtacStatsMgm4$hit_array,
+                  iCon=iCon,
+                  iHit=iHit,
+                  iSig=iSig);
+            }
          }
       }
    }
@@ -1803,36 +1925,68 @@ if (length(AtacStatsMgm4) > 0) {
    }
    if (length(peak_hits_mgm4_q) > 1) {
       iM <- iMatrixQBctr[peak_hits_mgm4_q, iSamplesUse, drop=FALSE];
-      hc <- amap::hcluster(iM,
-         link="ward",
-         method="euclidean");
       
-      
+      ## ComplexHeatmap
+      iMq99 <- ceiling(quantile(abs(iM), c(0.99), na.rm=TRUE));
+      iMq99 <- 4;
+      hm_mgm4 <- ComplexHeatmap::Heatmap(iM,
+         border=TRUE,
+         name="log2Fold",
+         column_split=iGroup[iSamplesUse],
+         show_row_names=FALSE,
+         cluster_column_slices=FALSE,
+         col=colorjam::col_div_xf(iMq99,
+            lens=5),
+         heatmap_legend_param=list(
+            color_bar="discrete",
+            at=seq(from=-iMq99, to=iMq99),
+            border=TRUE),
+         top_annotation=ComplexHeatmap::HeatmapAnnotation(
+            border=TRUE,
+            annotation_legend_param=list(
+               border=TRUE),
+            df=data.frame(
+               Run=Run[iSamplesUse],
+               Group=iGroup[iSamplesUse]),
+            col=list(Group=group_colors,
+               Run=run_colors))
+      );
+      ComplexHeatmap::draw(hm_mgm4,
+         column_title=paste0(jamba::formatInt(nrow(iM)),
+            " hits (MGM >= ", MGM, ")"))
+
+
       ## Subset only promoter peak hits
       # peak_hits_mgm4_q_p <- subset(rowData(fc_se[peak_hits_mgm4_q,]), 
       #    feature_type_winner %in% "promoter")$Geneid;
       # iM <- iMatrixQBctr[peak_hits_mgm4_q_p,];
       # hc_p <- hcluster(iM, link="ward", method="euclidean");
-      hm_mgm4 <- heatmap.3(iM,
-      #   Colv=FALSE,
-         main=paste0("Hits (MGM >= ", MGM, ")"),
-         farbeLim=4,
-         Rowv=hc,
-         hclCutoff=60,
-         labRow=NA,
-         keysize=c(0.7,1),
-         ColSideColors=data.frame(
-            Group=color_sub1[iSamplesUse],
-            Run=run_colors1[iSamplesUse]),
-         ColSideColorsNote=data.frame(
-            Group=iGroup[iSamplesUse],
-            Run=Run[iSamplesUse]),
-         cexColSideColorsNote=c(1.5, 1.5),
-         cexColSideColors=1.5,
-         colLensFactor=5,
-         add.expr=box(),
-         margins=c(17,7)
-      )
+      if (FALSE) {
+         hc <- amap::hcluster(iM,
+            link="ward",
+            method="euclidean");
+         
+         hm_mgm4 <- heatmap.3(iM,
+         #   Colv=FALSE,
+            main=paste0("Hits (MGM >= ", MGM, ")"),
+            farbeLim=4,
+            Rowv=hc,
+            hclCutoff=60,
+            labRow=NA,
+            keysize=c(0.7,1),
+            ColSideColors=data.frame(
+               Group=color_sub1[iSamplesUse],
+               Run=run_colors1[iSamplesUse]),
+            ColSideColorsNote=data.frame(
+               Group=iGroup[iSamplesUse],
+               Run=Run[iSamplesUse]),
+            cexColSideColorsNote=c(1.5, 1.5),
+            cexColSideColors=1.5,
+            colLensFactor=5,
+            add.expr=box(),
+            margins=c(17,7)
+         )
+      }
    }
 }
 ```
@@ -1850,23 +2004,54 @@ if (length(AtacStatsMgm4) > 0) {
          useMedian=FALSE,
          groups=iGroup[iSamplesUse]);
       
-      hm_mgm4_grp <- heatmap.3(iM_grp,
-      #   Colv=FALSE,
-         main=paste0("Hits (MGM >= ", MGM, ")"),
-         Rowv=hc,
-         hclCutoff=60,
-         labRow=NA,
-         keysize=c(0.7,1),
-         ColSideColors=data.frame(
-            Group=sample_colors[colnames(iM_grp)]),
-         ColSideColorsNote=data.frame(
-            Group=nameVector(colnames(iM_grp))),
-         cexColSideColorsNote=c(1.5),
-         cexColSideColors=1.5,
-         colLensFactor=5,
-         add.expr=box(),
-         margins=c(7,7)
-      )
+      ## ComplexHeatmap
+      iMq99 <- ceiling(quantile(abs(iM_grp), c(0.99), na.rm=TRUE));
+      iMq99 <- 4;
+      hm_mgm4 <- ComplexHeatmap::Heatmap(iM_grp,
+         border=TRUE,
+         name="log2Fold",
+         column_split=iGroup[iSamplesUse],
+         show_row_names=FALSE,
+         cluster_column_slices=FALSE,
+         col=colorjam::col_div_xf(iMq99,
+            lens=5),
+         heatmap_legend_param=list(
+            color_bar="discrete",
+            at=seq(from=-iMq99, to=iMq99),
+            border=TRUE),
+         top_annotation=ComplexHeatmap::HeatmapAnnotation(
+            border=TRUE,
+            annotation_legend_param=list(
+               border=TRUE),
+            df=data.frame(
+               Run=Run[iSamplesUse],
+               Group=iGroup[iSamplesUse]),
+            col=list(Group=group_colors,
+               Run=run_colors))
+      );
+      ComplexHeatmap::draw(hm_mgm4,
+         column_title=paste0(jamba::formatInt(nrow(iM_grp)),
+            " hits (MGM >= ", MGM, ")"))
+
+      if (FALSE) {
+         hm_mgm4_grp <- heatmap.3(iM_grp,
+         #   Colv=FALSE,
+            main=paste0("Hits (MGM >= ", MGM, ")"),
+            Rowv=hc,
+            hclCutoff=60,
+            labRow=NA,
+            keysize=c(0.7,1),
+            ColSideColors=data.frame(
+               Group=group_colors[colnames(iM_grp)]),
+            ColSideColorsNote=data.frame(
+               Group=nameVector(colnames(iM_grp))),
+            cexColSideColorsNote=c(1.5),
+            cexColSideColors=1.5,
+            colLensFactor=5,
+            add.expr=box(),
+            margins=c(7,7)
+         )
+      }
    }
 }
 ```

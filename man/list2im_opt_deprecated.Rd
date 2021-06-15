@@ -34,7 +34,7 @@ a list whose vectors contain millions of rows.
 }
 \seealso{
 Other slicejam deprecated: 
-\code{\link{blend_colors}()},
+\code{\link{blend_colors_deprecated}()},
 \code{\link{label_venn_polys}()},
 \code{\link{list2im_signed}()},
 \code{\link{mean_angle_deprecated}()},

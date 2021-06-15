@@ -5,7 +5,8 @@
 #' 
 #' Blend multiple colors
 #' 
-#' This function is defunct as it has been moved into `colorjam`.
+#' This function is deprecated as it has been moved into
+#' `colorjam::blend_colors()`.
 #' 
 #' This function blends multiple colors, including several useful
 #' features:
@@ -42,21 +43,20 @@
 #' @param ... additional arguments are ignored.
 #' 
 #' @examples
-#' require(colorjam)
-#' blend_colors(c("red", "yellow"), do_plot=TRUE)
+#' blend_colors_deprecated(c("red", "yellow"), do_plot=TRUE)
 #' 
-#' blend_colors(c("blue", "yellow"), do_plot=TRUE)
+#' blend_colors_deprecated(c("blue", "yellow"), do_plot=TRUE)
 #' 
-#' blend_colors(c("blue", "red"), do_plot=TRUE)
+#' blend_colors_deprecated(c("blue", "red"), do_plot=TRUE)
 #' 
-#' blend_colors(c("green4", "red"), do_plot=TRUE)
+#' blend_colors_deprecated(c("green4", "red"), do_plot=TRUE)
 #' 
-#' blend_colors(c("green", "dodgerblue"), do_plot=TRUE)
+#' blend_colors_deprecated(c("green", "dodgerblue"), do_plot=TRUE)
 #' 
-#' blend_colors(c("red", "yellow", "blue"), do_plot=TRUE)
+#' blend_colors_deprecated(c("red", "yellow", "blue"), do_plot=TRUE)
 #' 
 #' @export
-blend_colors <- function
+blend_colors_deprecated <- function
 (x,
  preset=c("ryb", "none", "dichromat", "rgb", "ryb2"),
  lens=0,
@@ -113,7 +113,7 @@ blend_colors <- function
    
    ## mean hue angle
    #printDebug("h_ryb:", round(h_ryb));
-   h_ryb_mean_v <- mean_angle(h_ryb,
+   h_ryb_mean_v <- mean_angle_deprecated(h_ryb,
       lens=lens,
       w=x_w);
    h_ryb_mean <- h_ryb_mean_v["deg"];

@@ -36,7 +36,7 @@ Directional Venn diagram
 }
 \seealso{
 Other slicejam deprecated: 
-\code{\link{blend_colors}()},
+\code{\link{blend_colors_deprecated}()},
 \code{\link{label_venn_polys}()},
 \code{\link{list2im_opt_deprecated}()},
 \code{\link{list2im_signed}()},

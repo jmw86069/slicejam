@@ -35,76 +35,118 @@
 ## Figures will include PNG images rendered in the HTML file, and
 ## PDF versions of each figure, for more accurate editing.
 
-DRYRUN <- Sys.getenv("DRYRUN");
-fc_file <- Sys.getenv("FC_FILE");
-CURATION_TXT <- Sys.getenv("CURATION_TXT");
-MGM <- Sys.getenv("MGM");
-if (length(MGM) == 0 || nchar(MGM) == 0) {
-   MGM <- 4;
-}
+sliceargs <- get_slicejam_args();
 
-OUTDIR <- Sys.getenv("OUTDIR");
+DRYRUN <- sliceargs$DRYRUN;
+ATAC <- sliceargs$ATAC;
+fc_file <- sliceargs$fc_file;
+fc_filepath <- sliceargs$fc_filepath;
+CURATION_TXT <- sliceargs$CURATION_TXT;
+GTF <- sliceargs$GTF;
+GTFNAME <- sliceargs$GTFNAME;
+DRYRUN <- sliceargs$DRYRUN;
+OUTDIR <- sliceargs$OUTDIR;
+ATAC <- sliceargs$ATAC;
+MGM <- sliceargs$MGM;
+NORM <- sliceargs$NORM;
+NORMMIN <- sliceargs$NORMMIN;
+NORMSHORT <- sliceargs$NORMSHORT;
+fc_base <- sliceargs$fc_base;
+fc_basedir <- sliceargs$fc_basedir;
+fc_html <- sliceargs$fc_html;
+knit_root_dir <- sliceargs$knit_root_dir;
+cache_dir <- sliceargs$cache_dir;
 
-GTF <- Sys.getenv("GTF");
-if (length(GTF) > 0 && nchar(GTF) > 0) {
-   if (!file.exists(GTF)) {
-      stop(paste0("GTF file not found:", GTF));
+if (FALSE) {
+   DRYRUN <- Sys.getenv("DRYRUN");
+   fc_file <- Sys.getenv("FC_FILE");
+   CURATION_TXT <- Sys.getenv("CURATION_TXT");
+   MGM <- Sys.getenv("MGM");
+   if (length(MGM) == 0 || nchar(MGM) == 0) {
+      MGM <- 4;
    }
-   GTFNAME <- Sys.getenv("GTFNAME");
-   if (length(GTFNAME) == 0 || nchar(GTFNAME) == 0) {
-      GTFNAME <- paste0("_",
-         gsub("gene[s]*", "",
-            gsub("[-_ ]+", "",
-               gsub("[.][^.]+$", "", basename(GTF)))));
+   
+   OUTDIR <- Sys.getenv("OUTDIR");
+   
+   GTF <- Sys.getenv("GTF");
+   if (length(GTF) > 0 && nchar(GTF) > 0) {
+      if (!file.exists(GTF)) {
+         stop(paste0("GTF file not found:", GTF));
+      }
+      GTFNAME <- Sys.getenv("GTFNAME");
+      if (length(GTFNAME) == 0 || nchar(GTFNAME) == 0) {
+         GTFNAME <- paste0("_",
+            gsub("gene[s]*", "",
+               gsub("[-_ ]+", "",
+                  gsub("[.][^.]+$", "", basename(GTF)))));
+      }
+      gtf_stem <- paste0("_gtf", GTFNAME);
+      Sys.setenv(GTFNAME=GTFNAME);
+   } else {
+      stop("GTF must be supplied.");
+      gtf_stem <- "";
    }
-   gtf_stem <- paste0("_gtf", GTFNAME);
-   Sys.setenv(GTFNAME=GTFNAME);
-} else {
-   stop("GTF must be supplied.");
-   gtf_stem <- "";
+   
+   ATAC <- Sys.getenv("ATAC");
+   if (length(ATAC) == 0 || nchar(ATAC) == 0 || ATAC %in% c("0")) {
+      ATAC <- 0;
+   } else {
+      ATAC <- 1;
+   }
+   
+   NORM <- Sys.getenv("NORM");
+   if (length(NORM) == 0 || nchar(NORM) == 0 || grepl("quant", ignore.case=TRUE, NORM)) {
+      NORM <- "quantile";
+      NORMSHORT <- "quant";
+   } else if (grepl("med.*gr.*p", ignore.case=TRUE, NORM)) {
+      NORM <- "mediangroup";
+      NORMSHORT <- "medgrp";
+   } else if (grepl("med.*", ignore.case=TRUE, NORM)) {
+      NORM <- "median";
+      NORMSHORT <- "med";
+   } else if (grepl("none", ignore.case=TRUE, NORM)) {
+      NORM <- "none";
+      NORMSHORT <- "none";
+   } else {
+      NORM <- "quantile";
+      NORMSHORT <- "quant";
+   }
+   
+   if (nchar(fc_file) == 0) {
+      stop("FC_FILE is not defined.");
+   }
+   if (!file.exists(fc_file)) {
+      stop(paste0("FC_FILE is not found:", fc_file));
+   }
+   
+   fc_base <- gsub("[.]fc$|[.]fc[.]txt$", "",
+      fc_file);
+   ## add the max group mean threshold (mgm) _mgm4
+   fc_base <- paste0(fc_base, "_mgm", MGM);
+   
+   ## add the ATAC mode, _atac1 when ATAC-mode is enabled
+   if (!ATAC %in% c(0)) {
+      fc_base <- paste0(fc_base, "_atac", ATAC);
+   }
+   
+   ## Add GTF stem using GTFNAME or small name _gtfhg19121619
+   if (nchar(OUTDIR) == 0) {
+      fc_base <- paste0(fc_base, gtf_stem);
+      fc_basedir <- paste0(fc_base,  "_analysis");
+   } else {
+      fc_base <- OUTDIR;
+      fc_basedir <- OUTDIR;
+   }
+   
+   fc_html <- paste0(fc_base,  ".html");
+   
+   knit_root_dir <- file.path(
+      getwd(),
+      fc_basedir);
+   fc_filepath <- normalizePath(fc_file);
+   
+   cache_dir <- file.path(fc_basedir, "cache", "");
 }
-
-ATAC <- Sys.getenv("ATAC");
-if (length(ATAC) == 0 || nchar(ATAC) == 0 || ATAC %in% c("0")) {
-   ATAC <- 0;
-} else {
-   ATAC <- 1;
-}
-
-if (nchar(fc_file) == 0) {
-   stop("FC_FILE is not defined.");
-}
-if (!file.exists(fc_file)) {
-   stop(paste0("FC_FILE is not found:", fc_file));
-}
-
-fc_base <- gsub("[.]fc$|[.]fc[.]txt$", "",
-   fc_file);
-## add the max group mean threshold (mgm) _mgm4
-fc_base <- paste0(fc_base, "_mgm", MGM);
-
-## add the ATAC mode, _atac1 when ATAC-mode is enabled
-if (!ATAC %in% c(0)) {
-   fc_base <- paste0(fc_base, "_atac", ATAC);
-}
-
-## Add GTF stem using GTFNAME or small name _gtfhg19121619
-if (nchar(OUTDIR) == 0) {
-   fc_base <- paste0(fc_base, gtf_stem);
-   fc_basedir <- paste0(fc_base,  "_analysis");
-} else {
-   fc_base <- OUTDIR;
-   fc_basedir <- OUTDIR;
-}
-
-fc_html <- paste0(fc_base,  ".html");
-
-knit_root_dir <- file.path(
-   getwd(),
-   fc_basedir);
-fc_filepath <- normalizePath(fc_file);
-
-cache_dir <- file.path(fc_basedir, "cache", "");
 
 jamba::printDebug("FC_FILE:      ", fc_file);
 jamba::printDebug("output_dir:   ", fc_basedir);
@@ -127,6 +169,10 @@ if (!"0" %in% DRYRUN) {
 # confirm slicejam_analysis.Rmd is in the current directory
 Rmd_file <- system.file(package="slicejam", "exec/slicejam_analysis.Rmd");
 if (!file.exists("slicejam_analysis.Rmd")) {
+   jamba::printDebug(c("Copying ",
+      "slicejam_analysis.Rmd",
+      " from slicejam package into current directory."),
+      sep="");
    file.copy(from=Rmd_file,
       to="slicejam_analysis.Rmd");
 }

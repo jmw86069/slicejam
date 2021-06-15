@@ -15,7 +15,7 @@ in the R package \code{venndir}, such as \code{venndir::polygon_label_outside()}
 }
 \seealso{
 Other slicejam deprecated: 
-\code{\link{blend_colors}()},
+\code{\link{blend_colors_deprecated}()},
 \code{\link{list2im_opt_deprecated}()},
 \code{\link{list2im_signed}()},
 \code{\link{mean_angle_deprecated}()},
