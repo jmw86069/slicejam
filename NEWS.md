@@ -33,6 +33,9 @@ variable:
     `volcanoPlot()` used internally.
     * to use `ComplexHeatmap::Heatmap()` to migrate from using the
     never-released internal version of `heatmap.3()`.
+    * New plot with the distribution of max group mean (MGM) values
+    for putative hits, after filtering by P-value and fold change.
+    This plot may be informative when selecting a reasonable MGM threshold.
 
 ## new functions
 

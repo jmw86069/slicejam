@@ -1212,7 +1212,7 @@ if (length(AtacStats) > 0) {
          if (length(sigp) > 0) {
             jamba::plotPolygonDensity(
                main=paste0("Max Group Mean for ",
-                  formatInt(length(sigadjp)),
+                  formatInt(length(sigp)),
                   " statistical hits\n",
                   "with P.Value <= 0.05 and abs(fold) >= 1.5"),
                xlab=mgmcol,
