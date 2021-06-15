@@ -1300,8 +1300,8 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStats$hit_array)[[1]]) {
          for (iCon in pair_l) {
-            venndir::venndir(AtacStats$hit_array[iHit, pair_l, iSig],
-               set_colors=contrast_colors[pair_l],
+            venndir::venndir(AtacStats$hit_array[iHit, iCon, iSig],
+               set_colors=contrast_colors[iCon],
                main=paste0("signal:", iSig,
                   "\nthreshold:", iHit));
             if (FALSE) {
@@ -1330,8 +1330,8 @@ if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) 
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStatsMgm4$hit_array)[[1]]) {
          for (iCon in pair_l_mgm4) {
-            venndir::venndir(AtacStatsMgm4$hit_array[iHit, pair_l, iSig],
-               set_colors=contrast_colors[pair_l],
+            venndir::venndir(AtacStatsMgm4$hit_array[iHit, iCon, iSig],
+               set_colors=contrast_colors[iCon],
                main=paste0("signal:", iSig,
                   "\nthreshold:", iHit));
             if (FALSE) {

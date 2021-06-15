@@ -98,6 +98,7 @@ get_slicejam_args <- function
          CURATION_TXT,
          sep="",
          fgText=c("red", "dodgerblue"));
+      CURATION_TXT <- normalizePath(CURATION_TXT);
       stop(paste0("No CURATION_TXT file was found in working directory:",
          getwd(), ", using CURATION_TXT:", CURATION_TXT));
    }
