@@ -26,7 +26,7 @@ this document. The initial steps involve loading R packages
 into memory.
 
 ```{r, outdir}
-sliceargs <- get_slicejam_args(verbose=TRUE);
+sliceargs <- slicejam::get_slicejam_args(verbose=TRUE);
 
 DRYRUN <- sliceargs$DRYRUN;
 ATAC <- sliceargs$ATAC;
