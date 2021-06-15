@@ -300,6 +300,8 @@ get_slicejam_args <- function
       fc_file);
    ## add the max group mean threshold (mgm) _mgm4
    fc_base <- paste0(fc_base, "_mgm", MGM);
+   ## add the normalization short name
+   fc_base <- paste0(fc_base, "_", NORMSHORT);
    ## add the ATAC mode, _atac1 when ATAC-mode is enabled
    if (!ATAC %in% c(0)) {
       fc_base <- paste0(fc_base, "_atac", ATAC);
