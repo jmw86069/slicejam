@@ -1898,7 +1898,9 @@ if (length(AtacStatsMgm4) > 0) {
                Run=run_colors))
       );
       ComplexHeatmap::draw(hm_mgm4,
-         column_title=paste0(jamba::formatInt(nrow(iM)),
+         column_title=paste0(
+            "Centered counts (", bnormname, ") ",
+            jamba::formatInt(nrow(iM)),
             " hits (MGM >= ", MGM, ")"))
 
 
@@ -1953,7 +1955,7 @@ if (length(AtacStatsMgm4) > 0) {
       ## ComplexHeatmap
       iMq99 <- ceiling(quantile(abs(iM_grp), c(0.99), na.rm=TRUE));
       iMq99 <- 4;
-      hm_mgm4 <- ComplexHeatmap::Heatmap(iM_grp,
+      hm_mgm4_grp <- ComplexHeatmap::Heatmap(iM_grp,
          border=TRUE,
          name="log2Fold",
          show_row_names=FALSE,
@@ -1970,13 +1972,13 @@ if (length(AtacStatsMgm4) > 0) {
             annotation_legend_param=list(
                border=TRUE),
             df=data.frame(
-               Run=Run[iSamplesUse],
-               Group=iGroup[iSamplesUse]),
-            col=list(Group=group_colors,
-               Run=run_colors))
+               Group=colnames(iM_grp)),
+            col=list(Group=group_colors[colnames(iM_grp)]))
       );
-      ComplexHeatmap::draw(hm_mgm4,
-         column_title=paste0(jamba::formatInt(nrow(iM_grp)),
+      ComplexHeatmap::draw(hm_mgm4_grp,
+         column_title=paste0(
+            "Group mean centered counts (", bnormname, ") ",
+            jamba::formatInt(nrow(iM_grp)),
             " hits (MGM >= ", MGM, ")"))
 
       if (FALSE) {
