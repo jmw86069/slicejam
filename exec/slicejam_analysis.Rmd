@@ -1947,7 +1947,7 @@ if (length(AtacStatsMgm4) > 0) {
       );
       ComplexHeatmap::draw(hm_mgm4,
          column_title=paste0(
-            "Centered counts (", bnormname, ") ",
+            "Centered counts\n(", bnormname, ")\n",
             jamba::formatInt(nrow(iM)),
             " hits (MGM >= ", MGM, ")"))
 
@@ -2025,7 +2025,7 @@ if (length(AtacStatsMgm4) > 0) {
       );
       ComplexHeatmap::draw(hm_mgm4_grp,
          column_title=paste0(
-            "Group mean centered counts (", bnormname, ") ",
+            "Group mean centered counts\n(", bnormname, ")\n",
             jamba::formatInt(nrow(iM_grp)),
             " hits (MGM >= ", MGM, ")"))
 
