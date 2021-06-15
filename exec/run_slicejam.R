@@ -44,7 +44,6 @@ fc_filepath <- sliceargs$fc_filepath;
 CURATION_TXT <- sliceargs$CURATION_TXT;
 GTF <- sliceargs$GTF;
 GTFNAME <- sliceargs$GTFNAME;
-DRYRUN <- sliceargs$DRYRUN;
 OUTDIR <- sliceargs$OUTDIR;
 ATAC <- sliceargs$ATAC;
 MGM <- sliceargs$MGM;
@@ -161,7 +160,7 @@ jamba::printDebug("ATAC:         ", ATAC);
 Sys.setenv(FC_FILE=fc_filepath);
 Sys.setenv(CACHEDIR=cache_dir);
 
-if (!"0" %in% DRYRUN) {
+if (DRYRUN) {
    jamba::printDebug("DRYRUN mode.");
    stop("Exiting due to DRYRUN=1, set DRYRUN=0 to proceed.");
 }

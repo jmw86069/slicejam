@@ -135,7 +135,7 @@ get_slicejam_args <- function
    if ("DRYRUN" %in% names(inplist)) {
       DRYRUN <- inplist$DRYRUN;
    } else {
-      DRYRUN <- Sys.getenv("DRYRUN");
+      DRYRUN <- Sys.getenv("DRYRUN", "1");
    }
    if (!"0" %in% DRYRUN) {
       DRYRUN <- TRUE;
