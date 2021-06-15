@@ -73,7 +73,7 @@ par("family"="Arial",
 
 #### SliceJam analysis parameters
 
-```{r, slicejam_args, include=TRUE, cache=TRUE}
+```{r, slicejam_args, include=TRUE, cache=FALSE}
 sliceargs <- slicejam::get_slicejam_args(verbose=TRUE);
 
 DRYRUN <- sliceargs$DRYRUN;
@@ -111,16 +111,9 @@ knit_root_dir <- sliceargs$knit_root_dir;
 
 #### R package initialization
 
-```{r, r_initialization, cache=FALSE}
-## Prepend a common R package install location to .libPaths()
-#.libPaths(
-#   file.path(dirname(Sys.getenv("HOME")),
-#      "wardjm/R/x86_64-pc-linux-gnu-library/3.5")
-#);
-print(".libPaths():");
-print(.libPaths());
-
-## Load R packages
+```{r, cbiorutils, cache=TRUE}
+# Load custom CBioRUtils that will be removed
+# once functions are ported into Jam packages
 suppressPackageStartupMessages(library(jamba));
 if (!"CBioRUtils" %in% search()) {
    cbioPath <- file.path(
@@ -137,6 +130,17 @@ if (!"CBioRUtils" %in% search()) {
    ## Refresh CBioRUtils.R
    refreshCBioRUtils();
 }
+```
+
+```{r, r_initialization, cache=FALSE}
+## Prepend a common R package install location to .libPaths()
+#.libPaths(
+#   file.path(dirname(Sys.getenv("HOME")),
+#      "wardjm/R/x86_64-pc-linux-gnu-library/3.5")
+#);
+print(".libPaths():");
+print(.libPaths());
+
 suppressPackageStartupMessages(library(SummarizedExperiment));
 suppressPackageStartupMessages(library(colorjam));
 suppressPackageStartupMessages(library(jamma));
@@ -149,6 +153,7 @@ suppressPackageStartupMessages(library(extrafont));
 suppressPackageStartupMessages(library(rtracklayer));
 suppressPackageStartupMessages(library(methods));
 suppressPackageStartupMessages(library(multienrichjam));
+suppressPackageStartupMessages(library(kableExtra));
 
 ```
 
