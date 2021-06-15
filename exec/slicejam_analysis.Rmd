@@ -2235,10 +2235,12 @@ if (length(AtacStats) > 0) {
          rowData(
          fc_se[match(iDF_all[,1], rowData(fc_se)$Geneid),]
          )[,coord_cols]);
-      iDF_all2 <- insertDFcols(iDF_all,
+      iDF_all2 <- data.frame(check.names=FALSE,
+         stringsAsFactors=FALSE,
+         iDF_all[,1,drop=FALSE],
          coord_df,
-         colnum=2);
-      
+         iDFall[,-1,drop=FALSE]);
+
       txt_ext <- paste0(".stats_nomgm",
          ifelse(ATAC, "_atac1", ""),
          ".", iSig, ".txt");
