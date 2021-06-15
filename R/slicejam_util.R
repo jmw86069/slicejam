@@ -298,6 +298,9 @@ get_slicejam_args <- function
    # Define base filename used for output
    fc_base <- gsub("[.]fc$|[.]fc[.]txt$", "",
       fc_file);
+   fc_filepath <- normalizePath(fc_file);
+   fc_dirname <- dirname(fc_filepath);
+   
    ## add the max group mean threshold (mgm) _mgm4
    fc_base <- paste0(fc_base, "_mgm", MGM);
    ## add the normalization short name
@@ -313,12 +316,13 @@ get_slicejam_args <- function
    # - either way it uses a fully described file path
    if (nchar(OUTDIR) == 0) {
       fc_basedir <- paste0(fc_base,  "_analysis");
-      knit_root_dir <- file.path(
-         normalizePath(fc_basedir));
+      knit_root_dir <- file.path(fc_dirname,
+         fc_basedir);
       # knitr root directory
       OUTDIR <- knit_root_dir;
    } else {
-      OUTDIR <- normalizePath(OUTDIR);
+      OUTDIR <- normalizePath(OUTDIR,
+         mustWork=FALSE);
       fc_base <- OUTDIR;
       fc_basedir <- OUTDIR;
       # knitr root directory
@@ -326,9 +330,8 @@ get_slicejam_args <- function
    }
    
    # html output filename
-   fc_html <- file.path(fc_basedir,
+   fc_html <- file.path(knit_root_dir,
       paste0(basename(fc_base),  ".html"));
-   fc_filepath <- normalizePath(fc_file);
    # cache directory
    CACHEDIR <- file.path(knit_root_dir, "cache", "");
    
