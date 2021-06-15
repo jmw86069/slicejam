@@ -1169,7 +1169,6 @@ if (length(AtacStats) > 0) {
 
 ```{r, volcano_plots, fig.height=12, fig.width=12, dependson=c("run_limma")}
 if (length(AtacStats) > 0) {
-
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
          iDF <- AtacStats$stats_dfs[[iSig]][[iCon]];
@@ -1188,6 +1187,54 @@ if (length(AtacStats) > 0) {
             main=iCon,
             submain="All peaks",
             sig_colname="adj.P.Val");
+         par("mar"=c(5,4,4,2)+0.1);
+      }
+   }
+}
+```
+
+#### Distribution of MGM for putative hits
+
+These plots represent the distribution of max group mean values (MGM)
+among those peaks which are considered statistical hits using
+the adjust P-value and fold change criteria.
+
+```{r, distr_mgm, fig.height=12, fig.width=12, dependson=c("run_limma")}
+if (length(AtacStats) > 0) {
+   for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
+      for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
+         iDF <- AtacStats$stats_dfs[[iSig]][[iCon]];
+         mgmcol <- vigrep("^mgm ", colnames(iDF));
+         sigcol <- vigrep("^P.Value ", colnames(iDF));
+         foldcol <- vigrep("^fold ", colnames(iDF));
+         sigp <- which(abs(iDF[[foldcol]]) >= 1.5 &
+               iDF[[sigcol]] <= 0.05);
+         if (length(sigp) > 0) {
+            jamba::plotPolygonDensity(
+               main=paste0("Max Group Mean for ",
+                  formatInt(length(sigadjp)),
+                  " statistical hits\n",
+                  "with P.Value <= 0.05 and abs(fold) >= 1.5"),
+               xlab=mgmcol,
+               iDF[sigp,mgmcol])
+            abline(v=MGM, col="black", lwd=2);
+            abline(v=MGM, col="gold", lty=2, lwd=2);
+         }
+         
+         sigcol <- vigrep("^adj.P.Val ", colnames(iDF));
+         sigadjp <- which(abs(iDF[[foldcol]]) >= 1.5 &
+               iDF[[sigcol]] <= 0.05);
+         if (length(sigadjp) > 0) {
+            jamba::plotPolygonDensity(
+               main=paste0("Max Group Mean for ",
+                  formatInt(length(sigadjp)),
+                  " statistical hits\n",
+                  "with adj.P.Val <= 0.05 and abs(fold) >= 1.5"),
+               xlab=mgmcol,
+               iDF[sigadjp,mgmcol])
+            abline(v=MGM, col="black", lwd=2);
+            abline(v=MGM, col="gold", lty=2, lwd=2);
+         }
       }
    }
 }
@@ -1226,6 +1273,7 @@ if (length(AtacStatsMgm4) > 0) {
             jamba::printDebug("iCon:", iCon);
             print(e);
          });
+         par("mar"=c(5,4,4,2)+0.1);
       }
    }
 }
