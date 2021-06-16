@@ -1300,10 +1300,17 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStats$hit_array)[[1]]) {
          for (iCon in pair_l) {
-            venndir::venndir(AtacStats$hit_array[iHit, iCon, iSig],
-               set_colors=contrast_colors[iCon],
-               main=paste0("signal:", iSig,
-                  "\nthreshold:", iHit));
+            tryCatch({
+               venndir::venndir(AtacStats$hit_array[iHit, iCon, iSig],
+                  set_colors=contrast_colors[iCon],
+                  main=paste0("signal:", iSig,
+                     "\nthreshold:", iHit));
+            }, error=function(e){
+               jamba::printDebug("venndir::venndir() ",
+                  "skipping plot for iSig:", iSig,
+                  ", iHit:", iHit,
+                  ", iCon:", iCon);
+            });
             if (FALSE) {
                statsHitsAvenn(AtacStats$hit_array,
                   iCon=iCon,
@@ -1330,10 +1337,17 @@ if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) 
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStatsMgm4$hit_array)[[1]]) {
          for (iCon in pair_l_mgm4) {
-            venndir::venndir(AtacStatsMgm4$hit_array[iHit, iCon, iSig],
-               set_colors=contrast_colors[iCon],
-               main=paste0("signal:", iSig,
-                  "\nthreshold:", iHit));
+            tryCatch({
+               venndir::venndir(AtacStatsMgm4$hit_array[iHit, iCon, iSig],
+                  set_colors=contrast_colors[iCon],
+                  main=paste0("signal:", iSig,
+                     "\nthreshold:", iHit));
+            }, error=function(e){
+               jamba::printDebug("venndir::venndir() ",
+                  "skipping subset peaks plot for iSig:", iSig,
+                  ", iHit:", iHit,
+                  ", iCon:", iCon);
+            });
             if (FALSE) {
                statsHitsAvenn(AtacStatsMgm4$hit_array,
                   iCon=iCon,
