@@ -1,5 +1,11 @@
 # TODO items for Slicejam
 
+## Bar chart alternative to pie charts
+
+Pie charts were originally requested, but sometimes a stacked
+bar chart could provide the same information in a more
+compact and visually effective format.
+
 
 ## Minor convenience fixes
 
@@ -17,16 +23,20 @@ directory to the current directory.
 * COMPLETE: Migrate from `heatmap.3()` to `ComplexHeatmap::Heatmap()`.
 * COMPLETE: Move genomic regions to its own stand-alone R function.
 * COMPLETE: Move volcano plot functions into this package (for now.)
-* COMPLETE: Move Venn diagram functions into this package (for now.)
+* COMPLETE: Move Venn diagram functions to use `venndir::venndir()`.
 
-   * Moved functions to new package `venndir` on Github.
+   * Note some weirdness in font usage on linux systems, which
+   appears to be mis-calculating font width, causing the name
+   and directional label to overlap.
 
 
 ## Enhancements
 
-1. Change grouping input to "three-column style"
+1. COMPLETE: Change grouping input to "four-column style",
+the first column (not shown) would have the filename, matching
+the column header in the featureCounts `.fc` file.
 
-         Pattern            Batch         Group
+         Sample             Run           Group
          NOV14_p2w5_VEH     NOV14         p2w5_Veh
          NOV14_p4w4_VEH     NOV14         p4w4_Veh
          NOV14_UL3_VEH      NOV14         UL3_Veh
@@ -35,7 +45,7 @@ directory to the current directory.
          NS644_p2w5VEH      NS644         p2w5_Veh
 
 1. In "mergeSplitCountBed" when run with "DRYRUN=1" it should
-test for dependencies like featureCounts.
+test for dependencies such as featureCounts.
 
 1. Allow "Problem_Regions.bed" as optional input.
 
@@ -53,17 +63,22 @@ test for dependencies like featureCounts.
 
    * peaks smaller than this width are not normalized nor tested
 
-4. Alternative data normalization method
+4.COMPLETE: Alternative data normalization methods
 
    * Quantile (default)
    * median-scaling using `jamma::jammanorm()`
-   * other convenient `limma` methods?
+   * median-scaling within sample group with `jamma::jammanorm()`
+   * none - in case data is normalized outside slicejam
+   * NOT COMPLETE: other convenient `limma` methods?
 
-5. User-defined "active TSS" BED file?
+5.COMPLETE: User-defined "active TSS" BED file?
 
    * substitutes for ATAC-mode annotation
+   * define `DETECTED_GENES` or `DETECTED_TX`
 
-6. Make size ranges for "Promoter region" and "TTS" user-tunable.
+6. COMPLETE: Make size ranges for "Promoter region" and "TTS" user-tunable.
+
+   * `UPSTREAM_PROMOTER`, `DOWNSTREAM_PROMOTER`, `UPSTREAM_TTS`, `DOWNSTREAM_TTS`
 
 7. Export per-peak values
 
@@ -81,10 +96,17 @@ test for dependencies like featureCounts.
 
 ## R functions to port
 
-* `volcanoPlot()`
-* `statHitsAvenn()` - `vennPlotSets()`, `signedVennPlotSets()`
-* `allNormStatsTests()`
-* migrate from my `heatmap.3()` to `ComplexHeatmap::Heatmap()`
+* COMPLETE: `volcanoPlot()` - see `volcano_plot()`
+* COMPLETE: `statHitsAvenn()` - `vennPlotSets()`, `signedVennPlotSets()`
+
+   * see `venndir::venndir()`
+
+* COMPLETE: `allNormStatsTests()`
+
+   * see `slicejam::se_contrast_stats()`
+   * see `slicejam::matrix_normalize()`, `slicejam::se_normalize()`
+
+* COMPLETE: migrate from `heatmap.3()` to `ComplexHeatmap::Heatmap()`
 
 
 ## Things to test and demonstrate are handled in the workflow

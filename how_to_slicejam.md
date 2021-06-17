@@ -22,18 +22,18 @@ The sections describe how to create these files.
 DRYRUN=1 \
    GTF=hg19_gencode.gtf \
    FC_FILE=your_favorite_featurecounts_file.fc \
-   CURATION_YAML=curation.yaml \
+   CURATION_TXT=curation.txt \
    Rscript run_slicejam.R
 ```
 
-#### 2. Run slicejam with `GROUPCHECK=1` to verify the `curation.yaml` defines correct sample groups.
+#### 2. Run slicejam with `GROUPCHECK=1` to verify the `curation.txt` defines correct sample groups.
 
 ```
 DRYRUN=0 \
    GROUPCHECK=1 \
    GTF=hg19_gencode.gtf \
    FC_FILE=your_favorite_featurecounts_file.fc \
-   CURATION_YAML=curation.yaml \
+   CURATION_TXT=curation.txt \
    Rscript run_slicejam.R
 ```
 
@@ -45,7 +45,7 @@ DRYRUN=0 \
 DRYRUN=0 \
    GTF=hg19_gencode.gtf \
    FC_FILE=your_favorite_featurecounts_file.fc \
-   CURATION_YAML=curation.yaml \
+   CURATION_TXT=curation.txt \
    Rscript run_slicejam.R
 ```
 
@@ -56,7 +56,7 @@ DRYRUN=0 \
    GTF=hg19_gencode.gtf \
    ATAC=1 \
    FC_FILE=your_favorite_featurecounts_file.fc \
-   CURATION_YAML=curation.yaml \
+   CURATION_TXT=curation.txt \
    Rscript run_slicejam.R
 ```
 
@@ -141,12 +141,12 @@ types of annotation to each entry:
 
 So `curation.txt` should have 4 columns:
 
-1. Pattern
-2. Group
-3. Batch
-4. Label
+1. Filename
+2. Sample
+3. Run
+4. Group
 
-The `"Pattern"` should match all or part of each filename in the
+The `"Sample"` should match all or part of each filename in the
 featureCounts results, which are the column headers representing
 counts for each sample.
 
@@ -187,7 +187,7 @@ From the example above, the rows would be re-ordered so
 `"Veh"` appears first, representing a vehicle control:
 
 ```
-Pattern             Group       Batch   Label
+Sample              Group       Run     Sample
 NS573_UL3-VehGR     UL3_VehGR   NS573   UL3_VehGR_NS573
 NS755_UL3-EtOH-GR   UL3_VehGR   NS755   UL3_VehGR_NS755
 NS573_UL3-DexGR     UL3_DexGR   NS573   UL3_DexGR_NS573
@@ -332,12 +332,9 @@ Slicejam has the following options:
       - The `MGM` value can be informed by the MA-plots,
          after running slicejam once with default values.
       
-   * `CURATION_YAML`
-      - path to a `"curation.yaml"` file, used to convert
-      featureCounts column names to sample groups. See below.
-      - for example: `CURATION_YAML=curation.yaml`
-      - if no `CURATION_YAML` is defined, all samples will
-         be processed as individual samples without grouping.
+   * `CURATION_TXT`
+      - path to a `"curation.txt"` file, used to convert
+      featureCounts column names to sample groups.
 
    * `GROUPCHECK`
       - use `GROUPCHECK=1` so the pipeline will only print

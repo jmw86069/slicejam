@@ -44,6 +44,24 @@ the input parameters sent by environment variable or directly
 by R function argument. It is used for consistency in both
 `run_slicejam.R` and `slicejam_analysis.Rmd`.
 
+## mergeSplitCountBed.sh
+
+* `mergeSplitCountBed.sh` was added to `exec/bin/mergeSplitCountBed.sh`
+
+This file requires `bash` and is used as the command-line utility
+to perform the peak merge-split-count workflow. In future this
+workflow may be ported entirely into R, but currently it has
+some utility being accessible on the command-line for use by
+bench scientists.
+
+Note that this script requires some other command-line utilities:
+
+* bedtools - from Dr. Aaron Quinlan
+* bedops
+* featureCounts - from the Subread tool suite
+* samtools
+* perl - no specific modules are required
+
 # slicejam 0.0.22.900
 
 ## updates to Rmarkdown

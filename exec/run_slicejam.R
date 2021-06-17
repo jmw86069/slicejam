@@ -56,119 +56,17 @@ fc_html <- sliceargs$fc_html;
 knit_root_dir <- sliceargs$knit_root_dir;
 CACHEDIR <- sliceargs$CACHEDIR;
 
-if (FALSE) {
-   DRYRUN <- Sys.getenv("DRYRUN");
-   fc_file <- Sys.getenv("FC_FILE");
-   CURATION_TXT <- Sys.getenv("CURATION_TXT");
-   MGM <- Sys.getenv("MGM");
-   if (length(MGM) == 0 || nchar(MGM) == 0) {
-      MGM <- 4;
-   }
-   
-   OUTDIR <- Sys.getenv("OUTDIR");
-   
-   GTF <- Sys.getenv("GTF");
-   if (length(GTF) > 0 && nchar(GTF) > 0) {
-      if (!file.exists(GTF)) {
-         stop(paste0("GTF file not found:", GTF));
-      }
-      GTFNAME <- Sys.getenv("GTFNAME");
-      if (length(GTFNAME) == 0 || nchar(GTFNAME) == 0) {
-         GTFNAME <- paste0("_",
-            gsub("gene[s]*", "",
-               gsub("[-_ ]+", "",
-                  gsub("[.][^.]+$", "", basename(GTF)))));
-      }
-      gtf_stem <- paste0("_gtf", GTFNAME);
-      Sys.setenv(GTFNAME=GTFNAME);
-   } else {
-      stop("GTF must be supplied.");
-      gtf_stem <- "";
-   }
-   
-   ATAC <- Sys.getenv("ATAC");
-   if (length(ATAC) == 0 || nchar(ATAC) == 0 || ATAC %in% c("0")) {
-      ATAC <- 0;
-   } else {
-      ATAC <- 1;
-   }
-   
-   NORM <- Sys.getenv("NORM");
-   if (length(NORM) == 0 || nchar(NORM) == 0 || grepl("quant", ignore.case=TRUE, NORM)) {
-      NORM <- "quantile";
-      NORMSHORT <- "quant";
-   } else if (grepl("med.*gr.*p", ignore.case=TRUE, NORM)) {
-      NORM <- "mediangroup";
-      NORMSHORT <- "medgrp";
-   } else if (grepl("med.*", ignore.case=TRUE, NORM)) {
-      NORM <- "median";
-      NORMSHORT <- "med";
-   } else if (grepl("none", ignore.case=TRUE, NORM)) {
-      NORM <- "none";
-      NORMSHORT <- "none";
-   } else {
-      NORM <- "quantile";
-      NORMSHORT <- "quant";
-   }
-   
-   if (nchar(fc_file) == 0) {
-      stop("FC_FILE is not defined.");
-   }
-   if (!file.exists(fc_file)) {
-      stop(paste0("FC_FILE is not found:", fc_file));
-   }
-   
-   fc_base <- gsub("[.]fc$|[.]fc[.]txt$", "",
-      fc_file);
-   ## add the max group mean threshold (mgm) _mgm4
-   fc_base <- paste0(fc_base, "_mgm", MGM);
-   
-   ## add the ATAC mode, _atac1 when ATAC-mode is enabled
-   if (!ATAC %in% c(0)) {
-      fc_base <- paste0(fc_base, "_atac", ATAC);
-   }
-   
-   ## Add GTF stem using GTFNAME or small name _gtfhg19121619
-   if (nchar(OUTDIR) == 0) {
-      fc_base <- paste0(fc_base, gtf_stem);
-      fc_basedir <- paste0(fc_base,  "_analysis");
-   } else {
-      fc_base <- OUTDIR;
-      fc_basedir <- OUTDIR;
-   }
-   
-   fc_html <- paste0(fc_base,  ".html");
-   
-   knit_root_dir <- file.path(
-      getwd(),
-      fc_basedir);
-   fc_filepath <- normalizePath(fc_file);
-   
-   cache_dir <- file.path(fc_basedir, "cache", "");
+if (DRYRUN) {
+   jamba::printDebug("DRYRUN mode.");
+   stop("Exiting due to DRYRUN=1, set DRYRUN=0 to proceed.");
 }
 
-jamba::printDebug("FC_FILE:      ", fc_file);
-jamba::printDebug("output_dir:   ", fc_basedir);
-jamba::printDebug("output_file:  ", fc_html);
-jamba::printDebug("knit_root_dir:", knit_root_dir);
-jamba::printDebug("CACHEDIR:     ", CACHEDIR);
-jamba::printDebug("OUTDIR:       ", OUTDIR);
-jamba::printDebug("fc_file path: ", fc_filepath);
-jamba::printDebug("CURATION_TXT: ", CURATION_TXT);
-jamba::printDebug("GTF:          ", GTF);
-jamba::printDebug("GTFNAME:      ", GTFNAME);
-jamba::printDebug("ATAC:         ", ATAC);
-
+# Define environment variables updated with full path
 Sys.setenv(FC_FILE=fc_filepath);
 Sys.setenv(OUTDIR=OUTDIR);
 Sys.setenv(CACHEDIR=CACHEDIR);
 Sys.setenv(CURATION_TXT=CURATION_TXT);
 Sys.setenv(GTF=GTF);
-
-if (DRYRUN) {
-   jamba::printDebug("DRYRUN mode.");
-   stop("Exiting due to DRYRUN=1, set DRYRUN=0 to proceed.");
-}
 
 # confirm slicejam_analysis.Rmd is in the current directory
 Rmd_file <- system.file(package="slicejam", "exec/slicejam_analysis.Rmd");
