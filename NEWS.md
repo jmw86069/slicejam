@@ -1,4 +1,35 @@
+# slicejam 0.0.25.900
+
+## changes to existing functions
+
+* `volcano_plot()` changes:
+
+   * changed so that it does not create a new blank page for each plot
+   * adjusted `tophist=TRUE` logic so breaks are exactly aligned with
+   volcano plot coordinates, and breaks always start exactly at the
+   `fold_cutoff` edges. Internally it nowuses `graphics:::plot.histogram()`
+   instead of `barplot()`. The x-axis tick marks use the same function
+   `minorLogTicksAxis()` as the volcano plot, but without labels. The
+   hope is that the tick mark alignment will make clear that the
+   two axes are identical.
+
+# slicejam 0.0.24.900
+
+## changes to existing functions
+
+* `volcano_plot()` changes:
+
+   * `xlim` and `ylim` calculation with `range()` now includes
+    `na.rm=TRUE` to account for NA values in input data.
+    * `ylim` is now correctly calculated using `sig_floor`
+    and `min_sig_range`.
+
+
 # slicejam 0.0.23.900
+
+## changes to dependencies
+
+* `colorjam (>0.0.19.900)` to ensure `blend_colors()` is present.
 
 ## Normalization update
 

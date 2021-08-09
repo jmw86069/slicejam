@@ -63,7 +63,7 @@ volcano_plot(
   ylab = NULL,
   cex.axis = 1.2,
   include_axis_prefix = TRUE,
-  mar_min = c(5, 4, 7, 5),
+  mar_min = c(5, 4, 6, 5),
   verbose = FALSE,
   transformation = function(x) {     x^0.24 },
   nbin = 256,
@@ -345,9 +345,13 @@ x <- data.frame(
    check.names=FALSE);
 volcano_plot(x);
 
+par("mfrow"=c(2, 1));
+volcano_plot(x);
+volcano_plot(x);
+par("mfrow"=c(1, 1));
+
 x[["fold Group-Control"]] <- log2fold_to_fold(x[["log2fold Group-Control"]]);
 x[["adj.P.Val Group-Control"]] <- x[["P.Value Group-Control"]];
-
 
 volcano_plot(x, hi_hits=TRUE);
 
