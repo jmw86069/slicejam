@@ -127,7 +127,11 @@ se_normalize <- function
             ...);
          assays(se)[[output_assay_name]] <- assays(se)[[assay_name]];
          assays(se)[[output_assay_name]][] <- NA;
-         assays(se[genes, samples])[[output_assay_name]] <- inorm[genes, samples];
+         
+         #assays(se[genes, samples])[[output_assay_name]] <- inorm[genes, samples];
+         # matrix_normalize() should already return inorm[genes, samples]
+         # and doing a subset removes useful attributes(inorm)
+         assays(se[genes, samples])[[output_assay_name]] <- inorm;
       }
    }
    return(se);

@@ -1,3 +1,14 @@
+# slicejam 0.0.26.900
+
+## changes to existing functions
+
+* `se_normalize()` now assigns the normalized matrix directly
+with `inorm` without using a subset `inorm[genes, samples]`.
+The subset step removes `attributes(inorm)` which may contain
+useful information, for example the scale factor used by
+`jamma::jammanorm()` during normalization.
+
+
 # slicejam 0.0.25.900
 
 ## changes to existing functions
