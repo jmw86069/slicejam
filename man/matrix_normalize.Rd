@@ -11,10 +11,10 @@ matrix_normalize(
   floor = 0,
   enforce_norm_floor = TRUE,
   params = list(quantile = list(ties = TRUE), jammanorm = list(controlGenes = NULL,
-    minimum_mean = 0, controlSamples = NULL, centerGroups = NULL, useMean = TRUE,
+    minimum_mean = 0, controlSamples = NULL, centerGroups = NULL, useMedian = FALSE,
     noise_floor = NULL, noise_floor_value = NULL), limma_batch_adjust = list(batch = NULL,
     group = NULL)),
-  verbose = FALSE,
+  verbose = TRUE,
   ...
 )
 }

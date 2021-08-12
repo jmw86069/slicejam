@@ -58,6 +58,30 @@
 #'    not be performed.
 #' @param verbose `logical` indicating whether to print verbose output.
 #' @param ... additional arguments are passed to `matrix_normalize()`.
+#' 
+#' @examples
+#' if (jamba::check_pkg_installed("farrisdata") && jamba::check_pkg_installed("SummarizedExperiment")) {
+#'    suppressPackageStartupMessages(library(SummarizedExperiment))
+#'    GeneSE <- farrisdata::farrisGeneSE;
+#'    imatrix <- assays(GeneSE)$raw_counts;
+#'    head(imatrix);
+#'    
+#'    # matrix_normalize()
+#'    # normalize the numeric matrix directly
+#'    imatrix_norm <- matrix_normalize(imatrix,
+#'       method="jammanorm",
+#'       params=list(minimum_mean=5))
+#'    names(attributes(imatrix_norm))
+#'    samples <- colnames(imatrix);
+#'    genes <- rownames(imatrix);
+#'    assays(GeneSE[genes, samples])$jammanorm_counts <- imatrix_norm;
+#'    assays(GeneSE[genes, samples])[["jammanorm_counts"]] <- imatrix;
+#'    assays(GeneSE[genes, samples])[["jammanorm_counts"]][] <- NA;
+#'    assays(GeneSE[genes, samples])[["jammanorm_counts"]] <- imatrix_norm;
+#'    names(attributes(assays(GeneSE)$jammanorm_counts))
+#'    GeneSE2 <- se_normalize(GeneSE, assay_names="counts", method="jammanorm", params=list(jammanorm=list(min_mean=5)))
+#'    names(attributes(assays(GeneSE2)$jammanorm_counts))
+#' }
 #'    
 #' 
 #' @export
@@ -125,7 +149,10 @@ se_normalize <- function
             method=imethod,
             params=params,
             ...);
-         assays(se)[[output_assay_name]] <- assays(se)[[assay_name]];
+         jamba::printDebug("attr inorm: ", sep=", ",
+            names(attributes(inorm)))
+         # subset by rownames,colnames removes extra attributes
+         assays(se[rownames(se),colnames(se)])[[output_assay_name]] <- assays(se[rownames(se),colnames(se)])[[assay_name]];
          assays(se)[[output_assay_name]][] <- NA;
          
          #assays(se[genes, samples])[[output_assay_name]] <- inorm[genes, samples];
@@ -348,13 +375,13 @@ matrix_normalize <- function
       minimum_mean=0,
       controlSamples=NULL,
       centerGroups=NULL,
-      useMean=TRUE,
+      useMedian=FALSE,
       noise_floor=NULL,
       noise_floor_value=NULL),
    `limma_batch_adjust`=list(
       batch=NULL,
       group=NULL)),
- verbose=FALSE,
+ verbose=TRUE,
  ...)
 {
    method <- match.arg(method);
@@ -415,7 +442,7 @@ matrix_normalize <- function
       minimum_mean <- params$jammanorm$minimum_mean;
       controlSamples <- params$jammanorm$controlSamples;
       centerGroups <- params$jammanorm$centerGroups;
-      useMean <- params$jammanorm$useMean;
+      useMedian <- params$jammanorm$useMedian;
       noise_floor <- params$jammanorm$noise_floor;
       noise_floor_value <- params$jammanorm$noise_floor_value;
       if (length(noise_floor) == 0) {
@@ -424,12 +451,24 @@ matrix_normalize <- function
       if (length(noise_floor_value) == 0) {
          noise_floor_value <- noise_floor;
       }
+      if (verbose) {
+         jamba::printDebug("matrix_normalize(): ",
+            "Calling ", "jammanorm():",
+               c("\n      minimum_mean:", minimum_mean,
+               "\n      useMedian:", useMedian,
+               if (length(noise_floor) > 0 && noise_floor > -Inf) {
+                  c("\n      noise_floor:", noise_floor)},
+               if (length(noise_floor_value) > 0 && noise_floor_value > -Inf) {
+                  c("\n      noise_floor_value:", noise_floor_value)}),
+               sep="");
+      }
       inorm <- jamma::jammanorm(x,
          controlGenes=controlGenes,
          minimum_mean=minimum_mean,
          controlSamples=controlSamples,
          centerGroups=centerGroups,
-         useMean=useMean,
+         useMedian=useMedian,
+         useMean=NULL,
          noise_floor=noise_floor,
          noise_floor_value=noise_floor_value,
          verbose=verbose);

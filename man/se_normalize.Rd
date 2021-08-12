@@ -81,6 +81,32 @@ for direct comparison of results.
 This method calls \code{matrix_normalize()} to perform each normalization
 step, see that function description for details on each method.
 }
+\examples{
+if (jamba::check_pkg_installed("farrisdata") && jamba::check_pkg_installed("SummarizedExperiment")) {
+   suppressPackageStartupMessages(library(SummarizedExperiment))
+   GeneSE <- farrisdata::farrisGeneSE;
+   imatrix <- assays(GeneSE)$raw_counts;
+   head(imatrix);
+   
+   # matrix_normalize()
+   # normalize the numeric matrix directly
+   imatrix_norm <- matrix_normalize(imatrix,
+      method="jammanorm",
+      params=list(minimum_mean=5))
+   names(attributes(imatrix_norm))
+   samples <- colnames(imatrix);
+   genes <- rownames(imatrix);
+   assays(GeneSE[genes, samples])$jammanorm_counts <- imatrix_norm;
+   assays(GeneSE[genes, samples])[["jammanorm_counts"]] <- imatrix;
+   assays(GeneSE[genes, samples])[["jammanorm_counts"]][] <- NA;
+   assays(GeneSE[genes, samples])[["jammanorm_counts"]] <- imatrix_norm;
+   names(attributes(assays(GeneSE)$jammanorm_counts))
+   GeneSE2 <- se_normalize(GeneSE, assay_names="counts", method="jammanorm", params=list(jammanorm=list(min_mean=5)))
+   names(attributes(assays(GeneSE2)$jammanorm_counts))
+}
+   
+
+}
 \seealso{
 Other slicejam stats: 
 \code{\link{ebayes2dfs}()},

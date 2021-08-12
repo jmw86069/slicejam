@@ -9,12 +9,12 @@ Description: Jam Slice ChIP-seq/ATAC-seq peak slice analysis.
    volcano plots, heatmaps.
 biocViews:
    Depends: R (>= 3.6.0)
-Imports: jamba,
-   jamma,
-   colorjam (>= 0.0.19.900),
+Imports: jamba(>= 0.0.64.900),
+   jamma (>= 0.0.16.900),
+   colorjam (>= 0.0.21.900),
    kableExtra,
    SummarizedExperiment,
-   splicejam,
+   splicejam (>= 0.0.74.900),
    data.table,
    matrixStats,
    extrafont,
