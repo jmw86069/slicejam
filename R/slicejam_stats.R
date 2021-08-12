@@ -11,6 +11,12 @@
 #' applied to one or more matrix data stored in `assays(se)`,
 #' each one is run independently.
 #' 
+#' Note that supplying `genes` and `samples` will apply normalization
+#' to only those `genes` and `samples`, and this data will be
+#' stored in the full `SummarizedExperiment` object `se` with
+#' `NA` values used to fill any values not present in `genes`
+#' or `samples`.
+#' 
 #' For example if `assay_names` contains two assay names,
 #' and `method` contains two methods, the output will include
 #' four normalizations, where each assay name is normalized two ways.
@@ -46,8 +52,13 @@
 #' @param samples `character vector (optional) used to define a subset of
 #'    sample columns in `se` to use for normalization.
 #'    Values must match `colnames(se)`.
-#' @param params `list` (optional) passed to `matrix_normalize()`, see
-#'    that function description for examples.
+#' @param params `list` (optional) parameters specific to each
+#'    normalization method, passed to `matrix_normalize()`. Any 
+#'    value which is not defined in the `params` provided will use
+#'    the default value in `matrix_normalize()`, for example
+#'    `params=list(jammanorm=list(minimum_mean=2))` will use
+#'    `minimum_mean=2` then use other default values relevant
+#'    to the `jammanorm` normalization method.
 #' @param output_sep `character` string used as a delimited between the
 #'    `method` and the `assay_names` to define the output assay name,
 #'    for example when `assay_name="counts"`, `method="quantile"`,
@@ -60,59 +71,95 @@
 #' @param ... additional arguments are passed to `matrix_normalize()`.
 #' 
 #' @examples
-#' if (jamba::check_pkg_installed("farrisdata") && jamba::check_pkg_installed("SummarizedExperiment")) {
+#' if (jamba::check_pkg_installed("farrisdata")) {
+#' 
+#'    # se_normalize
 #'    suppressPackageStartupMessages(library(SummarizedExperiment))
 #'    GeneSE <- farrisdata::farrisGeneSE;
-#'    imatrix <- assays(GeneSE)$raw_counts;
-#'    head(imatrix);
+#'    samples <- colnames(GeneSE);
+#'    genes <- rownames(GeneSE);
 #'    
-#'    # matrix_normalize()
-#'    # normalize the numeric matrix directly
-#'    imatrix_norm <- matrix_normalize(imatrix,
+#'    GeneSE <- se_normalize(GeneSE,
+#'       genes=genes,
+#'       samples=samples,
+#'       assay_names=c("raw_counts", "counts"),
 #'       method="jammanorm",
-#'       params=list(minimum_mean=5))
-#'    names(attributes(imatrix_norm))
-#'    samples <- colnames(imatrix);
-#'    genes <- rownames(imatrix);
-#'    assays(GeneSE[genes, samples])$jammanorm_counts <- imatrix_norm;
-#'    assays(GeneSE[genes, samples])[["jammanorm_counts"]] <- imatrix;
-#'    assays(GeneSE[genes, samples])[["jammanorm_counts"]][] <- NA;
-#'    assays(GeneSE[genes, samples])[["jammanorm_counts"]] <- imatrix_norm;
-#'    names(attributes(assays(GeneSE)$jammanorm_counts))
-#'    GeneSE2 <- se_normalize(GeneSE, assay_names="counts", method="jammanorm", params=list(jammanorm=list(min_mean=5)))
-#'    names(attributes(assays(GeneSE2)$jammanorm_counts))
+#'       params=list(jammanorm=list(minimum_mean=5)))
+#'    names(assays(GeneSE))
+#'    
+#'    # review normalization factor values
+#'    round(digits=3, attr(assays(GeneSE)$jammanorm_raw_counts, "nf"))
+#'    
+#'    # the data in "counts" was already normalized
+#'    # so the normalization factors are very near 0 as expected
+#'    round(digits=3, attr(assays(GeneSE)$jammanorm_counts, "nf"))
+#'    
+#'    
+#'    # note that housekeeper genes are supplied in params
+#'    set.seed(123);
+#'    hkgenes <- sample(rownames(GeneSE), 1000)
+#'    GeneSE <- se_normalize(GeneSE,
+#'       genes=genes,
+#'       samples=samples,
+#'       assay_names=c("raw_counts"),
+#'       method="jammanorm",
+#'       params=list(jammanorm=list(minimum_mean=5,
+#'          controlGenes=hkgenes)))
+#'    round(digits=3, attr(assays(GeneSE)$jammanorm_raw_counts, "nf"))
+#'    
+#'    # example showing quantile normalization
+#'    GeneSE <- se_normalize(GeneSE,
+#'       assay_names=c("raw_counts"),
+#'       method="quantile",
+#'       params=list(jammanorm=list(min_mean=5)))
 #' }
 #'    
 #' 
 #' @export
 se_normalize <- function
 (se,
- method=c("quantile", "jammanorm", "limma_batch_adjust"),
+ method=c("quantile",
+    "jammanorm",
+    "limma_batch_adjust"),
  assay_names=NULL,
  genes=NULL,
  samples=NULL,
- params=NULL,
+ params=list(
+ `quantile`=list(
+     ties=TRUE),
+ `jammanorm`=list(controlGenes=NULL,
+     minimum_mean=0,
+     controlSamples=NULL,
+     centerGroups=NULL,
+     useMedian=FALSE,
+     noise_floor=NULL,
+     noise_floor_value=NULL),
+ `limma_batch_adjust`=list(
+     batch=NULL,
+     group=NULL)),
  output_sep="_",
  override=TRUE,
  verbose=FALSE,
  ...)
 {
-   assay_names <- intersect(assay_names, names(assays(se)));
+   assay_names <- intersect(assay_names, names(SummarizedExperiment::assays(se)));
    if (length(assay_names) == 0) {
       stop("assay_names must be supplied.");
    }
    method <- match.arg(method,
       several.ok=TRUE);
    
+   allgenes <- rownames(se);
+   allsamples <- colnames(se);
    if (length(genes) == 0) {
-      genes <- rownames(se);
+      genes <- allgenes;
    } else {
-      genes <- intersect(genes, rownames(se));
+      genes <- intersect(genes, allgenes);
    }
    if (length(samples) == 0) {
-      samples <- colnames(se);
+      samples <- allsamples;
    } else {
-      samples <- intersect(samples, colnames(se));
+      samples <- intersect(samples, allsamples);
    }
    if (length(genes) == 0 || length(samples) == 0) {
       stop(paste0("Only recognized ",
@@ -127,7 +174,7 @@ se_normalize <- function
             imethod,
             output_sep,
             assay_name);
-         if (output_assay_name %in% names(assays(se)) && !override) {
+         if (output_assay_name %in% names(SummarizedExperiment::assays(se)) && !override) {
             if (verbose) {
                jamba::printDebug("se_normalize(): ",
                   sep="",
@@ -144,21 +191,40 @@ se_normalize <- function
                   "'"),
             sep="");
          }
-         imatrix <- assays(se[genes, samples])[[assay_name]];
+         imatrix <- SummarizedExperiment::assays(se[genes, samples])[[assay_name]];
          inorm <- matrix_normalize(imatrix,
             method=imethod,
             params=params,
             ...);
-         jamba::printDebug("attr inorm: ", sep=", ",
-            names(attributes(inorm)))
-         # subset by rownames,colnames removes extra attributes
-         assays(se[rownames(se),colnames(se)])[[output_assay_name]] <- assays(se[rownames(se),colnames(se)])[[assay_name]];
-         assays(se)[[output_assay_name]][] <- NA;
          
-         #assays(se[genes, samples])[[output_assay_name]] <- inorm[genes, samples];
-         # matrix_normalize() should already return inorm[genes, samples]
-         # and doing a subset removes useful attributes(inorm)
-         assays(se[genes, samples])[[output_assay_name]] <- inorm;
+         # generate matrix of NA values to fill for normalized genes, samples
+         # this way we can add attributes to the full matrix
+         # when normalizing a smaller matrix
+         namatrix <- matrix(data=NA,
+            ncol=length(allsamples),
+            nrow=length(allgenes),
+            dimnames=list(allgenes,
+               allsamples));
+         # assign normalized data for genes, samples
+         namatrix[genes, samples] <- inorm;
+         
+         # re-assign any missing attributes
+         # potentially useful information from the normalization method
+         na_attrnames <- names(attributes(namatrix));
+         new_attrs <- setdiff(names(attributes(inorm)), na_attrnames);
+         if (length(new_attrs) > 0) {
+            if (verbose) {
+               jamba::printDebug("   re-assign new_attrs: ",
+                  sep=", ",
+                  new_attrs);
+            }
+            for (new_attr in new_attrs) {
+               attr(namatrix, new_attr) <- attr(inorm, new_attr);
+            }
+         }
+         
+         # assign namatrix to se
+         SummarizedExperiment::assays(se)[[output_assay_name]] <- namatrix;
       }
    }
    return(se);
@@ -303,6 +369,39 @@ se_normalize <- function
 #' @param verbose `logical` indicating whether to print verbose output.
 #' 
 #' @examples
+#' # use farrisdata real world data if available
+#' if (jamba::check_pkg_installed("farrisdata")) {
+#' 
+#'    suppressPackageStartupMessages(library(SummarizedExperiment))
+#'    
+#'    # test matrix_normalize()
+#'    GeneSE <- farrisdata::farrisGeneSE;
+#'    imatrix <- assays(GeneSE)$raw_counts;
+#'    genes <- rownames(imatrix);
+#'    samples <- colnames(imatrix);
+#'    head(imatrix);
+#'    
+#'    # matrix_normalize()
+#'    # normalize the numeric matrix directly
+#'    imatrix_norm <- matrix_normalize(imatrix,
+#'       genes=genes,
+#'       samples=samples,
+#'       method="jammanorm",
+#'       params=list(minimum_mean=5))
+#'    names(attributes(imatrix_norm))
+#'    
+#'    # review normalization factors
+#'    round(digits=3, attr(imatrix_norm, "nf"));
+#'    
+#'    # example for quantile normalization
+#'    imatrix_quant <- matrix_normalize(imatrix,
+#'       genes=genes,
+#'       samples=samples,
+#'       method="quantile")
+#'    names(attributes(imatrix_quant))
+#' }
+#' 
+#' 
 #' # simulate reasonably common expression matrix
 #' set.seed(123);
 #' x <- matrix(rnorm(9000)/4, ncol=9);
@@ -323,38 +422,52 @@ se_normalize <- function
 #' 
 #' # normalize by jammanorm with housekeeper genes
 #' hk_genes <- sample(rownames(x), 10);
-#' xnormhk <- matrix_normalize(x, method="jammanorm", verbose=TRUE,
+#' xnormhk <- matrix_normalize(x,
+#'    method="jammanorm",
 #'    params=list(jammanorm=list(controlGenes=hk_genes)))
-#' jamma::jammaplot(xnormhk, maintitle="method='jammanorm' with housekeeper genes",
+#'    
+#' jamma::jammaplot(xnormhk,
+#'    maintitle="method='jammanorm' with housekeeper genes",
 #'    highlightPoints=list(housekeepers=hk_genes),
 #'    highlightColor="green");
 #' 
-#' xnormhk6 <- matrix_normalize(x, method="jammanorm", verbose=TRUE,
-#'    params=list(jammanorm=list(controlGenes=hk_genes, minimum_mean=6)))
-#' jamma::jammaplot(xnormhk6, maintitle="method='jammanorm' with housekeeper genes, minimum_mean=6",
-#'    highlightPoints=list(housekeepers=hk_genes, hk_used=attr(xnormhk6, "hk")[[1]]),
-#'    highlightColor=c("red", "green"))
+#' xnormhk6 <- matrix_normalize(x,
+#'    method="jammanorm",
+#'    params=list(jammanorm=list(
+#'       controlGenes=hk_genes,
+#'       minimum_mean=6)))
+#' hk_used <- attr(xnormhk6, "hk")[[1]];
+#' jamma::jammaplot(xnormhk6,
+#'    maintitle="method='jammanorm' with housekeeper genes, minimum_mean=6",
+#'    highlightPoints=list(housekeepers=hk_genes,
+#'       hk_used=hk_used),
+#'    highlightColor=c("red", "green"));
 #' 
 #' # normalize by quantile
 #' xquant <- matrix_normalize(x, method="quantile")
-#' jamma::jammaplot(xquant, maintitle="method='quantile'")
+#' jamma::jammaplot(xquant,
+#'    maintitle="method='quantile'")
 #' 
 #' # simulate higher noise for lower signal
 #' rownoise <- rnorm(prod(dim(x))) * (3 / ((rowmeans*1.5) - 1.5));
 #' xnoise <- x;
 #' xnoise <- xnoise + rownoise;
-#' jamma::jammaplot(xnoise, maintitle="simulated higher noise at lower signal");
+#' jamma::jammaplot(xnoise,
+#'    maintitle="simulated higher noise at lower signal");
 #' 
 #' # simulate non-linearity across signal
 #' # sin(seq(from=pi*4/10, to=pi*7/10, length.out=100))-0.8
 #' rowadjust <- (sin(pi * jamba::normScale(rowmeans, from=3.5/10, to=5.5/10)) -0.9) * 20;
 #' xwarp <- xnoise;
 #' xwarp[,3] <- xnoise[,3] + rowadjust;
-#' jamma::jammaplot(xwarp, maintitle="signal-dependent noise and non-linear effects");
+#' jamma::jammaplot(xwarp,
+#'    maintitle="signal-dependent noise and non-linear effects");
 #' 
 #' # quantile-normalization is indicated for this scenario
-#' xwarpnorm <- matrix_normalize(xwarp, method="quantile");
-#' jp <- jamma::jammaplot(xwarpnorm, maintitle="quantile-normalized: signal-dependent noise and non-linear effects");
+#' xwarpnorm <- matrix_normalize(xwarp,
+#'    method="quantile");
+#' jp <- jamma::jammaplot(xwarpnorm,
+#'    maintitle="quantile-normalized: signal-dependent noise and non-linear effects");
 #' 
 #' @export
 matrix_normalize <- function

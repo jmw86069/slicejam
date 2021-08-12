@@ -10,7 +10,10 @@ se_normalize(
   assay_names = NULL,
   genes = NULL,
   samples = NULL,
-  params = NULL,
+  params = list(quantile = list(ties = TRUE), jammanorm = list(controlGenes = NULL,
+    minimum_mean = 0, controlSamples = NULL, centerGroups = NULL, useMedian = FALSE,
+    noise_floor = NULL, noise_floor_value = NULL), limma_batch_adjust = list(batch = NULL,
+    group = NULL)),
   output_sep = "_",
   override = TRUE,
   verbose = FALSE,
@@ -34,8 +37,13 @@ Values must match \code{rownames(se)}.}
 
 \item{samples}{\verb{character vector (optional) used to define a subset of sample columns in }se\verb{to use for normalization. Values must match}colnames(se)`.}
 
-\item{params}{\code{list} (optional) passed to \code{matrix_normalize()}, see
-that function description for examples.}
+\item{params}{\code{list} (optional) parameters specific to each
+normalization method, passed to \code{matrix_normalize()}. Any
+value which is not defined in the \code{params} provided will use
+the default value in \code{matrix_normalize()}, for example
+\code{params=list(jammanorm=list(minimum_mean=2))} will use
+\code{minimum_mean=2} then use other default values relevant
+to the \code{jammanorm} normalization method.}
 
 \item{output_sep}{\code{character} string used as a delimited between the
 \code{method} and the \code{assay_names} to define the output assay name,
@@ -64,6 +72,12 @@ to an input \code{SummarizedExperiment} object. The normalization is
 applied to one or more matrix data stored in \code{assays(se)},
 each one is run independently.
 
+Note that supplying \code{genes} and \code{samples} will apply normalization
+to only those \code{genes} and \code{samples}, and this data will be
+stored in the full \code{SummarizedExperiment} object \code{se} with
+\code{NA} values used to fill any values not present in \code{genes}
+or \code{samples}.
+
 For example if \code{assay_names} contains two assay names,
 and \code{method} contains two methods, the output will include
 four normalizations, where each assay name is normalized two ways.
@@ -82,27 +96,47 @@ This method calls \code{matrix_normalize()} to perform each normalization
 step, see that function description for details on each method.
 }
 \examples{
-if (jamba::check_pkg_installed("farrisdata") && jamba::check_pkg_installed("SummarizedExperiment")) {
+if (jamba::check_pkg_installed("farrisdata")) {
+
+   # se_normalize
    suppressPackageStartupMessages(library(SummarizedExperiment))
    GeneSE <- farrisdata::farrisGeneSE;
-   imatrix <- assays(GeneSE)$raw_counts;
-   head(imatrix);
+   samples <- colnames(GeneSE);
+   genes <- rownames(GeneSE);
    
-   # matrix_normalize()
-   # normalize the numeric matrix directly
-   imatrix_norm <- matrix_normalize(imatrix,
+   GeneSE <- se_normalize(GeneSE,
+      genes=genes,
+      samples=samples,
+      assay_names=c("raw_counts", "counts"),
       method="jammanorm",
-      params=list(minimum_mean=5))
-   names(attributes(imatrix_norm))
-   samples <- colnames(imatrix);
-   genes <- rownames(imatrix);
-   assays(GeneSE[genes, samples])$jammanorm_counts <- imatrix_norm;
-   assays(GeneSE[genes, samples])[["jammanorm_counts"]] <- imatrix;
-   assays(GeneSE[genes, samples])[["jammanorm_counts"]][] <- NA;
-   assays(GeneSE[genes, samples])[["jammanorm_counts"]] <- imatrix_norm;
-   names(attributes(assays(GeneSE)$jammanorm_counts))
-   GeneSE2 <- se_normalize(GeneSE, assay_names="counts", method="jammanorm", params=list(jammanorm=list(min_mean=5)))
-   names(attributes(assays(GeneSE2)$jammanorm_counts))
+      params=list(jammanorm=list(minimum_mean=5)))
+   names(assays(GeneSE))
+   
+   # review normalization factor values
+   round(digits=3, attr(assays(GeneSE)$jammanorm_raw_counts, "nf"))
+   
+   # the data in "counts" was already normalized
+   # so the normalization factors are very near 0 as expected
+   round(digits=3, attr(assays(GeneSE)$jammanorm_counts, "nf"))
+   
+   
+   # note that housekeeper genes are supplied in params
+   set.seed(123);
+   hkgenes <- sample(rownames(GeneSE), 1000)
+   GeneSE <- se_normalize(GeneSE,
+      genes=genes,
+      samples=samples,
+      assay_names=c("raw_counts"),
+      method="jammanorm",
+      params=list(jammanorm=list(minimum_mean=5,
+         controlGenes=hkgenes)))
+   round(digits=3, attr(assays(GeneSE)$jammanorm_raw_counts, "nf"))
+   
+   # example showing quantile normalization
+   GeneSE <- se_normalize(GeneSE,
+      assay_names=c("raw_counts"),
+      method="quantile",
+      params=list(jammanorm=list(min_mean=5)))
 }
    
 

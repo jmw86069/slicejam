@@ -27,7 +27,8 @@ Imports: jamba(>= 0.0.64.900),
    knitr,
    multienrichjam
 Suggests:
-   genejam
+   genejam,
+   farrisdata
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
@@ -35,7 +36,8 @@ Remotes: github::jmw86069/jamba,
     github::jmw86069/colorjam,
     github::jmw86069/jamma,
     github::jmw86069/splicejam,
-    github::jmw86069/genejam
+    github::jmw86069/genejam,
+    github::jmw86069/farrisdata
 URL: http://github.com/jmw86069/slicejam
 BugReports: http://github.com/jmw86069/slicejam/issues
 VignetteBuilder: knitr

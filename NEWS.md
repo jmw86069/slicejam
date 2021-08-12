@@ -3,14 +3,19 @@
 ## changes to existing functions
 
 * `se_normalize()` now assigns the normalized matrix directly
-with `inorm` without using a subset `inorm[genes, samples]`.
-The subset step previously removed `attributes(inorm)`, which
-was a problem because some normalization data is stored in
-attributes, for example the normalization factor calculated by
-`jamma::jammanorm()` normalization.
-In future these values may be stored elsewhere in the
-`SummarizedExperiment` object to ensure they are not lost during
-simple matrix manipulation steps.
+in a way that retains any specific object attributes from
+normalized matrix returned by `matrix_normalize()`.
+This approach is useful for storing the `"nf"` normalization
+factor values after `"jammanorm"` normalization for example.
+Previously these attributes were lost during the assignment
+step which used rownames,colnames to assign the subset
+of samples and genes used during normalization.
+* `se_normalize()` arguments now include the full set of
+`params` recognized by `matrix_normalize()` in order to make
+them visible in the function help text.
+* `se_normalize()` and `matrix_normalize()` contain new
+examples showing the workflow, with `farrisdata` read world
+data used as a test set.
 
 
 # slicejam 0.0.25.900

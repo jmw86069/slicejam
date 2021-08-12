@@ -74,6 +74,39 @@ This function is a wrapper for several relevant normalization
 methods that operate on a numeric matrix.
 }
 \examples{
+# use farrisdata real world data if available
+if (jamba::check_pkg_installed("farrisdata")) {
+
+   suppressPackageStartupMessages(library(SummarizedExperiment))
+   
+   # test matrix_normalize()
+   GeneSE <- farrisdata::farrisGeneSE;
+   imatrix <- assays(GeneSE)$raw_counts;
+   genes <- rownames(imatrix);
+   samples <- colnames(imatrix);
+   head(imatrix);
+   
+   # matrix_normalize()
+   # normalize the numeric matrix directly
+   imatrix_norm <- matrix_normalize(imatrix,
+      genes=genes,
+      samples=samples,
+      method="jammanorm",
+      params=list(minimum_mean=5))
+   names(attributes(imatrix_norm))
+   
+   # review normalization factors
+   round(digits=3, attr(imatrix_norm, "nf"));
+   
+   # example for quantile normalization
+   imatrix_quant <- matrix_normalize(imatrix,
+      genes=genes,
+      samples=samples,
+      method="quantile")
+   names(attributes(imatrix_quant))
+}
+
+
 # simulate reasonably common expression matrix
 set.seed(123);
 x <- matrix(rnorm(9000)/4, ncol=9);
@@ -94,38 +127,52 @@ jamma::jammaplot(xnorm, maintitle="method='jammanorm'")
 
 # normalize by jammanorm with housekeeper genes
 hk_genes <- sample(rownames(x), 10);
-xnormhk <- matrix_normalize(x, method="jammanorm", verbose=TRUE,
+xnormhk <- matrix_normalize(x,
+   method="jammanorm",
    params=list(jammanorm=list(controlGenes=hk_genes)))
-jamma::jammaplot(xnormhk, maintitle="method='jammanorm' with housekeeper genes",
+   
+jamma::jammaplot(xnormhk,
+   maintitle="method='jammanorm' with housekeeper genes",
    highlightPoints=list(housekeepers=hk_genes),
    highlightColor="green");
 
-xnormhk6 <- matrix_normalize(x, method="jammanorm", verbose=TRUE,
-   params=list(jammanorm=list(controlGenes=hk_genes, minimum_mean=6)))
-jamma::jammaplot(xnormhk6, maintitle="method='jammanorm' with housekeeper genes, minimum_mean=6",
-   highlightPoints=list(housekeepers=hk_genes, hk_used=attr(xnormhk6, "hk")[[1]]),
-   highlightColor=c("red", "green"))
+xnormhk6 <- matrix_normalize(x,
+   method="jammanorm",
+   params=list(jammanorm=list(
+      controlGenes=hk_genes,
+      minimum_mean=6)))
+hk_used <- attr(xnormhk6, "hk")[[1]];
+jamma::jammaplot(xnormhk6,
+   maintitle="method='jammanorm' with housekeeper genes, minimum_mean=6",
+   highlightPoints=list(housekeepers=hk_genes,
+      hk_used=hk_used),
+   highlightColor=c("red", "green"));
 
 # normalize by quantile
 xquant <- matrix_normalize(x, method="quantile")
-jamma::jammaplot(xquant, maintitle="method='quantile'")
+jamma::jammaplot(xquant,
+   maintitle="method='quantile'")
 
 # simulate higher noise for lower signal
 rownoise <- rnorm(prod(dim(x))) * (3 / ((rowmeans*1.5) - 1.5));
 xnoise <- x;
 xnoise <- xnoise + rownoise;
-jamma::jammaplot(xnoise, maintitle="simulated higher noise at lower signal");
+jamma::jammaplot(xnoise,
+   maintitle="simulated higher noise at lower signal");
 
 # simulate non-linearity across signal
 # sin(seq(from=pi*4/10, to=pi*7/10, length.out=100))-0.8
 rowadjust <- (sin(pi * jamba::normScale(rowmeans, from=3.5/10, to=5.5/10)) -0.9) * 20;
 xwarp <- xnoise;
 xwarp[,3] <- xnoise[,3] + rowadjust;
-jamma::jammaplot(xwarp, maintitle="signal-dependent noise and non-linear effects");
+jamma::jammaplot(xwarp,
+   maintitle="signal-dependent noise and non-linear effects");
 
 # quantile-normalization is indicated for this scenario
-xwarpnorm <- matrix_normalize(xwarp, method="quantile");
-jp <- jamma::jammaplot(xwarpnorm, maintitle="quantile-normalized: signal-dependent noise and non-linear effects");
+xwarpnorm <- matrix_normalize(xwarp,
+   method="quantile");
+jp <- jamma::jammaplot(xwarpnorm,
+   maintitle="quantile-normalized: signal-dependent noise and non-linear effects");
 
 }
 \seealso{
