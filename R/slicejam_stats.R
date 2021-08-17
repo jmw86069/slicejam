@@ -2016,7 +2016,7 @@ ebayes2dfs <- function
       }
    }
    
-   if (define_hits) {
+   if (any(define_hits)) {
       if (length(cutoff_df) > 0) {
          attr(lmTopTablesAll, "cutoff_df") <- cutoff_df;
       }
@@ -2025,7 +2025,7 @@ ebayes2dfs <- function
       }
    }
    if (collapse_by_gene) {
-      if (define_hits) {
+      if (any(define_hits)) {
          if (length(cutoff_df) > 0) {
             attr(lmTopTablesAllG, "cutoff_df") <- cutoff_df;
          }
