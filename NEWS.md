@@ -1,3 +1,14 @@
+# slicejam 0.0.27.900
+
+## changes to existing functions
+
+* `matrix_normalize()` logic for verbose output when
+deciding whether to print `noise_floor_value`
+was fixed to handle NA values.
+* `se_normalize()` was updated to pass `verbose=verbose - 1` down to
+`matrix_normalize()`.
+
+
 # slicejam 0.0.26.900
 
 ## changes to existing functions

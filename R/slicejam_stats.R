@@ -195,6 +195,7 @@ se_normalize <- function
          inorm <- matrix_normalize(imatrix,
             method=imethod,
             params=params,
+            verbose=verbose - 1,
             ...);
          
          # generate matrix of NA values to fill for normalized genes, samples
@@ -571,7 +572,8 @@ matrix_normalize <- function
                "\n      useMedian:", useMedian,
                if (length(noise_floor) > 0 && noise_floor > -Inf) {
                   c("\n      noise_floor:", noise_floor)},
-               if (length(noise_floor_value) > 0 && noise_floor_value > -Inf) {
+               if ((length(jamba::rmNA(noise_floor_value)) > 0 && jamba::rmNA(noise_floor_value) > -Inf) ||
+                     any(is.na(noise_floor_value))) {
                   c("\n      noise_floor_value:", noise_floor_value)}),
                sep="");
       }
