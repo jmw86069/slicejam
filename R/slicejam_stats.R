@@ -923,10 +923,16 @@ se_contrast_stats <- function
    }
 
    ## array of named lists
-   arrayDim <- c(length(stats_hits[[1]][[1]]),
+   all_cutoffs_list <- lapply(stats_hits[[1]], function(i){
+      gsub("[ ]+[^ ]+$", "", names(i))
+   })
+   all_cutoffs <- unique(unlist(all_cutoffs_list));
+   #arrayDim <- c(length(stats_hits[[1]][[1]]),
+   arrayDim <- c(length(all_cutoffs),
       length(stats_hits[[1]]),
       length(stats_hits));
-   arrayDimnames <- list(gsub("[ ]+[^ ]+$", "", names(stats_hits[[1]][[1]])), 
+   #arrayDimnames <- list(gsub("[ ]+[^ ]+$", "", names(stats_hits[[1]][[1]])), 
+   arrayDimnames <- list(all_cutoffs, 
       names(stats_hits[[1]]), 
       names(stats_hits));
    names(arrayDimnames) <- c("Cutoffs",
@@ -1294,6 +1300,7 @@ voom_jam <- function
 #' used that in past, the priority to port this methodology
 #' is quite low.
 #' 
+#' @inheritParams ebayes2dfs
 #' 
 #' @family slicejam stats
 #' 
@@ -1307,6 +1314,14 @@ run_limma_replicate <- function
  adjust.method="BH",
  confint=FALSE,
  trim_colnames=c("t", "B", "F"),
+ adjp_cutoff=0.05,
+ p_cutoff=NULL,
+ fold_cutoff=1.5,
+ int_adjp_cutoff=adjp_cutoff,
+ int_p_cutoff=p_cutoff,
+ int_fold_cutoff=fold_cutoff,
+ mgm_cutoff=NULL,
+ ave_cutoff=NULL,
  verbose=FALSE,
  ...)
 {
@@ -1374,11 +1389,19 @@ run_limma_replicate <- function
    dimNum <- nrow(subFit3$coefficients);
    
    ## top table for each contrast
-   if (1 == 1) {
+   if (TRUE) {
       stats_dfs <- ebayes2dfs(lmFit3=subFit3,
          lmFit1=subFit1,
          define_hits=TRUE,
          trim_colnames=trim_colnames,
+         adjp_cutoff=adjp_cutoff,
+         p_cutoff=p_cutoff,
+         fold_cutoff=fold_cutoff,
+         int_adjp_cutoff=int_adjp_cutoff,
+         int_p_cutoff=int_p_cutoff,
+         int_fold_cutoff=int_fold_cutoff,
+         mgm_cutoff=mgm_cutoff,
+         ave_cutoff=ave_cutoff,
          verbose=verbose,
          ...);
    } else {
@@ -1608,26 +1631,55 @@ ebayes2dfs <- function
       ignore.case=TRUE,
       contrastNames);
    
-   if (define_hits) {
+   # define hits is applied only to each relevant contrast
+   define_hits <- rep(define_hits,
+      length.out=length(contrastNames));
+   names(define_hits) <- contrastNames;
+   
+   if (any(define_hits)) {
       ## Add cutoff parameters to the colnames, optional
       cutoff_l <- list(
          mgm=mgm_cutoff,
          p=p_cutoff,
          adjp=adjp_cutoff,
-         fc=fold_cutoff,
-         intp=int_p_cutoff,
-         intadjp=int_adjp_cutoff,
-         intfc=int_fold_cutoff);
+         fc=fold_cutoff);
       cutoff_df <- as.data.frame(jamba::rmNULL(cutoff_l));
-      if (!any(is_interaction) && jamba::igrepHas("int", colnames(cutoff_df))) {
-         cutoff_df <- cutoff_df[,jamba::unvigrep("int", colnames(cutoff_df)),drop=FALSE];
+      if (length(cutoff_df) == 0 || nrow(cutoff_df) == 0) {
+         define_hits[!is_interaction] <- FALSE;
+         cutoff_df <- NULL;
       }
-      if (nrow(cutoff_df) == 0) {
-         define_hits <- FALSE;
+
+      int_cutoff_l <- list(
+         mgm=mgm_cutoff,
+         p=int_p_cutoff,
+         adjp=int_adjp_cutoff,
+         fc=int_fold_cutoff);
+      int_cutoff_df <- as.data.frame(jamba::rmNULL(int_cutoff_l));
+      if (length(int_cutoff_df) == 0 || nrow(int_cutoff_df) == 0) {
+         define_hits[is_interaction] <- FALSE;
+         int_cutoff_df <- NULL;
       }
    }
-   if (define_hits) {
-      cutoff_string_df <- cutoff_df;
+   
+   # define cutoff strings for contrasts and interaction contrasts
+   if (any(define_hits)) {
+      if (length(cutoff_df) > 0) {
+         cutoff_string_df <- cutoff_df;
+         for (i in colnames(cutoff_df)) {
+            cutoff_string_df[[i]] <- paste0(i, cutoff_df[[i]]);
+         }
+         cutoff_string <- jamba::pasteByRow(cutoff_string_df,
+            sep=sep);
+      }
+      if (length(int_cutoff_df) > 0) {
+         int_cutoff_string_df <- int_cutoff_df;
+         for (i in colnames(int_cutoff_df)) {
+            int_cutoff_string_df[[i]] <- paste0(i, int_cutoff_df[[i]]);
+         }
+         int_cutoff_string <- jamba::pasteByRow(int_cutoff_string_df,
+            sep=sep);
+      }
+      
       for (i in colnames(cutoff_df)) {
          cutoff_string_df[[i]] <- paste0(i, cutoff_df[[i]]);
          ## if column is "int"
@@ -1641,39 +1693,25 @@ ebayes2dfs <- function
             }
          }
       }
-      if (any(is_interaction)) {
-         int_use <- jamba::provigrep(
-            c("mgm", "ave", "^intadjp", "^intp", "^intfc", "^int"),
-            colnames(cutoff_string_df))
-         if (length(int_use) > 0) {
-            int_cutoff_string <- jamba::pasteByRow(
-               cutoff_string_df[,int_use,drop=FALSE],
-               sep=sep);
-         } else {
-            int_cutoff_string <- rep("", nrow(cutoff_df));
-         }
-      }
-      nonint_use <- jamba::unvigrep("^int",
-         jamba::provigrep(
-            c("mgm", "ave", "^adjp", "^p", "^fc"),
-            colnames(cutoff_string_df)));
-      if (length(nonint_use) > 0) {
-         cutoff_string <- jamba::pasteByRow(
-            cutoff_string_df[,nonint_use,drop=FALSE],
-            sep=sep);
-      } else {
-         cutoff_string <- rep("", nrow(cutoff_df));
-      }
       if (verbose) {
          jamba::printDebug("ebayes2dfs(): ",
             "cutoff_df:");
          print(cutoff_df);
+         jamba::printDebug("ebayes2dfs(): ",
+            "int_cutoff_df:");
+         print(int_cutoff_df);
          jamba::printDebug("ebayes2dfs(): ",
             "cutoff_string_df:");
          print(cutoff_string_df);
          jamba::printDebug("ebayes2dfs(): ",
             "cutoff_string:",
             cutoff_string);
+         jamba::printDebug("ebayes2dfs(): ",
+            "int_cutoff_string_df:");
+         print(int_cutoff_string_df);
+         jamba::printDebug("ebayes2dfs(): ",
+            "int_cutoff_string:",
+            int_cutoff_string);
       }
       #return(cutoff_string_df);
    }
@@ -1795,7 +1833,7 @@ ebayes2dfs <- function
       }
       
       ## Apply statistical thresholds
-      if (define_hits || collapse_by_gene) {
+      if (define_hits[i] || collapse_by_gene) {
          probe_colname <- head(colnames(iTopTable), 1);
          if (collapse_by_gene) {
             if (verbose) {
@@ -1808,35 +1846,43 @@ ebayes2dfs <- function
             isGenes <- nameVector(iTopTable[,gene_colname],
                rownames(iTopTable));
          }
-         if (isInteraction) {
-            pcol <- "intp";
-            adjpcol <- "intadjp";
-            foldcol <- "intfc";
-         } else {
-            pcol <- "p";
-            adjpcol <- "adjp";
-            foldcol <- "fc";
-         }
-         
+         pcol <- "p";
+         adjpcol <- "adjp";
+         foldcol <- "fc";
+
          ## iterate each set of thresholds by row in cutoff_df
          ## but only iterate unique set of cutoff thresholds
          if (isInteraction) {
             k_rows <- match(unique(int_cutoff_string),
                int_cutoff_string);
+            use_cutoff_string <- int_cutoff_string;
+            use_cutoff_df <- int_cutoff_df;
          } else {
             k_rows <- match(unique(cutoff_string),
                cutoff_string);
+            use_cutoff_string <- cutoff_string;
+            use_cutoff_df <- cutoff_df;
          }
          for (k in k_rows) {
-            if (isInteraction) {
-               hit_colname <- paste("hit",
-                  sep=sep,
-                  int_cutoff_string[k]);
-            } else {
-               hit_colname <- paste("hit",
-                  sep=sep,
-                  cutoff_string[k]);
-            }
+            hit_colname <- paste("hit",
+               sep=sep,
+               use_cutoff_string[k]);
+            mgm_cutoff <- ifelse("mgm" %in% colnames(use_cutoff_df),
+               use_cutoff_df[k, "mgm"],
+               NA);
+            ave_cutoff <- ifelse("ave" %in% colnames(use_cutoff_df),
+               use_cutoff_df[k, "ave"],
+               NA);
+            p_cutoff <- ifelse(pcol %in% colnames(use_cutoff_df),
+               use_cutoff_df[k, pcol],
+               NA);
+            adjp_cutoff <- ifelse(adjpcol %in% colnames(use_cutoff_df),
+               use_cutoff_df[k, adjpcol],
+               NA);
+            fold_cutoff <- ifelse(foldcol %in% colnames(use_cutoff_df),
+               use_cutoff_df[k, foldcol],
+               NA);
+            
             if (verbose) {
                jamba::printDebug("ebayes2dfs(): ",
                   c("hit_colname:",
@@ -1844,21 +1890,6 @@ ebayes2dfs <- function
                   sep="");
             }
             ## Call utility function to get hit flags
-            mgm_cutoff <- ifelse("mgm" %in% colnames(cutoff_df),
-               cutoff_df[k,"mgm"],
-               NA);
-            ave_cutoff <- ifelse("ave" %in% colnames(cutoff_df),
-               cutoff_df[k,"ave"],
-               NA);
-            p_cutoff <- ifelse(pcol %in% colnames(cutoff_df),
-               cutoff_df[k,pcol],
-               NA);
-            adjp_cutoff <- ifelse(adjpcol %in% colnames(cutoff_df),
-               cutoff_df[k,adjpcol],
-               NA);
-            fold_cutoff <- ifelse(foldcol %in% colnames(cutoff_df),
-               cutoff_df[k,foldcol],
-               NA);
             hit_values <- mark_stat_hits(x=iTopTable,
                adjp_cutoff=adjp_cutoff,
                p_cutoff=p_cutoff,
@@ -1877,7 +1908,7 @@ ebayes2dfs <- function
       ## Optionally transform intensities, e.g. exponentiating log2 values
       ## Note that the 2^ conversion now subtracts 1, since the typical
       ## transformation is log2(1+x)
-      if (1 == 2) {
+      if (FALSE) {
          if (transformAveExpr %in% c("2^")) {
             #iTopTable[,"AveExpr"] <- 2^iTopTable[,"AveExpr"];
             iTopTable[,"AveExpr"] <- 2^iTopTable[,"AveExpr"] - 1;
@@ -1895,7 +1926,7 @@ ebayes2dfs <- function
          }
       }
       ## Optionally convert log2 fold change to normal fold change
-      if (return_fold) {
+      if (return_fold && !"fold" %in% colnames(iTopTable)) {
          iTopTable[,"fold"] <- log2fold_to_fold(iTopTable[,"logFC"]);
       }
       ################################################
@@ -1923,11 +1954,11 @@ ebayes2dfs <- function
             adjPvalColname="adj.P.Val",
             PvalueColname="P.Value",
             logFCcolname="logFC",
-            cutoffAveExpr=cutoffAveExpr[1],
-            cutoffMaxGroupMean=cutoffMaxGroupMean[1],
-            cutoffAdjPVal=cutoffAdjPVal[1],
-            cutoffPVal=cutoffPVal[1],
-            cutoffFold=cutoffFold[1]);
+            cutoffAveExpr=ave_cutoff[1],
+            cutoffMaxGroupMean=mgm_cutoff[1],
+            cutoffAdjPVal=adjp_cutoff[1],
+            cutoffPVal=p_cutoff[1],
+            cutoffFold=fold_cutoff[1]);
          iTopTableByGene <- iTopTableByGeneL$iTopTableByGene;
          retVals$top_bygene_df <- iTopTableByGene;
          retVals$multidir_probes <- iTopTableByGeneL$multiDirProbes;
@@ -1939,12 +1970,14 @@ ebayes2dfs <- function
          ## Note we do rename maxGroupMean now,
          ## since we calculate it per each specific contrast
          rename_from <- setdiff(
-            jamba::unvigrep("AveExpr| mean$|gene|probe",
+            jamba::unvigrep("AveExpr| mean$|^gene|^probe",
                colnames(iTopTable)),
             gene_colnames);
          rename_to <- paste(rename_from,
             iLabel,
             sep=sep);
+         # remove repeat blank spaces
+         rename_to <- gsub("[ ]+", " ", rename_to);
          iTopTable <- jamba::renameColumn(iTopTable,
             from=rename_from,
             to=rename_to);
@@ -1984,11 +2017,21 @@ ebayes2dfs <- function
    }
    
    if (define_hits) {
-      attr(lmTopTablesAll, "cutoff_df") <- cutoff_df;
+      if (length(cutoff_df) > 0) {
+         attr(lmTopTablesAll, "cutoff_df") <- cutoff_df;
+      }
+      if (length(int_cutoff_df) > 0) {
+         attr(lmTopTablesAll, "int_cutoff_df") <- int_cutoff_df;
+      }
    }
    if (collapse_by_gene) {
       if (define_hits) {
-         attr(lmTopTablesAllG, "cutoff_df") <- cutoff_df;
+         if (length(cutoff_df) > 0) {
+            attr(lmTopTablesAllG, "cutoff_df") <- cutoff_df;
+         }
+         if (length(int_cutoff_df) > 0) {
+            attr(lmTopTablesAllG, "int_cutoff_df") <- int_cutoff_df;
+         }
       }
       retList <- list(top_df=lmTopTablesAll,
          top_bygene_df=lmTopTablesAllG);

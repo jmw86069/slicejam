@@ -13,9 +13,52 @@ run_limma_replicate(
   adjust.method = "BH",
   confint = FALSE,
   trim_colnames = c("t", "B", "F"),
+  adjp_cutoff = 0.05,
+  p_cutoff = NULL,
+  fold_cutoff = 1.5,
+  int_adjp_cutoff = adjp_cutoff,
+  int_p_cutoff = p_cutoff,
+  int_fold_cutoff = fold_cutoff,
+  mgm_cutoff = NULL,
+  ave_cutoff = NULL,
   verbose = FALSE,
   ...
 )
+}
+\arguments{
+\item{confint}{\code{logical} passed to \code{limma::topTable()}, which defines
+whether to return confidence intervals for each log2 fold change.}
+
+\item{adjp_cutoff}{\code{numeric}
+values representing the appropriate statistical threshold,
+or \code{NULL} when a threshold should not be applied.}
+
+\item{p_cutoff}{\code{numeric}
+values representing the appropriate statistical threshold,
+or \code{NULL} when a threshold should not be applied.}
+
+\item{fold_cutoff}{\code{numeric}
+values representing the appropriate statistical threshold,
+or \code{NULL} when a threshold should not be applied.}
+
+\item{int_adjp_cutoff}{\code{numeric}
+thresholds to apply only to interaction contrasts.}
+
+\item{int_p_cutoff}{\code{numeric}
+thresholds to apply only to interaction contrasts.}
+
+\item{int_fold_cutoff}{\code{numeric}
+thresholds to apply only to interaction contrasts.}
+
+\item{mgm_cutoff}{\code{numeric}
+values representing the appropriate statistical threshold,
+or \code{NULL} when a threshold should not be applied.}
+
+\item{ave_cutoff}{\code{numeric}
+values representing the appropriate statistical threshold,
+or \code{NULL} when a threshold should not be applied.}
+
+\item{verbose}{\code{logical} indicating whether to print verbose output.}
 }
 \description{
 Run limma contrasts with optional probe replicates

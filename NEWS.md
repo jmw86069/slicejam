@@ -1,3 +1,19 @@
+# slicejam 0.0.28.900
+
+## changes to existing functions
+
+* `ebayes2df()` was updated to handle contrast and interaction
+contrast hit cutoffs more independently and correctly. Specifically,
+the contrast and interaction contrast cutoff values are applied
+independently.
+* `run_limma_replicate()` arguments now reflect the cutoffs that
+are passed down to `ebayes2df()`
+* `se_contrast_stats()` now populates `hit_array` dimname `"Cutoffs"`
+with distinct values for contrast cutoffs and interaction contrast
+cutoffs. Previously they were handled in order but re-used labels
+from only the contrast cutoffs.
+
+
 # slicejam 0.0.27.900
 
 ## changes to existing functions
