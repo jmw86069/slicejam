@@ -946,11 +946,33 @@ se_contrast_stats <- function
          "arrayDimnames:");
       print(arrayDimnames);
    }
+   
+   # assemble hit_array
+   # - allow for missing entries
+   # first define the array indices
+   kji <- jamba::rbindList(lapply(names(stats_hits), function(i){
+      jamba::rbindList(lapply(names(stats_hits[[i]]), function(j){
+         jamba::rbindList(lapply(names(stats_hits[[i]][[j]]), function(k){
+            k1 <- gsub("[ ][^ ]+$", "", k);
+            kji <- cbind(match(k1, arrayDimnames[[1]]),
+               match(j, arrayDimnames[[2]]),
+               match(i, arrayDimnames[[3]]))
+            kji
+         }))
+      }))
+   }))
    hit_array <- array(dim=arrayDim,
-      data=(unlist(recursive=FALSE,
-         unlist(recursive=FALSE,
-            stats_hits))),
       dimnames=arrayDimnames);
+   # fill data into the array, which somehow converts it into a list
+   # - thanks R
+   hit_array[kji] <- unlist(recursive=FALSE,
+      unlist(recursive=FALSE,
+         stats_hits))
+   # create the array again using the list data
+   hit_array <- array(dim=arrayDim,
+      data=hit_array,
+      dimnames=arrayDimnames);
+   
    ret_list$hit_array <- hit_array;
    ret_list$hit_list <- stats_hits;
 
