@@ -1,3 +1,48 @@
+# slicejam 0.0.29.900
+
+## new object `SEDesign`
+
+Object `SEDesign` are intended to contain the combination of:
+
+* samples
+* design matrix (samples x groups)
+* contrasts matrix (groups x contrasts)
+
+The intent is to allow subsetting samples, groups, and
+to maintain integrity of the design and contrasts matrix.
+For example, when one group in a contrast is removed,
+the contrast should also be removed.
+
+If samples are removed, and it results in removing a group,
+it should also adjust the design and contrasts matrix data
+accordingly.
+
+* `validate_sedesign()` will update an existing `SEDesign` object,
+optionally subset samples, groups, and contrasts.
+
+Other helper functions
+
+* `samples(SEDesign)` will return the sample identifiers
+* `samples(SEDesign) <- ` will rename sample identifiers to values provided
+
+* `groups(SEDesign)` will return the design groups
+* `groups(SEDesign) <- ` will rename the design groups, including the groups in contrasts
+
+* `design(SEDesign)` will return the design matrix
+* `design(SEDesign) <- ` will reassign the design matrix
+
+* `contrasts(SEDesign)` will return the contrast matrix
+* `contrasts(SEDesign) <- ` will reassign the contrast matrix
+
+## Next steps:
+
+* include the `SEDesign` object as acceptable input to `se_contrast_stats()`
+* change `se_contrast_stats()` to use `SEDesign` as input, and to convert
+a la carte input (idesign, icontrasts, isamples) into `SEDesign`
+to allow `SEDesign` methods to validate design and contrasts.
+
+
+
 # slicejam 0.0.28.900
 
 ## changes to existing functions
