@@ -475,7 +475,7 @@ setMethod("design",
    }
 )
 
-setGeneric("design<-", function(object) {standardGeneric("design<-")})
+setGeneric("design<-", function(object, value) {standardGeneric("design<-")})
 
 #' @export
 setMethod("design<-",
@@ -500,19 +500,20 @@ setMethod("contrasts",
 #' @export
 setMethod("contrasts<-",
    signature=c(x="SEDesign",
-      how.many="matrix"),
-   definition=function(x, how.many) {
-      x@contrasts <- how.many;
-      x;
-   }
-)
-
-#' @export
-setMethod("contrasts<-",
-   signature=c(x="SEDesign",
-      value="matrix"),
-   definition=function(x, value) {
-      x@contrasts <- value;
+      how.many="ANY",
+      value="ANY"),
+   definition=function(x, how.many=NULL, value=NULL) {
+      if (missing(value)) {
+         value <- NULL
+      }
+      if (missing(how.many)) {
+         how.many <- NULL
+      }
+      if (length(value) > 0) {
+         x@contrasts <- value;
+      } else if (length(how.many) > 0) {
+         x@contrasts <- how.many;
+      }
       x;
    }
 )
