@@ -396,11 +396,8 @@ setMethod("[",
    }
 )
 
-setGeneric("samples", function(object) {standardGeneric("samples")})
-setGeneric("samples<-", function(object, value) {standardGeneric("samples<-")})
 
-setGeneric("groups", function(object) {standardGeneric("groups")})
-setGeneric("groups<-", function(object, value) {standardGeneric("groups<-")})
+setGeneric("samples", function(object) {standardGeneric("samples")})
 
 #' @export
 setMethod("samples",
@@ -409,6 +406,9 @@ setMethod("samples",
       rownames(object@design);
    }
 )
+
+
+setGeneric("samples<-", function(object, value) {standardGeneric("samples<-")})
 
 #' @export
 setMethod("samples<-",
@@ -437,6 +437,8 @@ setMethod("samples<-",
    }
 )
 
+setGeneric("groups", function(object) {standardGeneric("groups")})
+
 #' @export
 setMethod("groups",
    signature=c(object="SEDesign"),
@@ -444,6 +446,8 @@ setMethod("groups",
       colnames(object@design);
    }
 )
+
+setGeneric("groups<-", function(object, value) {standardGeneric("groups<-")})
 
 #' @export
 setMethod("groups<-",
@@ -461,6 +465,8 @@ setMethod("groups<-",
    }
 )
 
+setGeneric("design", function(object) {standardGeneric("design")})
+
 #' @export
 setMethod("design",
    signature=c(object="SEDesign"),
@@ -468,6 +474,8 @@ setMethod("design",
       object@design;
    }
 )
+
+setGeneric("design<-", function(object) {standardGeneric("design<-")})
 
 #' @export
 setMethod("design<-",
@@ -479,6 +487,7 @@ setMethod("design<-",
    }
 )
 
+
 #' @export
 setMethod("contrasts",
    signature=c(x="SEDesign"),
@@ -486,6 +495,7 @@ setMethod("contrasts",
       x@contrasts;
    }
 )
+
 
 #' @export
 setMethod("contrasts<-",
