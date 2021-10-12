@@ -757,24 +757,43 @@ statsdf2bed <- function
 #' @family slicejam genome regions
 #' 
 #' @param gr `GRanges` object to be annotated. The `values(gr)`
-#'    should contain a colname that matches `name_colname`.
+#'    should contain a colname that matches `name_colname`,
+#'    otherwise names will be created for each entry in
+#'    colname `"name"`, see `name_colname` below.
 #' @param genome_regions `GRanges` object as produced by
 #'    `genomic_regions_from_gtf()`. The `values(genome_regions)`
 #'    should contain a colname that matches `gene_name_colname`,
 #'    and the feature type should be stored in a colname
 #'    `feature_type_colname`.
 #' @param name_colname `character` value that matches one colname
-#'    in `values(gr)`.
+#'    in `values(gr)`. When no colname is supplied, a colname `"name"`
+#'    is created with dummy values with the format `"gr00001"`.
 #' @param gene_name_colname `character` value that matches one colname
-#'    in `values(gr)`.
+#'    in `values(genome_regions)`.
 #' @param feature_type_colname `character` value that matches one colname
-#'    in `values(gr)`, and which contains feature types.
-#' @param mask_regions `character` file that contains mask regions
-#'    in BED format, or `GRanges` object. Currently the name is ignored,
-#'    and all entries are considered to be "mask" regions.
+#'    in `values(genome_regions)`, and which contains feature types.
+#' @param gene_id_colname `character` optional value of one colname in
+#'    `values(genome_regions)` to be included alongside gene annotations.
+#' @param mask_regions one of the following input formats:
+#'    * `character` vector with file or files that contain mask regions
+#'    in BED format, only the regions are retained without further annotation
+#'    * `GRanges` object containing mask regions. Currently the name is ignored.
+#'    * `GRangesList` object, which is used as `mask_regions@unlistData` to
+#'    convert that format to `GRanges` for internal use. No other annotations
+#'    are used, all regions are considered `"mask"`.
 #' @param feature_grep_order `character` vector of grep patterns used
 #'    to match values in `feature_type_colname`, to define the priority
 #'    of feature types to use for the "winner".
+#' @param include_type `character` vector indicating which of the three
+#'    annotation phases to include:
+#'    1. `"overlap"` annotates each region by direct overlap with `genome_regions`
+#'    2. `"winner"` annotates each region by direct overlap, using only
+#'    the feature_type_winner for each entry in `gr`.
+#'    3. `"nearest_gene"` annotates each entry in `gr` by the nearest gene
+#'    in `genome_regions` alongside the distance to nearest gene.
+#' @param verbose `logical` indicating whether to print verbose output.
+#'    More detailed output is printed when `verbose=2`.
+#' @param ... additional arguments are ignored.
 #' 
 #' @export
 annotate_gr_by_genome_region <- function
@@ -793,16 +812,34 @@ annotate_gr_by_genome_region <- function
    # validate input
    include_type <- match.arg(include_type,
       several.ok=TRUE);
+   
+   name_colname <- intersect(name_colname,
+      colnames(values(gr)));
+   if (length(name_column) == 0) {
+      name_column <- "name";
+      values(gr)[[name_column]] <- paste0("gr",
+         jamba::padInteger(seq_along(gr)));
+   }
+   
+   gene_name_colname <- head(intersect(gene_name_colname,
+      colnames(values(genome_regions))), 1);
+   feature_type_colname <- head(intersect(feature_type_colname,
+      colnames(values(genome_regions))), 1);
+   if (length(gene_name_colname) == 0 || length(feature_type_colname) == 0) {
+      stop("gene_name_colname and feature_type_colname must be present in colnames(values(genome_regions))");
+   }
    gene_id_colname <- intersect(gene_id_colname,
-      colnames(values(genome_reions)));
+      colnames(values(genome_regions)));
    
    ## Expand genome_regions if there are multi-gene features
    # begin to annotate peaks by genome_regions
-   ## Expand comma-delimited genes from genome_regions
-   gr_expl <- strsplit(
-      GenomicRanges::values(genome_regions)[[gene_name_colname]], ",");
-   if (any(lengths(gr_expl) > 1)) {
-      gr_expi <- rep(seq_along(genome_regions), lengths(gr_expl));
+   
+   ## Expand comma-delimited gene_name values if present in genome_regions
+   if (jamba::igrepHas(",", GenomicRanges::values(genome_regions)[[gene_name_colname]])) {
+      gr_expl <- strsplit(
+         GenomicRanges::values(genome_regions)[[gene_name_colname]], ",");
+      gr_expi <- rep(seq_along(genome_regions),
+         lengths(gr_expl));
       genome_regions_exp <- unname(genome_regions)[gr_expi];
       GenomicRanges::values(genome_regions_exp)[[gene_name_colname]] <- unname(unlist(gr_expl));
       

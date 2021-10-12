@@ -20,7 +20,9 @@ annotate_gr_by_genome_region(
 }
 \arguments{
 \item{gr}{\code{GRanges} object to be annotated. The \code{values(gr)}
-should contain a colname that matches \code{name_colname}.}
+should contain a colname that matches \code{name_colname},
+otherwise names will be created for each entry in
+colname \code{"name"}, see \code{name_colname} below.}
 
 \item{genome_regions}{\code{GRanges} object as produced by
 \code{genomic_regions_from_gtf()}. The \code{values(genome_regions)}
@@ -29,21 +31,46 @@ and the feature type should be stored in a colname
 \code{feature_type_colname}.}
 
 \item{name_colname}{\code{character} value that matches one colname
-in \code{values(gr)}.}
+in \code{values(gr)}. When no colname is supplied, a colname \code{"name"}
+is created with dummy values with the format \code{"gr00001"}.}
 
 \item{gene_name_colname}{\code{character} value that matches one colname
-in \code{values(gr)}.}
+in \code{values(genome_regions)}.}
 
 \item{feature_type_colname}{\code{character} value that matches one colname
-in \code{values(gr)}, and which contains feature types.}
+in \code{values(genome_regions)}, and which contains feature types.}
 
-\item{mask_regions}{\code{character} file that contains mask regions
-in BED format, or \code{GRanges} object. Currently the name is ignored,
-and all entries are considered to be "mask" regions.}
+\item{gene_id_colname}{\code{character} optional value of one colname in
+\code{values(genome_regions)} to be included alongside gene annotations.}
+
+\item{mask_regions}{one of the following input formats:
+\itemize{
+\item \code{character} vector with file or files that contain mask regions
+in BED format, only the regions are retained without further annotation
+\item \code{GRanges} object containing mask regions. Currently the name is ignored.
+\item \code{GRangesList} object, which is used as \code{mask_regions@unlistData} to
+convert that format to \code{GRanges} for internal use. No other annotations
+are used, all regions are considered \code{"mask"}.
+}}
 
 \item{feature_grep_order}{\code{character} vector of grep patterns used
 to match values in \code{feature_type_colname}, to define the priority
 of feature types to use for the "winner".}
+
+\item{include_type}{\code{character} vector indicating which of the three
+annotation phases to include:
+\enumerate{
+\item \code{"overlap"} annotates each region by direct overlap with \code{genome_regions}
+\item \code{"winner"} annotates each region by direct overlap, using only
+the feature_type_winner for each entry in \code{gr}.
+\item \code{"nearest_gene"} annotates each entry in \code{gr} by the nearest gene
+in \code{genome_regions} alongside the distance to nearest gene.
+}}
+
+\item{verbose}{\code{logical} indicating whether to print verbose output.
+More detailed output is printed when \code{verbose=2}.}
+
+\item{...}{additional arguments are ignored.}
 }
 \description{
 Annotate GRanges by genome_regions

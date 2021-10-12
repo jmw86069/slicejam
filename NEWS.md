@@ -7,6 +7,8 @@ output colnames, forcing `"gene_name"`, `"feature_type"`,
 and when available in the source data: `"gene_id"`. Previously,
 the code assumed `feature_type_colname="feature_type"` which would
 have caused errors when the input colname was not `"feature_type"`.
+* `annotate_gr_by_genome_region()` improved speed while checking
+for gene_name values delimited by `","`.
 
 
 # slicejam 0.0.29.900
