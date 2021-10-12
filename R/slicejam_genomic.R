@@ -1023,7 +1023,7 @@ annotate_gr_by_genome_region <- function
             fcdupes <- is_duplicate(grdt0_hasbestft_sub[["fc"]]);
             if (verbose >= 3) {
                grdt0_hasbestft_sub_dupe <- jamba::mixedSortDF(
-                  grdt0_hasbestft_sub[fcdupes, c(i, "fc"), drop=FALSE],
+                  grdt0_hasbestft_sub[fcdupes, c(..i, "fc"), drop=FALSE],
                   byCols=c(i));
                grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
                   sep=",",
