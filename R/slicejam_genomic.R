@@ -30,8 +30,11 @@
 #' gene transcripts for that gene locus.
 #' 
 #' Any region of the genome which is not annotated as a Promoter, TTS,
-#' exon, or intron, is referred to as `"intergenic"`, although intergenic
-#' regions are not defined by this function directly.
+#' exon, or intron, is referred to as `"extragenic"`, although extragenic
+#' regions are not defined by this function directly. Note that we favor
+#' the term `"extragenic"` over `"intergenic"` because: the latter term
+#' may be confused with `"intragenic"`; and may imply a region that
+#' must be between two existing genes, which is not the case.
 #' 
 #' In more detail: The arguments `geneAttrNames`, `txAttrNames`, and
 #' `geneFeatureType` are used by `splicejam::makeTx2geneFromGtf()` to
@@ -804,9 +807,18 @@ annotate_gr_by_genome_region <- function
  feature_type_colname="feature_type",
  gene_id_colname="gene_id",
  mask_regions=NULL,
- feature_grep_order=c("promoter", "tts", "exon", "intron", "intergenic", "."),
- include_type=c("overlap", "winner", "nearest_gene"),
- sort_optimization=c("fast", "global"),
+ feature_grep_order=c("promoter", 
+    "tts",
+    "exon",
+    "intron",
+    "extragenic",
+    "intergenic",
+    "."),
+ include_type=c("overlap",
+    "winner",
+    "nearest_gene"),
+ sort_optimization=c("fast",
+    "global"),
  verbose=FALSE,
  ...)
 {
@@ -930,7 +942,7 @@ annotate_gr_by_genome_region <- function
                names(grd_vals[[i]]),
                GenomicRanges::values(gr)[[name_colname]]);
             if ("feature_type" == i) {
-               GenomicRanges::values(gr)[,i] <- unname(c("intergenic", grd_vals[[i]][1])[1]);
+               GenomicRanges::values(gr)[,i] <- unname(c("extragenic", grd_vals[[i]][1])[1]);
             } else {
                GenomicRanges::values(gr)[,i] <- unname(c(NA, grd_vals[[i]][1])[1]);
             }
@@ -1073,7 +1085,7 @@ annotate_gr_by_genome_region <- function
          imatch <- match(names(grdt0_bestvalue),
             GenomicRanges::values(gr)[[name_colname]]);
          if ("feature_type" %in% i) {
-            GenomicRanges::values(gr)[,inewcolname] <- "intergenic";
+            GenomicRanges::values(gr)[,inewcolname] <- "extragenic";
          } else {
             GenomicRanges::values(gr)[,inewcolname] <- c(NA, "")[1];
          }
@@ -1189,7 +1201,7 @@ annotate_gr_by_genome_region <- function
 #' or by using argument `genome` to query UCSC data via
 #' `GenomeInfoDb::fetchExtendedChromInfoFromUCSC()`. These chromosome lengths
 #' are used to create chromosome-length `GRanges`, so that any region not
-#' described by `genome_regions` will be considered `intergenic`. In this
+#' described by `genome_regions` will be considered `extragenic`. In this
 #' way, every region in the genome will be represented.
 #' 
 #' @param genome_regions `GRanges` object as produced by
@@ -1229,6 +1241,7 @@ flatten_genome_regions <- function
     "tts",
     "exon",
     "intron",
+    "extragenic",
     "intergenic",
     "."),
  mask_regions=NULL,
@@ -1283,16 +1296,16 @@ flatten_genome_regions <- function
       ranges=IRanges::IRanges(start=1,
          end=GenomeInfoDb::seqlengths(genome_regions)),
       strand="*");
-   intergenic_gr <- GenomicRanges::setdiff(chrom_gr,
+   extragenic_gr <- GenomicRanges::setdiff(chrom_gr,
       genome_regions,
       ignore.strand=TRUE);
    
    # flatten input regions
    genome_regions_flat <- GenomicRanges::disjoin(genome_regions,
       ignore.strand=TRUE);
-   if (length(intergenic_gr) > 0) {
+   if (length(extragenic_gr) > 0) {
       genome_regions_flat <- sort(c(genome_regions_flat,
-         intergenic_gr))
+         extragenic_gr))
    }
    values(genome_regions_flat)$name <- paste0("region",
       jamba::padInteger(seq_along(genome_regions_flat)));

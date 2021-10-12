@@ -1,5 +1,18 @@
 # slicejam 0.0.30.900
 
+## change in nomenclature
+
+* Henceforth the term `"intergenic"` will be deprecated,
+in its place we will use the term `"extragenic"` for these reasons:
+
+   1. "intergenic" implies a region between genes, which would not
+   represent regions between a gene and the end of a chromosome.
+   2. "extragenic" refers to regions outside a gene body, regardless
+   whether this region borders a gene or some other feature.
+   3. "intergenic" may be confused with "intragenic" by others writing
+   the term, which would mean the opposite of the intended definition.
+
+
 ## new functions
 
 * `flatten_genome_regions()` takes the `genome_regions` data and

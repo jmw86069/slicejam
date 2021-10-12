@@ -11,7 +11,8 @@ flatten_genome_regions(
   gene_name_colname = "gene_name",
   feature_type_colname = "feature_type",
   gene_id_colname = "gene_id",
-  feature_grep_order = c("promoter", "tts", "exon", "intron", "intergenic", "."),
+  feature_grep_order = c("promoter", "tts", "exon", "intron", "extragenic",
+    "intergenic", "."),
   mask_regions = NULL,
   canonical_only = TRUE,
   sort_optimization = "fast",
@@ -67,6 +68,6 @@ The chromosome lengths are either used from the \code{genome_regions} object,
 or by using argument \code{genome} to query UCSC data via
 \code{GenomeInfoDb::fetchExtendedChromInfoFromUCSC()}. These chromosome lengths
 are used to create chromosome-length \code{GRanges}, so that any region not
-described by \code{genome_regions} will be considered \code{intergenic}. In this
+described by \code{genome_regions} will be considered \code{extragenic}. In this
 way, every region in the genome will be represented.
 }

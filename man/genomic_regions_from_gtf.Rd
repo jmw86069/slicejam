@@ -139,8 +139,11 @@ gene transcripts for that gene locus.
 }
 
 Any region of the genome which is not annotated as a Promoter, TTS,
-exon, or intron, is referred to as \code{"intergenic"}, although intergenic
-regions are not defined by this function directly.
+exon, or intron, is referred to as \code{"extragenic"}, although extragenic
+regions are not defined by this function directly. Note that we favor
+the term \code{"extragenic"} over \code{"intergenic"} because: the latter term
+may be confused with \code{"intragenic"}; and may imply a region that
+must be between two existing genes, which is not the case.
 
 In more detail: The arguments \code{geneAttrNames}, \code{txAttrNames}, and
 \code{geneFeatureType} are used by \code{splicejam::makeTx2geneFromGtf()} to
