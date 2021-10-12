@@ -10,8 +10,10 @@ annotate_gr_by_genome_region(
   name_colname = "name",
   gene_name_colname = "gene_name",
   feature_type_colname = "feature_type",
+  gene_id_colname = "gene_id",
   mask_regions = NULL,
   feature_grep_order = c("promoter", "tts", "exon", "intron", "intergenic", "."),
+  include_type = c("overlap", "winner", "nearest_gene"),
   verbose = FALSE,
   ...
 )

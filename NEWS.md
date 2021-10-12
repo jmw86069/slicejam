@@ -1,3 +1,14 @@
+# slicejam 0.0.30.900
+
+## changes to existing functions
+
+* `annotate_gr_by_genome_region()` was updated to force consistent
+output colnames, forcing `"gene_name"`, `"feature_type"`,
+and when available in the source data: `"gene_id"`. Previously,
+the code assumed `feature_type_colname="feature_type"` which would
+have caused errors when the input colname was not `"feature_type"`.
+
+
 # slicejam 0.0.29.900
 
 ## new object `SEDesign`

@@ -783,11 +783,19 @@ annotate_gr_by_genome_region <- function
  name_colname="name",
  gene_name_colname="gene_name",
  feature_type_colname="feature_type",
+ gene_id_colname="gene_id",
  mask_regions=NULL,
  feature_grep_order=c("promoter", "tts", "exon", "intron", "intergenic", "."),
+ include_type=c("overlap", "winner", "nearest_gene"),
  verbose=FALSE,
  ...)
 {
+   # validate input
+   include_type <- match.arg(include_type,
+      several.ok=TRUE);
+   gene_id_colname <- intersect(gene_id_colname,
+      colnames(values(genome_reions)));
+   
    ## Expand genome_regions if there are multi-gene features
    # begin to annotate peaks by genome_regions
    ## Expand comma-delimited genes from genome_regions
@@ -814,69 +822,83 @@ annotate_gr_by_genome_region <- function
 
    ##################################################
    ## Annotate peaks by overlapping region
-   if (verbose) {
-      printDebug("annotate_gr_by_genome_region(): ",
-         "Annotate peaks by overlapping region");
-   }
-   fco <- GenomicRanges::findOverlaps(gr,
-      ignore.strand=TRUE,
-      genome_regions_exp);
-   grdt <- data.table::data.table(
-      fc=GenomicRanges::values(gr[S4Vectors::queryHits(fco)])[[name_colname]],
-      gene_name=GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[gene_name_colname]],
-      #gene_id=values(genome_regions_exp[subjectHits(fco)])$gene_id,
-      feature_type=factor(
-         GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[feature_type_colname]],
-         levels=provigrep(feature_grep_order,
-            unique(GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[feature_type_colname]]))),
-      gene_feature_type=GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])$gene_feature_type);
-   
-   if ("gene_id" %in% colnames(GenomicRanges::values(genome_regions_exp))) {
-      grdt$gene_id <- GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])$gene_id;
-   }
-   grd_colnames <- S4Vectors::intersect(
-      c(gene_name_colname,
-         "gene_id",
-         feature_type_colname,
-         "gene_feature_type"),
-      colnames(grdt));
-   ## Iterate each column, combine multi-row features into one row
-   ## then annotate using unique, sorted, comma-delimited values
-   if (verbose) {
-      printDebug("annotate_gr_by_genome_region(): ",
-         "grd_colnames:", grd_colnames);
-      printDebug("annotate_gr_by_genome_region(): ",
-         "head(grdt):");
-      print(head(grdt));
-   }
-   grd_vals <- lapply(jamba::nameVector(grd_colnames), function(i){
-      icols <- unname(c("fc", i));
+   if (any(c("overlap", "winner") %in% include_type)) {
       if (verbose) {
          jamba::printDebug("annotate_gr_by_genome_region(): ",
-            "icols:", icols);
+            "Annotate peaks by overlapping region");
+      }
+      fco <- GenomicRanges::findOverlaps(gr,
+         ignore.strand=TRUE,
+         genome_regions_exp);
+      grdt <- data.table::data.table(
+         fc=GenomicRanges::values(gr[S4Vectors::queryHits(fco)])[[name_colname]],
+         gene_name=GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[gene_name_colname]],
+         #gene_id=values(genome_regions_exp[subjectHits(fco)])$gene_id,
+         feature_type=factor(
+            GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[feature_type_colname]],
+            levels=provigrep(feature_grep_order,
+               unique(GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[feature_type_colname]]))),
+         gene_feature_type=GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])$gene_feature_type);
+      if (FALSE) {
+         grdt <- jamba::renameColumn(grdt,
+            from=c("gene_name",
+               "feature_type"),
+            to=c(gene_name_colname,
+               feature_type_colname));
+      }
+
+      if (length(gene_id_colname) > 0) {
+         grdt$gene_id <- GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[gene_id_colname]];
+      }
+      grd_colnames <- S4Vectors::intersect(
+         c("gene_name",
+            "gene_id",
+            "feature_type",
+            "gene_feature_type"),
+         colnames(grdt));
+      if (verbose) {
          jamba::printDebug("annotate_gr_by_genome_region(): ",
-            "colnames(grdt):", colnames(grdt));
+            "head(grdt):");
+         print(head(grdt));
       }
-      idt <- grdt[, ..icols];
-      ## expand comma-delimited entries
-      grdt0ft <- unique(jamba::mixedSortDF(idt, byCols=1:2)[,c(1,2)]);
-      grv <- S4Vectors::unstrsplit(
-         IRanges::CharacterList(
-            split(as.character(grdt0ft[[2]]), grdt0ft[[1]])),
-         sep=",");
-      grv;
-   });
-   ## Add each column to gr
-   for (i in names(grd_vals)) {
-      imatch <- match(
-         names(grd_vals[[i]]),
-         GenomicRanges::values(gr)[[name_colname]]);
-      if (feature_type_colname == i) {
-         GenomicRanges::values(gr)[,i] <- unname(c("intergenic", grd_vals[[i]][1])[1]);
-      } else {
-         GenomicRanges::values(gr)[,i] <- unname(c(NA, grd_vals[[i]][1])[1]);
+      
+      ## Iterate each column, combine multi-row features into one row
+      ## then annotate using unique, sorted, comma-delimited values
+      if ("overlap" %in% include_type) {
+         if (verbose) {
+            jamba::printDebug("annotate_gr_by_genome_region(): ",
+               "grd_colnames:", grd_colnames);
+         }
+         grd_vals <- lapply(jamba::nameVector(grd_colnames), function(i){
+            icols <- unname(c("fc", i));
+            if (verbose) {
+               jamba::printDebug("annotate_gr_by_genome_region(): ",
+                  "icols:", icols);
+               jamba::printDebug("annotate_gr_by_genome_region(): ",
+                  "colnames(grdt):", colnames(grdt));
+            }
+            idt <- grdt[, ..icols];
+            ## expand comma-delimited entries
+            grdt0ft <- unique(jamba::mixedSortDF(idt, byCols=1:2)[,c(1,2)]);
+            grv <- S4Vectors::unstrsplit(
+               IRanges::CharacterList(
+                  split(as.character(grdt0ft[[2]]), grdt0ft[[1]])),
+               sep=",");
+            grv;
+         });
+         ## Add each column to gr
+         for (i in names(grd_vals)) {
+            imatch <- match(
+               names(grd_vals[[i]]),
+               GenomicRanges::values(gr)[[name_colname]]);
+            if (feature_type_colname == i) {
+               GenomicRanges::values(gr)[,i] <- unname(c("intergenic", grd_vals[[i]][1])[1]);
+            } else {
+               GenomicRanges::values(gr)[,i] <- unname(c(NA, grd_vals[[i]][1])[1]);
+            }
+            GenomicRanges::values(gr)[imatch,i] <- grd_vals[[i]];
+         }
       }
-      GenomicRanges::values(gr)[imatch,i] <- grd_vals[[i]];
    }
    
    ## is_duplicate()
@@ -887,129 +909,158 @@ annotate_gr_by_genome_region <- function
    
    ##################################################
    ## sort for best feature_type
-   if (verbose) {
-      jamba::printDebug("annotate_gr_by_genome_region(): ",
-         "Annotate winner");
-   }
-   grdt0 <- jamba::mixedSortDF(grdt,
-      byCols=c("fc",
-         feature_type_colname,
-         gene_name_colname,
-         "gene_id"));
-   ## find first row per peak
-   grdt0_peak <- grdt0[["fc"]];
-   grdt0_peaku <- unique(grdt0_peak);
-   whichu <- match(grdt0_peaku, grdt0_peak);
-   ## First row per peak
-   grdt0_pk <- grdt0[whichu,][["fc"]];
-   grdt0_bestft <- grdt0[whichu,][[feature_type_colname]];
-   names(grdt0_bestft) <- grdt0_pk;
-   
-   ## subset for peaks having the best feature_type
-   bestftcolnames <- intersect(
-      c("fc",
-         feature_type_colname,
-         gene_name_colname,
-         "gene_id"),
-      colnames(grdt0));
-   if (verbose) {
-      jamba::printDebug("annotate_gr_by_genome_region(): ",
-         "bestftcolnames:",
-         bestftcolnames);
-   }
-   
-   grdt0_hasbestft <- unique(
-      subset(grdt0,
-         grdt0[[feature_type_colname]] == grdt0_bestft[grdt0_peak])[,..bestftcolnames]);
-   
-   ## Comma-delimit values for each column
-   ## peak_089268
-   i_set <- intersect(
-      c(feature_type_colname,
-         gene_name_colname,
-         "gene_id"),
-      colnames(grdt0_hasbestft));
-   for (i in i_set) {
-      inewcolname <- paste0(i, "_winner");
-      ikeepcolnames <- c("fc", i);
-      grdt0_hasbestft_sub <- unique(grdt0_hasbestft[, ..ikeepcolnames]);
-      if (anyDuplicated(grdt0_hasbestft_sub[["fc"]])) {
-         ## split only duplicate entries
-         fcdupes <- is_duplicate(grdt0_hasbestft_sub[["fc"]]);
-         grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
-            sep=",",
-            IRanges::CharacterList(
-               split(grdt0_hasbestft_sub[[i]][fcdupes],
-                  grdt0_hasbestft_sub[["fc"]][fcdupes])));
-         grdt0_bestvalue_nondupe <- jamba::nameVector(
-            as.character(grdt0_hasbestft_sub[[i]][!fcdupes]),
-            grdt0_hasbestft_sub[["fc"]][!fcdupes]);
-         grdt0_bestvalue <- c(grdt0_bestvalue_dupe,
-            grdt0_bestvalue_nondupe);
-      } else {
-         grdt0_bestvalue <- jamba::nameVector(
-            as.character(grdt0_hasbestft_sub[[i]]),
-            grdt0_hasbestft_sub[["fc"]]);
+   if ("winner" %in% include_type) {
+      if (verbose) {
+         jamba::printDebug("annotate_gr_by_genome_region(): ",
+            "Annotate winner");
       }
-      imatch <- match(names(grdt0_bestvalue),
-         GenomicRanges::values(gr)[[name_colname]]);
-      if (feature_type_colname %in% i) {
-         GenomicRanges::values(gr)[,inewcolname] <- "intergenic";
+      grdt0 <- jamba::mixedSortDF(grdt,
+         byCols=c("fc",
+            "feature_type",
+            "gene_name",
+            "gene_id"));
+      ## find first row per peak
+      if (TRUE) {
+         grdt0_bestft <- jamba::nameVector(subset(grdt0,
+            !duplicated(fc))[, c("feature_type", "fc"), drop=FALSE]);
       } else {
-         GenomicRanges::values(gr)[,inewcolname] <- c(NA, "")[1];
+         grdt0_peak <- grdt0[["fc"]];
+         grdt0_peaku <- unique(grdt0_peak);
+         whichu <- match(grdt0_peaku, grdt0_peak);
+         ## First row per peak
+         grdt0_pk <- grdt0[whichu,][["fc"]];
+         grdt0_bestft <- grdt0[whichu,][["feature_type"]];
+         names(grdt0_bestft) <- grdt0_pk;
       }
-      if (length(imatch) > 0) {
-         GenomicRanges::values(gr)[imatch,inewcolname] <- as.character(grdt0_bestvalue);
+      
+      ## subset for peaks having the best feature_type
+      bestftcolnames <- intersect(
+         c("fc",
+            "feature_type",
+            "gene_name",
+            "gene_id"),
+         colnames(grdt0));
+      if (verbose) {
+         jamba::printDebug("annotate_gr_by_genome_region(): ",
+            "bestftcolnames:",
+            bestftcolnames);
+      }
+      
+      grdt0_hasbestft <- unique(
+         subset(grdt0,
+            grdt0[["feature_type"]] == grdt0_bestft[grdt0[["fc"]]])[, ..bestftcolnames]);
+      
+      ## Comma-delimit values for each column
+      ## peak_089268
+      i_set <- intersect(
+         c("feature_type",
+            "gene_name",
+            "gene_id"),
+         colnames(grdt0_hasbestft));
+      for (i in i_set) {
+         inewcolname <- paste0(i, "_winner");
+         if (verbose > 1) {
+            jamba::printDebug("annotate_gr_by_genome_region(): ",
+               "processing inewcolname: ", inewcolname);
+         }
+         ikeepcolnames <- c("fc", i);
+         grdt0_hasbestft_sub <- unique(grdt0_hasbestft[, ..ikeepcolnames]);
+         if (anyDuplicated(grdt0_hasbestft_sub[["fc"]])) {
+            ## split only duplicate entries
+            fcdupes <- is_duplicate(grdt0_hasbestft_sub[["fc"]]);
+            grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
+               sep=",",
+               IRanges::CharacterList(
+                  split(grdt0_hasbestft_sub[[i]][fcdupes],
+                     grdt0_hasbestft_sub[["fc"]][fcdupes])));
+            grdt0_bestvalue_nondupe <- jamba::nameVector(
+               as.character(grdt0_hasbestft_sub[[i]][!fcdupes]),
+               grdt0_hasbestft_sub[["fc"]][!fcdupes]);
+            grdt0_bestvalue <- c(grdt0_bestvalue_dupe,
+               grdt0_bestvalue_nondupe);
+         } else {
+            grdt0_bestvalue <- jamba::nameVector(
+               as.character(grdt0_hasbestft_sub[[i]]),
+               grdt0_hasbestft_sub[["fc"]]);
+         }
+         imatch <- match(names(grdt0_bestvalue),
+            GenomicRanges::values(gr)[[name_colname]]);
+         if (feature_type_colname %in% i) {
+            GenomicRanges::values(gr)[,inewcolname] <- "intergenic";
+         } else {
+            GenomicRanges::values(gr)[,inewcolname] <- c(NA, "")[1];
+         }
+         if (length(imatch) > 0) {
+            GenomicRanges::values(gr)[imatch,inewcolname] <- as.character(grdt0_bestvalue);
+         }
       }
    }
    
    ##################################################
    ## gene distance analysis
-   fc_gr_genedist <- GenomicRanges::distanceToNearest(
-      gr,
-      ignore.strand=TRUE,
-      genome_regions,
-      select="all");
-   keep_genecols <- intersect(c(gene_name_colname, "gene_id"),
-      colnames(GenomicRanges::values(genome_regions)));
-   fc_gr_genedist_df <- data.frame(
-      name=GenomicRanges::values(gr[S4Vectors::queryHits(fc_gr_genedist)])[[name_colname]],
-      nearest_gene_distance=GenomicRanges::values(fc_gr_genedist)$distance,
-      renameColumn(
-         as.data.frame(GenomicRanges::values(genome_regions[S4Vectors::subjectHits(fc_gr_genedist)])[,keep_genecols]),
-         from=keep_genecols,
-         to=paste0("nearest_", keep_genecols))
-      );
-   
-   for (i in c(paste0("nearest_", keep_genecols), "nearest_gene_distance")) {
-      #printDebug(i);
-      fc_gr_genedist_df1 <- unique(fc_gr_genedist_df[,c(name_colname, i)]);
-      if (igrepHas("_distance", i)) {
-         fc_gr_genedist_df1vals <- jamba::nameVector(fc_gr_genedist_df1[,c(i, name_colname)]);
-         GenomicRanges::values(gr)[,i] <- c(NA, 0)[1];
-      } else {
-         fc_gr_genedist_df1vals <- S4Vectors::unstrsplit(sep=",",
-            IRanges::CharacterList(
-               split(fc_gr_genedist_df1[[i]],
-                  fc_gr_genedist_df1[[name_colname]])
-            )
-         )
-         GenomicRanges::values(gr)[,i] <- c(NA, "")[1];
+   if ("nearest_gene" %in% include_type) {
+      if (verbose) {
+         jamba::printDebug("annotate_gr_by_genome_region(): ",
+            "processing nearest_gene");
       }
-      imatch <- match(
-         names(fc_gr_genedist_df1vals),
-         GenomicRanges::values(gr)[[name_colname]]);
-      if (length(imatch) > 0) {
+      fc_gr_genedist <- GenomicRanges::distanceToNearest(
+         gr,
+         ignore.strand=TRUE,
+         genome_regions,
+         select="all");
+      keep_genecols <- intersect(
+         c(gene_name_colname,
+            gene_id_colname),
+         colnames(GenomicRanges::values(genome_regions)));
+      nearest_keep_genecols <- head(
+         paste0("nearest_", c("gene_name", "gene_id")),
+         length(keep_genecols));
+      fc_gr_genedist_df <- data.frame(
+         check.names=FALSE,
+         stringsAsFactors=FALSE,
+         name=GenomicRanges::values(gr[S4Vectors::queryHits(fc_gr_genedist)])[[name_colname]],
+         nearest_gene_distance=GenomicRanges::values(fc_gr_genedist)$distance,
+         jamba::renameColumn(
+            as.data.frame(GenomicRanges::values(genome_regions[S4Vectors::subjectHits(fc_gr_genedist)])[,keep_genecols]),
+            from=keep_genecols,
+            to=nearest_keep_genecols)
+         );
+      
+      for (i in c(nearest_keep_genecols, "nearest_gene_distance")) {
+         #printDebug(i);
+         fc_gr_genedist_df1 <- unique(fc_gr_genedist_df[,c(name_colname, i)]);
          if (jamba::igrepHas("_distance", i)) {
-            GenomicRanges::values(gr)[imatch,i] <- fc_gr_genedist_df1vals;
+            fc_gr_genedist_df1vals <- jamba::nameVector(fc_gr_genedist_df1[,c(i, name_colname)]);
+            GenomicRanges::values(gr)[,i] <- c(NA, 0)[1];
          } else {
-            GenomicRanges::values(gr)[imatch,i] <- as.character(fc_gr_genedist_df1vals);
+            fc_gr_genedist_df1vals <- S4Vectors::unstrsplit(sep=",",
+               IRanges::CharacterList(
+                  split(fc_gr_genedist_df1[[i]],
+                     fc_gr_genedist_df1[[name_colname]])
+               )
+            )
+            GenomicRanges::values(gr)[,i] <- c(NA, "")[1];
+         }
+         imatch <- match(
+            names(fc_gr_genedist_df1vals),
+            GenomicRanges::values(gr)[[name_colname]]);
+         if (length(imatch) > 0) {
+            if (jamba::igrepHas("_distance", i)) {
+               GenomicRanges::values(gr)[imatch,i] <- fc_gr_genedist_df1vals;
+            } else {
+               GenomicRanges::values(gr)[imatch,i] <- as.character(fc_gr_genedist_df1vals);
+            }
          }
       }
    }
    
+   ##################################################
    ## Optional mask regions
    if (length(mask_regions) > 0) {
+      if (verbose) {
+         jamba::printDebug("annotate_gr_by_genome_region(): ",
+            "processing mask_regions");
+      }
       if ("character" %in% class(mask_regions)) {
          mask_regions_grl <- GenomicRanges::GRangesList(lapply(mask_regions, function(mask_region){
             if (file.exists(mask_region)) {
