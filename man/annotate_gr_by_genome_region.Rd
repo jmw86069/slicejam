@@ -14,6 +14,7 @@ annotate_gr_by_genome_region(
   mask_regions = NULL,
   feature_grep_order = c("promoter", "tts", "exon", "intron", "intergenic", "."),
   include_type = c("overlap", "winner", "nearest_gene"),
+  sort_optimization = c("fast", "global"),
   verbose = FALSE,
   ...
 )

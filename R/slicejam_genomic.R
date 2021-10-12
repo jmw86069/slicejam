@@ -806,12 +806,14 @@ annotate_gr_by_genome_region <- function
  mask_regions=NULL,
  feature_grep_order=c("promoter", "tts", "exon", "intron", "intergenic", "."),
  include_type=c("overlap", "winner", "nearest_gene"),
+ sort_optimization=c("fast", "global"),
  verbose=FALSE,
  ...)
 {
    # validate input
    include_type <- match.arg(include_type,
       several.ok=TRUE);
+   sort_optimization <- match.arg(sort_optimization);
    
    name_colname <- intersect(name_colname,
       colnames(values(gr)));
@@ -950,28 +952,31 @@ annotate_gr_by_genome_region <- function
          jamba::printDebug("annotate_gr_by_genome_region(): ",
             "Annotate winner");
       }
-      if (verbose <= 2) {
+      
+      # sort by feature_type using one of two methods
+      grdt_fac <- factor(grdt$feature_type,
+         levels=jamba::provigrep(feature_grep_order,
+            unique(grdt$feature_type)));
+      if (FALSE) {# && "global" %in% sort_optimization) {
+         grdt$feature_type <- grdt_fac;
          sort_time <- system.time({
             grdt0 <- jamba::mixedSortDF(grdt,
                byCols=c("fc",
                   "feature_type",
                   "gene_name",
-                  "gene_id"));
+                  "gene_id"
+                  ));
          }, gcFirst=FALSE);
-         if (verbose) {
-            jamba::printDebug("",
-               "elapsed sort_time (sec): ", sort_time[["elapsed"]]);
-         }
-      } else if (verbose >= 3) {
+      } else {#if ("fast" %in% sort_optimization) {
          sort_time <- system.time({
-            grdt_fac <- factor(grdt$feature_type,
-               levels=jamba::provigrep(feature_grep_order,
-                  unique(grdt$feature_type)));
             grdt0 <- grdt[order(grdt_fac)];
          }, gcFirst=FALSE);
+      }
+      if (verbose) {
          jamba::printDebug("",
             "elapsed sort_time (sec): ", sort_time[["elapsed"]]);
       }
+      
       ## find first row per peak
       if (TRUE) {
          grdt0_bestft <- jamba::nameVector(subset(grdt0,
@@ -999,12 +1004,24 @@ annotate_gr_by_genome_region <- function
             bestftcolnames);
       }
       
+      # subset for best feature_type for each peak
       grdt0_hasbestft <- unique(
          subset(grdt0,
             grdt0[["feature_type"]] == grdt0_bestft[grdt0[["fc"]]])[, ..bestftcolnames]);
       
+      # optionally sort only the subset rows by gene_name, gene_id
+      if ("global" %in% sort_optimization) {
+         sort_time <- system.time({
+            grdt0_hasbestft <- jamba::mixedSortDF(grdt0_hasbestft,
+               byCols=c("gene_name", "gene_id"));
+         }, gcFirst=FALSE);
+         if (verbose) {
+            jamba::printDebug("",
+               "elapsed global sort_time (sec): ", sort_time[["elapsed"]]);
+         }
+      }
+      
       ## Comma-delimit values for each column
-      ## peak_089268
       i_set <- intersect(
          c("feature_type",
             "gene_name",
@@ -1021,20 +1038,26 @@ annotate_gr_by_genome_region <- function
          if (anyDuplicated(grdt0_hasbestft_sub[["fc"]])) {
             ## split only duplicate entries
             fcdupes <- is_duplicate(grdt0_hasbestft_sub[["fc"]]);
-            if (verbose >= 3) {
-               grdt0_hasbestft_sub_dupe <- jamba::mixedSortDF(
-                  grdt0_hasbestft_sub[fcdupes, c(..i, "fc"), drop=FALSE],
-                  byCols=c(i));
+            if ("fast" %in% sort_optimization) {
+               sort_time <- system.time({
+                  grdt0_hasbestft_sub_dupe <- jamba::mixedSortDF(
+                     grdt0_hasbestft_sub[fcdupes, c(..i, "fc"), drop=FALSE],
+                     byCols=c(i));
+               }, gcFirst=FALSE);
+               if (verbose) {
+                  jamba::printDebug("",
+                     "elapsed fast sort_time (sec): ", sort_time[["elapsed"]]);
+               }
                grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
                   sep=",",
                   IRanges::CharacterList(
-                     split(grdt0_hasbestft_sub_dupe[[i]],
+                     split(as.character(grdt0_hasbestft_sub_dupe[[i]]),
                         grdt0_hasbestft_sub_dupe[["fc"]])));
             } else {
                grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
                   sep=",",
                   IRanges::CharacterList(
-                     split(grdt0_hasbestft_sub[[i]][fcdupes],
+                     split(as.character(grdt0_hasbestft_sub[[i]])[fcdupes],
                         grdt0_hasbestft_sub[["fc"]][fcdupes])));
             }
             grdt0_bestvalue_nondupe <- jamba::nameVector(
@@ -1151,3 +1174,97 @@ annotate_gr_by_genome_region <- function
 
    return(gr)   
 }
+
+
+#' Flatten genome_regions
+#' 
+#' Flatten genome_regions
+#' 
+#' This function is a simple wrapper method to take `genome_regions`
+#' and produce a flattened version with just the feature_type winners.
+#' It calls `annotate_gr_from_genome_regions()` in a somewhat
+#' streamlined way.
+#' 
+#' @export
+flatten_genome_regions <- function
+(genome_regions,
+ genome="hg19",
+ name_colname="name",
+ gene_name_colname="gene_name",
+ feature_type_colname="feature_type",
+ feature_grep_order = c("promoter",
+    "tts",
+    "exon",
+    "intron",
+    "intergenic",
+    "."),
+ mask_regions=NULL,
+ canonical_only=TRUE,
+ sort_optimization="local",
+ verbose=FALSE,
+ ...)
+{
+   if (!suppressPackageStartupMessages(require(GenomicRanges))) {
+      stop("GenomicRanges package is required.");
+   }
+   if (!suppressPackageStartupMessages(require(GenomeInfoDb))) {
+      stop("GenomeInfoDb package is required.");
+   }
+   
+   # check non-canonical chromosomes
+   is_noncanonical_gr <- grepl("^[^c][^h][^r]|[-._]",
+      ignore.case=TRUE,
+      seqlevels(genome_regions));
+   if (canonical_only && any(is_noncanonical_gr)) {
+      # enforce seqlevels
+      canonical_seqlevels <- seqlevels(genome_regions)[!is_noncanonical_gr];
+      GenomeInfoDb::seqlevels(genome_regions, pruning.mode="coarse") <- canonical_seqlevels;
+   }
+   
+   # get chromosome sizes
+   if (all(is.na(GenomeInfoDb::seqlengths(genome_regions)))) {
+      chrom_info <- GenomeInfoDb::fetchExtendedChromInfoFromUCSC(genome);
+      if (FALSE && canonical_only) {
+         is_noncanonical_ci <- grepl("^[^c][^h][^r]|[-._]",
+            ignore.case=TRUE,
+            chrom_info$UCSC_seqlevel);
+         chrom_info <- subset(chrom_info, !is_noncanonical_ci);
+      }
+      pmax_na <- function(...){pmax(..., na.rm=TRUE)}
+      seq_match <- Reduce("pmax_na",
+         list(
+            match(
+               seqlevels(genome_regions),
+               chrom_info$UCSC_seqlevel),
+            match(
+               seqlevels(genome_regions),
+               chrom_info$GenBankAccn)));
+      seqlengths(genome_regions) <- chrom_info$UCSC_seqlength[seq_match];
+      genome(genome_regions) <- genome;
+      isCircular(genome_regions) <- chrom_info$circular[seq_match];
+   }
+   
+   # flatten input regions
+   genome_regions_flat <- GenomicRanges::disjoin(genome_regions,
+      ignore.strand=TRUE);
+   values(genome_regions_flat)$name <- paste0("region",
+      jamba::padInteger(seq_along(genome_regions_flat)));
+   
+   # annotate using same method used for peaks
+   # unloadNamespace("slicejam");remotes::install_github("jmw86069/slicejam", dependencies=FALSE)
+   genome_regions_ann <- slicejam::annotate_gr_by_genome_region(
+      gr=genome_regions_flat,
+      genome_regions=genome_regions[,c(gene_name_colname, feature_type_colname)],
+      name_colname=name_colname,
+      gene_name_colname=gene_name_colname,
+      gene_id_colname=gene_id_colname,
+      feature_type_colname=feature_type_colname,
+      mask_regions=mask_regions,
+      feature_grep_order=feature_grep_order,
+      include_type="winner",
+      sort_optimization=sort_optimization,
+      verbose=verbose,
+      ...);
+   return(genome_regions_ann);
+}
+

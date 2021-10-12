@@ -1,5 +1,11 @@
 # slicejam 0.0.30.900
 
+## new functions
+
+* `flatten_genome_regions()` takes the `genome_regions` data and
+produces a single flat version with just the `feature_type` winners.
+
+
 ## changes to existing functions
 
 * `annotate_gr_by_genome_region()` was updated to force consistent
