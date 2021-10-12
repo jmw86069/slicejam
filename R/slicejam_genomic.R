@@ -1185,6 +1185,38 @@ annotate_gr_by_genome_region <- function
 #' It calls `annotate_gr_from_genome_regions()` in a somewhat
 #' streamlined way.
 #' 
+#' The chromosome lengths are either used from the `genome_regions` object,
+#' or by using argument `genome` to query UCSC data via
+#' `GenomeInfoDb::fetchExtendedChromInfoFromUCSC()`. These chromosome lengths
+#' are used to create chromosome-length `GRanges`, so that any region not
+#' described by `genome_regions` will be considered `intergenic`. In this
+#' way, every region in the genome will be represented.
+#' 
+#' @param genome_regions `GRanges` object as produced by
+#'    `genomic_regions_from_gtf()`
+#' @param genome `character` string indicating the genome, recognized
+#'    by `GenomeInfoDb::fetchExtendedChromInfoFromUCSC()` in order to
+#'    obtain chromosome lengths. This value is only used when
+#'    `seqlengths(genome_regions)` contains `NA` values.
+#' @param name_colname,gene_name_colname,feature_type_colname,gene_id_colname
+#'    `character` strings indicating colnames in `colnames(values(genome_regions))`
+#'    and passed to `annotate_gr_by_genome_region()`. Note that only
+#'    `feature_type_colname` and `gene_name_colname` are included in output.
+#' @param feature_grep_order `character` vector passed to
+#'    `annotate_gr_by_genome_region()` to define priority of feature type
+#'    values. The value is ultimately passed to `jamba::provigrep()`.
+#' @param mask_regions passed to `annotate_gr_by_genome_region()` and
+#'    is currently ignored for this function.
+#' @param canonical_only `logical` indicating whether to filter `genome_regions`
+#'    to include only canonical chromosome names, for example starting with
+#'    `"chr"` and including no underscore `"_"`, period `"."` or hyphen/dash
+#'    `"-"` characters.
+#' @param sort_optimization `character` string indicating the method of sorting:
+#'    * `"fast"` sorts `gene_name` independently from `gene_id`
+#'    * `"global"` sorts `gene_name` then `gene_id`, and maintains this order
+#' @param verbose `logical` indicating whether to print verbose output
+#' @param ... additional arguments are ignored.
+#' 
 #' @export
 flatten_genome_regions <- function
 (genome_regions,
@@ -1192,6 +1224,7 @@ flatten_genome_regions <- function
  name_colname="name",
  gene_name_colname="gene_name",
  feature_type_colname="feature_type",
+ gene_id_colname="gene_id",
  feature_grep_order = c("promoter",
     "tts",
     "exon",
@@ -1200,7 +1233,7 @@ flatten_genome_regions <- function
     "."),
  mask_regions=NULL,
  canonical_only=TRUE,
- sort_optimization="local",
+ sort_optimization="fast",
  verbose=FALSE,
  ...)
 {
@@ -1243,16 +1276,30 @@ flatten_genome_regions <- function
       genome(genome_regions) <- genome;
       isCircular(genome_regions) <- chrom_info$circular[seq_match];
    }
+
+   # make chromosome-length features
+   chrom_gr <- GenomicRanges::GRanges(
+      seqnames=names(GenomeInfoDb::seqlengths(genome_regions)),
+      ranges=IRanges::IRanges(start=1,
+         end=GenomeInfoDb::seqlengths(genome_regions)),
+      strand="*");
+   intergenic_gr <- GenomicRanges::setdiff(chrom_gr,
+      genome_regions,
+      ignore.strand=TRUE);
    
    # flatten input regions
    genome_regions_flat <- GenomicRanges::disjoin(genome_regions,
       ignore.strand=TRUE);
+   if (length(intergenic_gr) > 0) {
+      genome_regions_flat <- sort(c(genome_regions_flat,
+         intergenic_gr))
+   }
    values(genome_regions_flat)$name <- paste0("region",
       jamba::padInteger(seq_along(genome_regions_flat)));
    
    # annotate using same method used for peaks
    # unloadNamespace("slicejam");remotes::install_github("jmw86069/slicejam", dependencies=FALSE)
-   genome_regions_ann <- slicejam::annotate_gr_by_genome_region(
+   genome_regions_ann <- annotate_gr_by_genome_region(
       gr=genome_regions_flat,
       genome_regions=genome_regions[,c(gene_name_colname, feature_type_colname)],
       name_colname=name_colname,

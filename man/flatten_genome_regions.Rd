@@ -10,13 +10,49 @@ flatten_genome_regions(
   name_colname = "name",
   gene_name_colname = "gene_name",
   feature_type_colname = "feature_type",
+  gene_id_colname = "gene_id",
   feature_grep_order = c("promoter", "tts", "exon", "intron", "intergenic", "."),
   mask_regions = NULL,
   canonical_only = TRUE,
-  sort_optimization = "local",
+  sort_optimization = "fast",
   verbose = FALSE,
   ...
 )
+}
+\arguments{
+\item{genome_regions}{\code{GRanges} object as produced by
+\code{genomic_regions_from_gtf()}}
+
+\item{genome}{\code{character} string indicating the genome, recognized
+by \code{GenomeInfoDb::fetchExtendedChromInfoFromUCSC()} in order to
+obtain chromosome lengths. This value is only used when
+\code{seqlengths(genome_regions)} contains \code{NA} values.}
+
+\item{name_colname, gene_name_colname, feature_type_colname, gene_id_colname}{\code{character} strings indicating colnames in \code{colnames(values(genome_regions))}
+and passed to \code{annotate_gr_by_genome_region()}. Note that only
+\code{feature_type_colname} and \code{gene_name_colname} are included in output.}
+
+\item{feature_grep_order}{\code{character} vector passed to
+\code{annotate_gr_by_genome_region()} to define priority of feature type
+values. The value is ultimately passed to \code{jamba::provigrep()}.}
+
+\item{mask_regions}{passed to \code{annotate_gr_by_genome_region()} and
+is currently ignored for this function.}
+
+\item{canonical_only}{\code{logical} indicating whether to filter \code{genome_regions}
+to include only canonical chromosome names, for example starting with
+\code{"chr"} and including no underscore \code{"_"}, period \code{"."} or hyphen/dash
+\code{"-"} characters.}
+
+\item{sort_optimization}{\code{character} string indicating the method of sorting:
+\itemize{
+\item \code{"fast"} sorts \code{gene_name} independently from \code{gene_id}
+\item \code{"global"} sorts \code{gene_name} then \code{gene_id}, and maintains this order
+}}
+
+\item{verbose}{\code{logical} indicating whether to print verbose output}
+
+\item{...}{additional arguments are ignored.}
 }
 \description{
 Flatten genome_regions
@@ -26,4 +62,11 @@ This function is a simple wrapper method to take \code{genome_regions}
 and produce a flattened version with just the feature_type winners.
 It calls \code{annotate_gr_from_genome_regions()} in a somewhat
 streamlined way.
+
+The chromosome lengths are either used from the \code{genome_regions} object,
+or by using argument \code{genome} to query UCSC data via
+\code{GenomeInfoDb::fetchExtendedChromInfoFromUCSC()}. These chromosome lengths
+are used to create chromosome-length \code{GRanges}, so that any region not
+described by \code{genome_regions} will be considered \code{intergenic}. In this
+way, every region in the genome will be represented.
 }
