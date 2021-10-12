@@ -962,18 +962,13 @@ annotate_gr_by_genome_region <- function
             jamba::printDebug("",
                "elapsed sort_time (sec): ", sort_time[["elapsed"]]);
          }
-      } else {
+      } else if (verbose >= 3) {
          sort_time <- system.time({
             grdt_fac <- factor(grdt$feature_type,
                levels=jamba::provigrep(feature_grep_order,
                   unique(grdt$feature_type)));
             grdt0 <- grdt[order(grdt_fac)];
          }, gcFirst=FALSE);
-         #sort_time <- system.time({
-         #   grdt0 <- jamba::mixedSortDF(grdt,
-         #      byCols=c("fc",
-         #         "feature_type"));
-         #}, gcFirst=FALSE);
          jamba::printDebug("",
             "elapsed sort_time (sec): ", sort_time[["elapsed"]]);
       }
@@ -1026,11 +1021,22 @@ annotate_gr_by_genome_region <- function
          if (anyDuplicated(grdt0_hasbestft_sub[["fc"]])) {
             ## split only duplicate entries
             fcdupes <- is_duplicate(grdt0_hasbestft_sub[["fc"]]);
-            grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
-               sep=",",
-               IRanges::CharacterList(
-                  split(grdt0_hasbestft_sub[[i]][fcdupes],
-                     grdt0_hasbestft_sub[["fc"]][fcdupes])));
+            if (verbose >= 3) {
+               grdt0_hasbestft_sub_dupe <- jamba::mixedSortDF(
+                  grdt0_hasbestft_sub[fcdupes, c(i, "fc"), drop=FALSE],
+                  byCols=c(i));
+               grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
+                  sep=",",
+                  IRanges::CharacterList(
+                     split(grdt0_hasbestft_sub_dupe[[i]],
+                        grdt0_hasbestft_sub_dupe[["fc"]])));
+            } else {
+               grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
+                  sep=",",
+                  IRanges::CharacterList(
+                     split(grdt0_hasbestft_sub[[i]][fcdupes],
+                        grdt0_hasbestft_sub[["fc"]][fcdupes])));
+            }
             grdt0_bestvalue_nondupe <- jamba::nameVector(
                as.character(grdt0_hasbestft_sub[[i]][!fcdupes]),
                grdt0_hasbestft_sub[["fc"]][!fcdupes]);
@@ -1043,13 +1049,13 @@ annotate_gr_by_genome_region <- function
          }
          imatch <- match(names(grdt0_bestvalue),
             GenomicRanges::values(gr)[[name_colname]]);
-         if (feature_type_colname %in% i) {
+         if ("feature_type" %in% i) {
             GenomicRanges::values(gr)[,inewcolname] <- "intergenic";
          } else {
             GenomicRanges::values(gr)[,inewcolname] <- c(NA, "")[1];
          }
          if (length(imatch) > 0) {
-            GenomicRanges::values(gr)[imatch,inewcolname] <- as.character(grdt0_bestvalue);
+            GenomicRanges::values(gr)[imatch, inewcolname] <- as.character(grdt0_bestvalue);
          }
       }
    }
@@ -1079,7 +1085,7 @@ annotate_gr_by_genome_region <- function
          name=GenomicRanges::values(gr[S4Vectors::queryHits(fc_gr_genedist)])[[name_colname]],
          nearest_gene_distance=GenomicRanges::values(fc_gr_genedist)$distance,
          jamba::renameColumn(
-            as.data.frame(GenomicRanges::values(genome_regions[S4Vectors::subjectHits(fc_gr_genedist)])[,keep_genecols]),
+            as.data.frame(GenomicRanges::values(genome_regions[S4Vectors::subjectHits(fc_gr_genedist)])[,keep_genecols, drop=FALSE]),
             from=keep_genecols,
             to=nearest_keep_genecols)
          );
