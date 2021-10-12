@@ -870,7 +870,6 @@ annotate_gr_by_genome_region <- function
       grdt <- data.table::data.table(
          fc=GenomicRanges::values(gr[S4Vectors::queryHits(fco)])[[name_colname]],
          gene_name=GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[gene_name_colname]],
-         #gene_id=values(genome_regions_exp[subjectHits(fco)])$gene_id,
          feature_type=factor(
             GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[feature_type_colname]],
             levels=provigrep(feature_grep_order,
@@ -928,7 +927,7 @@ annotate_gr_by_genome_region <- function
             imatch <- match(
                names(grd_vals[[i]]),
                GenomicRanges::values(gr)[[name_colname]]);
-            if (feature_type_colname == i) {
+            if ("feature_type" == i) {
                GenomicRanges::values(gr)[,i] <- unname(c("intergenic", grd_vals[[i]][1])[1]);
             } else {
                GenomicRanges::values(gr)[,i] <- unname(c(NA, grd_vals[[i]][1])[1]);
@@ -951,11 +950,33 @@ annotate_gr_by_genome_region <- function
          jamba::printDebug("annotate_gr_by_genome_region(): ",
             "Annotate winner");
       }
-      grdt0 <- jamba::mixedSortDF(grdt,
-         byCols=c("fc",
-            "feature_type",
-            "gene_name",
-            "gene_id"));
+      if (verbose <= 2) {
+         sort_time <- system.time({
+            grdt0 <- jamba::mixedSortDF(grdt,
+               byCols=c("fc",
+                  "feature_type",
+                  "gene_name",
+                  "gene_id"));
+         }, gcFirst=FALSE);
+         if (verbose) {
+            jamba::printDebug("",
+               "elapsed sort_time (sec): ", sort_time[["elapsed"]]);
+         }
+      } else {
+         sort_time <- system.time({
+            grdt_fac <- factor(grdt$feature_type,
+               levels=jamba::provigrep(feature_grep_order,
+                  unique(grdt$feature_type)));
+            grdt0 <- grdt[order(grdt_fac)];
+         }, gcFirst=FALSE);
+         #sort_time <- system.time({
+         #   grdt0 <- jamba::mixedSortDF(grdt,
+         #      byCols=c("fc",
+         #         "feature_type"));
+         #}, gcFirst=FALSE);
+         jamba::printDebug("",
+            "elapsed sort_time (sec): ", sort_time[["elapsed"]]);
+      }
       ## find first row per peak
       if (TRUE) {
          grdt0_bestft <- jamba::nameVector(subset(grdt0,
