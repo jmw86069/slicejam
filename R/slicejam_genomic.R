@@ -1325,6 +1325,13 @@ flatten_genome_regions <- function
       sort_optimization=sort_optimization,
       verbose=verbose,
       ...);
+   
+   # adjust feature_type_winner
+   values(genome_regions_ann)$feature_type_winner <- factor(
+      values(genome_regions_ann)$feature_type_winner,
+      levels=provigrep(c("promoter", "tts", "exon", "intron", "extra", "."),
+         unique(values(genome_regions_ann)$feature_type_winner)));
+   
    return(genome_regions_ann);
 }
 
