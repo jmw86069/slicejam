@@ -815,9 +815,9 @@ annotate_gr_by_genome_region <- function
    
    name_colname <- intersect(name_colname,
       colnames(values(gr)));
-   if (length(name_column) == 0) {
-      name_column <- "name";
-      values(gr)[[name_column]] <- paste0("gr",
+   if (length(name_colname) == 0) {
+      name_colname <- "name";
+      values(gr)[[name_colname]] <- paste0("gr",
          jamba::padInteger(seq_along(gr)));
    }
    
