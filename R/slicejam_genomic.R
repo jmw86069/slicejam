@@ -1171,7 +1171,8 @@ annotate_gr_by_genome_region <- function
                mgr <- rtracklayer::import(mask_region);
                mgr <- GenomeInfoDb::keepSeqlevels(mgr,
                   intersect(GenomeInfoDb::seqlevels(gr),
-                     GenomeInfoDb::seqlevels(mgr)));
+                     GenomeInfoDb::seqlevels(mgr)),
+                  pruning.mode="coarse");
             }
          }));
          mask_regions_gr <- GenomicRanges::sort(mask_regions_grl@unlistData);
@@ -1260,10 +1261,10 @@ flatten_genome_regions <- function
    # check non-canonical chromosomes
    is_noncanonical_gr <- grepl("^[^c][^h][^r]|[-._]",
       ignore.case=TRUE,
-      seqlevels(genome_regions));
+      GenomeInfoDb::seqlevels(genome_regions));
    if (canonical_only && any(is_noncanonical_gr)) {
       # enforce seqlevels
-      canonical_seqlevels <- seqlevels(genome_regions)[!is_noncanonical_gr];
+      canonical_seqlevels <- GenomeInfoDb::seqlevels(genome_regions)[!is_noncanonical_gr];
       GenomeInfoDb::seqlevels(genome_regions, pruning.mode="coarse") <- canonical_seqlevels;
    }
    
@@ -1280,10 +1281,10 @@ flatten_genome_regions <- function
       seq_match <- Reduce("pmax_na",
          list(
             match(
-               seqlevels(genome_regions),
+               GenomeInfoDb::seqlevels(genome_regions),
                chrom_info$UCSC_seqlevel),
             match(
-               seqlevels(genome_regions),
+               GenomeInfoDb::seqlevels(genome_regions),
                chrom_info$GenBankAccn)));
       seqlengths(genome_regions) <- chrom_info$UCSC_seqlength[seq_match];
       genome(genome_regions) <- genome;
