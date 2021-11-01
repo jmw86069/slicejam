@@ -12,8 +12,8 @@ se_normalize(
   samples = NULL,
   params = list(quantile = list(ties = TRUE), jammanorm = list(controlGenes = NULL,
     minimum_mean = 0, controlSamples = NULL, centerGroups = NULL, useMedian = FALSE,
-    noise_floor = NULL, noise_floor_value = NULL), limma_batch_adjust = list(batch = NULL,
-    group = NULL)),
+    noise_floor = NULL, noise_floor_value = NULL), limma_batch_adjust = list(batch =
+    NULL, group = NULL)),
   output_sep = "_",
   override = TRUE,
   verbose = FALSE,

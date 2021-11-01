@@ -181,7 +181,7 @@ peakoverlap_calcs <- function
       min_score <- rep(min_score, length.out=length(grl));
       grl <- lapply(seq_along(grl), function(grnum){
          gr <- grl[[grnum]];
-         if (!is.na(min_score[[grnum]]) && "score" %in% colnames(values(gr))) {
+         if (!is.na(min_score[[grnum]]) && "score" %in% colnames(GenomicRanges::values(gr))) {
             gr <- subset(gr, score >= min_score[[grnum]])
             if (verbose) {
                jamba::printDebug("peakoverlap_calcs(): ",

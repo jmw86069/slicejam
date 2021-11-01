@@ -475,7 +475,7 @@ genomic_regions_from_gtf <- function
          both=FALSE,
          start=FALSE)
    )
-   values(ttsByTx) <- values(txByGene@unlistData);
+   GenomicRanges::values(ttsByTx) <- GenomicRanges::values(txByGene@unlistData);
    # tts reduce() per gene
    ttsByGene <- GenomicRanges::split(ttsByTx,
       GenomicRanges::values(ttsByTx)[[gene_colname]]);
@@ -483,8 +483,8 @@ genomic_regions_from_gtf <- function
    GenomicRanges::values(ttsByGeneRed@unlistData)[[gene_colname]] <- rep(
       names(ttsByGeneRed),
       lengths(ttsByGeneRed));
-   gene_match <- match(values(ttsByGeneRed@unlistData)[[gene_colname]],
-      values(ttsByGene@unlistData)[[gene_colname]])
+   gene_match <- match(GenomicRanges::values(ttsByGeneRed@unlistData)[[gene_colname]],
+      GenomicRanges::values(ttsByGene@unlistData)[[gene_colname]])
    for (gene_attr in geneAttrNames) {
       GenomicRanges::values(ttsByGeneRed@unlistData)[[gene_attr]] <- GenomicRanges::values(
          ttsByGene@unlistData)[[gene_attr]][gene_match];
@@ -514,7 +514,7 @@ genomic_regions_from_gtf <- function
          both=FALSE,
          start=TRUE)
    )
-   values(promoters_gr) <- values(txByGene@unlistData);
+   GenomicRanges::values(promoters_gr) <- GenomicRanges::values(txByGene@unlistData);
    # promoters_gr shrink() per gene
    # promoters_gr shrink() per gene
    gene_chr_start_end <- paste0(
@@ -536,8 +536,8 @@ genomic_regions_from_gtf <- function
       GenomicRanges::values(tssByGeneRed@unlistData)[[gene_colname]] <- rep(
          names(tssByGeneRed),
          lengths(tssByGeneRed));
-      gene_match <- match(values(tssByGeneRed@unlistData)[[gene_colname]],
-         values(tssByGene@unlistData)[[gene_colname]])
+      gene_match <- match(GenomicRanges::values(tssByGeneRed@unlistData)[[gene_colname]],
+         GenomicRanges::values(tssByGene@unlistData)[[gene_colname]])
       for (gene_attr in geneAttrNames) {
          GenomicRanges::values(tssByGeneRed@unlistData)[[gene_attr]] <- GenomicRanges::values(
             tssByGene@unlistData)[[gene_attr]][gene_match];
@@ -828,22 +828,22 @@ annotate_gr_by_genome_region <- function
    sort_optimization <- match.arg(sort_optimization);
    
    name_colname <- intersect(name_colname,
-      colnames(values(gr)));
+      colnames(GenomicRanges::values(gr)));
    if (length(name_colname) == 0) {
       name_colname <- "name";
-      values(gr)[[name_colname]] <- paste0("gr",
+      GenomicRanges::values(gr)[[name_colname]] <- paste0("gr",
          jamba::padInteger(seq_along(gr)));
    }
    
    gene_name_colname <- head(intersect(gene_name_colname,
-      colnames(values(genome_regions))), 1);
+      colnames(GenomicRanges::values(genome_regions))), 1);
    feature_type_colname <- head(intersect(feature_type_colname,
-      colnames(values(genome_regions))), 1);
+      colnames(GenomicRanges::values(genome_regions))), 1);
    if (length(gene_name_colname) == 0 || length(feature_type_colname) == 0) {
       stop("gene_name_colname and feature_type_colname must be present in colnames(values(genome_regions))");
    }
    gene_id_colname <- intersect(gene_id_colname,
-      colnames(values(genome_regions)));
+      colnames(GenomicRanges::values(genome_regions)));
    
    ## Expand genome_regions if there are multi-gene features
    # begin to annotate peaks by genome_regions
@@ -1307,7 +1307,7 @@ flatten_genome_regions <- function
       genome_regions_flat <- sort(c(genome_regions_flat,
          extragenic_gr))
    }
-   values(genome_regions_flat)$name <- paste0("region",
+   GenomicRanges::values(genome_regions_flat)$name <- paste0("region",
       jamba::padInteger(seq_along(genome_regions_flat)));
    
    # annotate using same method used for peaks
@@ -1327,10 +1327,10 @@ flatten_genome_regions <- function
       ...);
    
    # adjust feature_type_winner
-   values(genome_regions_ann)$feature_type_winner <- factor(
-      values(genome_regions_ann)$feature_type_winner,
+   GenomicRanges::values(genome_regions_ann)$feature_type_winner <- factor(
+      GenomicRanges::values(genome_regions_ann)$feature_type_winner,
       levels=provigrep(c("promoter", "tts", "exon", "intron", "extra", "."),
-         unique(values(genome_regions_ann)$feature_type_winner)));
+         unique(GenomicRanges::values(genome_regions_ann)$feature_type_winner)));
    
    return(genome_regions_ann);
 }

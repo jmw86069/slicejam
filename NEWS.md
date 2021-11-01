@@ -1,3 +1,10 @@
+# slicejam 0.0.31.900
+
+## bug fixes
+
+* Functions with `values()` were updated to proper `GenomicRanges::values()`.
+
+
 # slicejam 0.0.30.900
 
 ## change in nomenclature

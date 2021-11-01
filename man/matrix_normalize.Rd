@@ -12,8 +12,8 @@ matrix_normalize(
   enforce_norm_floor = TRUE,
   params = list(quantile = list(ties = TRUE), jammanorm = list(controlGenes = NULL,
     minimum_mean = 0, controlSamples = NULL, centerGroups = NULL, useMedian = FALSE,
-    noise_floor = NULL, noise_floor_value = NULL), limma_batch_adjust = list(batch = NULL,
-    group = NULL)),
+    noise_floor = NULL, noise_floor_value = NULL), limma_batch_adjust = list(batch =
+    NULL, group = NULL)),
   verbose = TRUE,
   ...
 )
@@ -73,6 +73,98 @@ Normalize a numeric data matrix
 This function is a wrapper for several relevant normalization
 methods that operate on a numeric matrix.
 }
+\section{Normalization Methods Implemented:}{
+\subsection{method='quantile'}{
+
+Quantile-normalization performed by
+\code{limma::normalizeQuantiles()}. This method has one
+parameter \code{"ties"} passed to \code{limma::normalizeQuantiles()},
+the default here \code{ties=TRUE} which handles tied numeric
+expression values in a robust way to avoid unpredictability
+otherwise. This option is especially relevant with expression
+count data, where integer counts cause a large number
+of values to be represented multiple times.
+}
+
+\subsection{method='jammanorm'}{
+
+Median-normalization performed by
+\code{jamma::jammanorm()}. This method shifts expression
+data as shown on MA-plots, so the median expression
+is zero across all samples, using only the rows that
+meet the relevant criteria.
+
+Some relevant criteria to
+define rows used for normalization:
+\itemize{
+\item \code{controlGenes} defines specific genes to use for
+normalization, such as housekeeper genes. It may also
+be useful to use detected genes here, so the normalization
+only considers those genes defined as detected by
+the protocol.
+\item \code{minimum_mean} sets a numeric threshold and requires
+the mean expression (shown on the x-axis of the MA-plot)
+to be at least this value.
+}
+
+Note that when both \code{controlGenes} and \code{minimum_mean}
+are defined, both criteria are enforced. So the \code{controlGenes}
+are also required to have expression of at least \code{minimum_mean}.
+
+Also note that all rows of data are normalized by this method,
+only the subset of rows defined by \code{controlGenes} and \code{minimum_mean}
+are used to compute the normalization factor.
+}
+
+\subsection{method='limma_batch_adjust'}{
+
+Batch adjustment performed by
+\code{limma::removeBatchEffect()} which is intended to apply
+batch-adjustment as a form of normalization, but which
+does not represent full normalization itself. There are
+two relevant parameters: \code{"batch"} which is a vector of
+batch values in order of \code{colnames(x)}, and \code{"group"}
+which is a vector of sample groups in order of \code{colnames(x)}.
+}
+}
+
+\section{Other useful parameters}{
+Note the \code{floor} and \code{enforce_norm_floor} have recommended
+default values \code{floor=0} and \code{enforce_norm_floor=TRUE}. These
+defaults will set any assay value at or below \code{0} to \code{0},
+and after normalization any values whose input values were
+at or below \code{0} will also be set to \code{0} to prevent normalizing
+a value of \code{0} to non-zero. Any normalized value at or
+below \code{0} will also be set to \code{0} to prevent results from
+containing negative normalized values.
+
+The assumption for this default is that a value of zero
+is not a measurement but represents the lack of a measurement.
+Similarly, the intent of \code{floor} is a numeric threshold at or
+below there is no confidence in the reported measurement, therefore
+values at or below this threshold are treated as equivalent
+to the threshold for the purpose of downstream analyses.
+
+Some platforms like QPCR for example, have substantially lower
+confidence at high CT values, where expression values
+using the equation \code{2^(40-CT)} might impose a noise threshold
+at expression 32 or lower. This noise threshold for QPCR
+means any expression measurement of 32 or lower is as likely
+to be \code{32} as it is to be \code{2}, and therefore any differences
+between reported expression of \code{32} and \code{2} should not be
+considered relevant. Applying \code{floor=32} in this case
+accomplishes this goal by setting all values at or below
+\code{32} to \code{32}. Of course when using this method \code{matrix_normalize()}
+the data should be log2 transformed, which means the \code{floor}
+should also be log2 transformed, e.g. \code{floor=log2(32)}
+which is \code{floor=5}.
+
+One alternative might be to set values at or below zero to \code{NA}
+prior to normalization, and before calling \code{matrix_normalize()}.
+In this case, only non-NA values will be used during
+normalization according to the \code{method} being used.
+}
+
 \examples{
 # use farrisdata real world data if available
 if (jamba::check_pkg_installed("farrisdata")) {
@@ -185,95 +277,3 @@ Other slicejam stats:
 \code{\link{voom_jam}()}
 }
 \concept{slicejam stats}
-\section{Normalization Methods Implemented:}{
-\subsection{method='quantile'}{
-
-Quantile-normalization performed by
-\code{limma::normalizeQuantiles()}. This method has one
-parameter \code{"ties"} passed to \code{limma::normalizeQuantiles()},
-the default here \code{ties=TRUE} which handles tied numeric
-expression values in a robust way to avoid unpredictability
-otherwise. This option is especially relevant with expression
-count data, where integer counts cause a large number
-of values to be represented multiple times.
-}
-
-\subsection{method='jammanorm'}{
-
-Median-normalization performed by
-\code{jamma::jammanorm()}. This method shifts expression
-data as shown on MA-plots, so the median expression
-is zero across all samples, using only the rows that
-meet the relevant criteria.
-
-Some relevant criteria to
-define rows used for normalization:
-\itemize{
-\item \code{controlGenes} defines specific genes to use for
-normalization, such as housekeeper genes. It may also
-be useful to use detected genes here, so the normalization
-only considers those genes defined as detected by
-the protocol.
-\item \code{minimum_mean} sets a numeric threshold and requires
-the mean expression (shown on the x-axis of the MA-plot)
-to be at least this value.
-}
-
-Note that when both \code{controlGenes} and \code{minimum_mean}
-are defined, both criteria are enforced. So the \code{controlGenes}
-are also required to have expression of at least \code{minimum_mean}.
-
-Also note that all rows of data are normalized by this method,
-only the subset of rows defined by \code{controlGenes} and \code{minimum_mean}
-are used to compute the normalization factor.
-}
-
-\subsection{method='limma_batch_adjust'}{
-
-Batch adjustment performed by
-\code{limma::removeBatchEffect()} which is intended to apply
-batch-adjustment as a form of normalization, but which
-does not represent full normalization itself. There are
-two relevant parameters: \code{"batch"} which is a vector of
-batch values in order of \code{colnames(x)}, and \code{"group"}
-which is a vector of sample groups in order of \code{colnames(x)}.
-}
-
-}
-\section{Other useful parameters}{
-
-Note the \code{floor} and \code{enforce_norm_floor} have recommended
-default values \code{floor=0} and \code{enforce_norm_floor=TRUE}. These
-defaults will set any assay value at or below \code{0} to \code{0},
-and after normalization any values whose input values were
-at or below \code{0} will also be set to \code{0} to prevent normalizing
-a value of \code{0} to non-zero. Any normalized value at or
-below \code{0} will also be set to \code{0} to prevent results from
-containing negative normalized values.
-
-The assumption for this default is that a value of zero
-is not a measurement but represents the lack of a measurement.
-Similarly, the intent of \code{floor} is a numeric threshold at or
-below there is no confidence in the reported measurement, therefore
-values at or below this threshold are treated as equivalent
-to the threshold for the purpose of downstream analyses.
-
-Some platforms like QPCR for example, have substantially lower
-confidence at high CT values, where expression values
-using the equation \code{2^(40-CT)} might impose a noise threshold
-at expression 32 or lower. This noise threshold for QPCR
-means any expression measurement of 32 or lower is as likely
-to be \code{32} as it is to be \code{2}, and therefore any differences
-between reported expression of \code{32} and \code{2} should not be
-considered relevant. Applying \code{floor=32} in this case
-accomplishes this goal by setting all values at or below
-\code{32} to \code{32}. Of course when using this method \code{matrix_normalize()}
-the data should be log2 transformed, which means the \code{floor}
-should also be log2 transformed, e.g. \code{floor=log2(32)}
-which is \code{floor=5}.
-
-One alternative might be to set values at or below zero to \code{NA}
-prior to normalization, and before calling \code{matrix_normalize()}.
-In this case, only non-NA values will be used during
-normalization according to the \code{method} being used.
-}
