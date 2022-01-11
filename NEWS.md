@@ -1,3 +1,20 @@
+# slicejam 0.0.32.900
+
+## enhancements
+
+* New process in `slicejam_analysis.Rmd` called `NormGroup` which
+optionally allows specifying groups to use when `NORM="mediangroup"`.
+
+   * This scenario is an edge case where a subset of samples are expected
+   to have very low/absent signal, and therefore cannot be normalized
+   relative to samples that have substantial signal. They are normalized
+   within their own grouping, independent of other normalization groups.
+   * By default, `NormGroup` is assigned by the sample group column in
+   the `CURATION_TXT` file, however any column with `"NormGroup"` will
+   be used instead if present.
+
+
+
 # slicejam 0.0.31.900
 
 ## bug fixes

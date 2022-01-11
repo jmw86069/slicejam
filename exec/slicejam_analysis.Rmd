@@ -355,6 +355,12 @@ sample_df[[group_colname]] <- gsub("[%]", "pct",
 sample_df[[group_colname]] <- factor(sample_df[[group_colname]],
    levels=unique(sample_df[[group_colname]]));
 
+normgroup_colname <- head(jamba::provigrep(c("^normGroup$", "norm.*group"),
+   colnames(sample_df)), 1);
+if (length(normgroup_colname) == 0) {
+   normgroup_colname <- "normgroup";
+   sample_df[[group_colname]] <- sample_df[[normgroup_colname]];
+}
    
 ## Sort sample_df by group
 sample_df <- jamba::mixedSortDF(sample_df,
@@ -366,6 +372,8 @@ iSamples <- sample_df[[sample_colname]];
 Run <- jamba::nameVector(sample_df[[run_colname]],
    iSamples);
 iGroup <- jamba::nameVector(sample_df[[group_colname]],
+   iSamples);
+iNormGroup <- jamba::nameVector(sample_df[[normgroup_colname]],
    iSamples);
 
 ## Make sure the order in filenames is propagated
@@ -379,7 +387,7 @@ knitr::kable(sample_df,
       "Sample Groups defined by curation_txt '",
       curation_txt,
       "'"));
-if (any(!sapply(c("iSamples", "Run", "iGroup"), exists))) {
+if (any(!sapply(c("iSamples", "Run", "iGroup", "iNormGroup"), exists))) {
    stop("One or more of iSamples,Run,Group could not be defined.");
 }
 
@@ -536,7 +544,7 @@ if ("median" %in% NORM) {
       param=list(
          jammanorm=list(
             minimum_mean=NORMMIN,
-            centerGroups=iGroup,
+            centerGroups=iNormGroup,
             controlSamples=iSamples,
             useMean=FALSE)
       )
