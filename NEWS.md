@@ -1,3 +1,13 @@
+# slicejam 0.0.33.900
+
+## enhancements
+
+* `printDebugList()` new argument `type="data.frame"` will return
+a `data.frame` more suitable to Rmarkdown output.
+* `slicejam_eval.Rmd` is a subset of `slicejam_analysis.Rmd` intended
+to review only the peak slice count data, with no statistical comparisons.
+
+
 # slicejam 0.0.32.900
 
 ## enhancements

@@ -4,7 +4,12 @@
 \alias{get_slicejam_args}
 \title{Get slicejam argument values}
 \usage{
-get_slicejam_args(use_first_fc = TRUE, verbose = FALSE, ...)
+get_slicejam_args(
+  use_first_fc = TRUE,
+  verbose = FALSE,
+  type = c("printDebug", "data.frame"),
+  ...
+)
 }
 \description{
 Get slicejam argument values

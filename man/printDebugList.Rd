@@ -4,7 +4,24 @@
 \alias{printDebugList}
 \title{Print debug with list input}
 \usage{
-printDebugList(..., maxprint = 50)
+printDebugList(
+  ...,
+  maxprint = 10,
+  type = c("printDebug", "data.frame"),
+  debug = FALSE
+)
+}
+\arguments{
+\item{...}{items which will be printed}
+
+\item{maxprint}{\code{integer} maximum number of elements to print
+for each item in \code{...}.}
+
+\item{type}{\code{character} string indicating the type of output:
+\itemize{
+\item \code{"printDebug"} - calls \code{jamba::printDebug()} to print to the R console
+\item \code{"data.frame"} - assembles a \code{data.frame}
+}}
 }
 \description{
 Print debug with list input
@@ -13,4 +30,18 @@ Print debug with list input
 This function is a lightweight wrapper around
 \code{jamba::printDebug()} that allows list input,
 in a way the prints each list name.
+}
+\examples{
+printDebugList(A=list(B=1:3, C=4:9, D=letters[1:3]),
+   something_else=sample(LETTERS, 5))
+
+printDebugList(A=list(B=1:3, C=4:9, D=letters[1:3]),
+   something_else=sample(LETTERS, 5),
+   maxprint=4)
+
+printDebugList(A=list(B=1:3, C=4:9, D=letters[1:3]),
+   E=list(1:5, G=1:4),
+   something_else=sample(LETTERS, 5),
+   maxprint=4)
+
 }

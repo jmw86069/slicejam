@@ -52,8 +52,11 @@
 get_slicejam_args <- function
 (use_first_fc=TRUE,
  verbose=FALSE,
+ type=c("printDebug",
+    "data.frame"),
  ...)
 {
+   type <- match.arg(type);
    # FC_FILE - featureCounts file usually with .fc file extension
    inplist <- list(...);
    if ("FC_FILE" %in% names(inplist)) {
@@ -366,7 +369,16 @@ get_slicejam_args <- function
    sliceargs$fc_html <- fc_html;
    sliceargs$knit_root_dir <- knit_root_dir;
    if (verbose) {
-      printDebugList(sliceargs);
+      debug_df <- printDebugList(sliceargs,
+         type=type);
+      if ("data.frame" %in% type) {
+         # print kable
+         print(knitr::kable(
+            debug_df,
+            caption=paste0(
+               "slicejam arguments:")));
+         
+      }
    }
    return(sliceargs);
 }
@@ -379,11 +391,36 @@ get_slicejam_args <- function
 #' `jamba::printDebug()` that allows list input,
 #' in a way the prints each list name.
 #' 
+#' @param ... items which will be printed
+#' @param maxprint `integer` maximum number of elements to print
+#'    for each item in `...`.
+#' @param type `character` string indicating the type of output:
+#'    * `"printDebug"` - calls `jamba::printDebug()` to print to the R console
+#'    * `"data.frame"` - assembles a `data.frame`
+#' 
+#' @examples
+#' printDebugList(A=list(B=1:3, C=4:9, D=letters[1:3]),
+#'    something_else=sample(LETTERS, 5))
+#'
+#' printDebugList(A=list(B=1:3, C=4:9, D=letters[1:3]),
+#'    something_else=sample(LETTERS, 5),
+#'    maxprint=4)
+#' 
+#' printDebugList(A=list(B=1:3, C=4:9, D=letters[1:3]),
+#'    E=list(1:5, G=1:4),
+#'    something_else=sample(LETTERS, 5),
+#'    maxprint=4)
+#' 
 #' @export
 printDebugList <- function
 (...,
- maxprint=50)
+ maxprint=10,
+ type=c("printDebug",
+    "data.frame"),
+ debug=FALSE)
 {
+   type <- match.arg(type);
+   
    # determine which arguments are intended for jamba::printDebug()
    # all others will be printed onscreen
    fnames <- setdiff(names(formals(jamba::printDebug)), "...");
@@ -396,19 +433,20 @@ printDebugList <- function
       arglist <- inplist[names(inplist) %in% fnames];
    }
    
-   if (FALSE) {
-      print("names(inplist):");
-      print(names(inplist));
-      print("inplist:");
-      print(inplist);
-      print("printlist:");
-      print(printlist);
-      print("arglist:");
-      print(arglist);
-   }
    indent <- "";
    
-   print_list_arg <- function(printlist, i, indent="") {
+   ############################################
+   # custom print function for nested lists
+   ret_df <- data.frame(argument=NA_character_,
+      value=NA_character_)[0,,drop=FALSE];
+   print_list_arg <- function
+   (printlist,
+    i,
+    indent="",
+    type=c("printDebug",
+       "data.frame"))
+   {
+      type <- match.arg(type);
       if (length(names(printlist)) > 0 && nchar(names(printlist)[i]) > 0) {
          pname <- paste0(indent,
             names(printlist)[i],
@@ -416,14 +454,35 @@ printDebugList <- function
       } else {
          pname <- "[list]:";
       }
-      do.call(jamba::printDebug,
-         c(arglist,
-            list(pname)));
+      ret_df <- data.frame(argument=NA_character_,
+         value=NA_character_)[0,,drop=FALSE];
+      printvals <- NULL;
+      if (debug) {
+         print("1   arglist:");print(arglist);
+         print("1     pname:");print(pname);
+         print("1 printvals:");print(printvals);
+      }
+      if ("printDebug" %in% type) {
+         do.call(jamba::printDebug,
+            c(arglist,
+               list(pname)));
+      } else if ("data.frame" %in% type) {
+         ret_df <- rbind(ret_df,
+            data.frame(
+               argument=jamba::rmNULL(pname,
+                  nullValue=""),
+               value=jamba::cPaste(printvals, sep=", ")));
+      }
+      
       indent <- paste0("   ", indent);
       
       for (j in seq_along(printlist[[i]])) {
          if (is.list(printlist[[i]][[j]])) {
-            print_list_arg(printlist[[i]], j, indent);
+            new_df <- print_list_arg(printlist[[i]], j, indent, type);
+            if ("data.frame" %in% type) {
+               ret_df <- rbind(ret_df,
+                  new_df);
+            }
          } else {
             if (length(names(printlist[[i]])) > 0 && nchar(names(printlist[[i]])[j]) > 0) {
                pname <- paste0(indent,
@@ -437,18 +496,37 @@ printDebugList <- function
                printvals <- c(head(printvals, maxprint),
                   paste0("...(", jamba::formatInt(length(printvals)), " total)"));
             }
-            do.call(jamba::printDebug,
-               c(arglist,
-                  list(pname),
-                  list(printvals)));
+            if (debug) {
+               print("2   arglist:");print(arglist)
+               print("2     pname:");print(pname)
+               print("2 printvals:");print(printvals)
+            }
+            if ("printDebug" %in% type) {
+               do.call(jamba::printDebug,
+                  c(arglist,
+                     list(pname),
+                     list(printvals)));
+            } else if ("data.frame" %in% type) {
+               ret_df <- rbind(ret_df,
+                  data.frame(
+                     argument=jamba::rmNULL(pname,
+                        nullValue=""),
+                     value=jamba::cPaste(printvals, sep=", ")));
+            }
          }
       }
       indent <- sub("   ", "", indent);
+      return(ret_df);
    }
+   ############################################
    
    for (i in seq_along(printlist)) {
       if (is.list(printlist[[i]])) {
-         print_list_arg(printlist, i, indent);
+         new_df <- print_list_arg(printlist, i, indent, type);
+         if ("data.frame" %in% type) {
+            ret_df <- rbind(ret_df,
+               new_df);
+         }
       } else {
          if (length(names(printlist)) > 0 && nchar(names(printlist)[i]) > 0) {
             pname <- paste0(names(printlist)[i], ":");
@@ -460,10 +538,26 @@ printDebugList <- function
          #   printvals <- c(head(printvals, maxprint),
          #      paste0("... (", jamba::formatInt(length(printvals)), " total)"));
          #}
-         do.call(jamba::printDebug,
-            c(arglist,
-               list(pname), list(printvals)));
+         if (debug) {
+            print("3   arglist:");print(arglist)
+            print("3     pname:");print(pname)
+            print("3 printvals:");print(printvals)
+         }
+         if ("printDebug" %in% type) {
+            do.call(jamba::printDebug,
+               c(arglist,
+                  list(pname), list(printvals)));
+         } else if ("data.frame" %in% type) {
+            ret_df <- rbind(ret_df,
+               data.frame(
+                  argument=jamba::rmNULL(pname,
+                     nullValue=""),
+                  value=jamba::cPaste(printvals, sep=", ")));
+         }
       }
+   }
+   if ("data.frame" %in% type) {
+      return(ret_df)
    }
 }
 
