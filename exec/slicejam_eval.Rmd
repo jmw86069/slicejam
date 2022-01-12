@@ -206,64 +206,15 @@ from featureCounts to populate rows, such as
 
    * normalized data, centered by the first factor level
    in "Group", intended to act as a control group.
+   * normalized data, batch-adjusted by "Run", global-centered across
+   all samples.
    * normalized data, batch-adjusted by "Run", centered by the
    first factor level in "Group".
 
-* Statistical comparisons
+* Plot peak width by peak counts
 
-   * Use the `"Group"` column to define groups, design, and contrasts.
-   
-       * Note that contrasts are limited to comparisons to the first
-       `"Group"` level.
-   
-   * Use normalized, batch-adjusted counts.
-   * Apply cutoffs: maxGroupMean >= 4; fold change >= 1.5; adjusted P-value <= 0.05
-   * Apply secondary max group mean filtering with MGM=**`r MGM`**, to
-   reduce the number of peaks used for statistical testing
-   * Apply cutoffs: maxGroupMean >= 4; fold change >= 1.5; adjusted P-value <= 0.05
 
-* Create volcano plots
-
-    * Plot each contrast using the P-value, then using adjusted P-value.
-
-* Create Venn diagrams:
-
-    * Include each set of two contrasts with "all peak" hits.
-    * Include each set of two contrasts with "MGM-filtered peak" hits.
-
-* Annotate peaks
-
-    * Associate each peak with one or more overlapping feature_types
-    * Call one feature_type_winner per peak, based upon order: promoter, TTS, exon, intron, intergenic
-    * Create pie charts showing distribution of feature_type for differential
-    peaks from the "all peaks" comparison
-    * Create pie charts showing distribution of feature_type for differential
-    peaks from the "MGM-filtered peaks" comparison
-
-* Re-annotate peaks into broad_peaks by merging adjacent slices
-
-    * Count broad_peak hits from the "all peaks" comparison.
-    * Count broad_peak hits from the "MGM-filtered peaks" comparison.
-
-* Heatmap of peak hits across samples
-
-    * Heatmap of peak hits from the "all peaks" comparison.
-    * Heatmap of peak hits from the "MGM-filtered peaks" comparison.
-
-* Optional ATAC-mode annotation to "active promoter genes"
-
-    * Define active promoter genes by presence of ATAC-seq peak in promoter region.
-    * Annotate peaks by nearest active promoter peak, along with distance.
-
-* Save stats results to text files
-
-    * Save "all peak" stats to tab-delimited text file.
-    * Save "MGM-filtered peak" stats to tab-delimited text file.
-    * This file is also used to create the "table of Venn intersections."
-
-* Optionally save RData session
-
-## Analysis workflow
+## Evaluation workflow
 
 
 ### Import .fc file
@@ -1062,13 +1013,13 @@ for (iCol in iSamples) {
    abline(v=MGM,
       lty="dotted",
       col="#333333");
-   jamba::drawLabels(preset="top",
-      txt=iCol,
-      boxColor=color_sub1[iCol],
-      boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
-      labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
-      labelCex=1.3,
-      drawBox=TRUE);
+   # jamba::drawLabels(preset="top",
+   #    txt=iCol,
+   #    boxColor=color_sub1[iCol],
+   #    boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
+   #    labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
+   #    labelCex=1.3,
+   #    drawBox=TRUE);
    jamba::drawLabels(preset="bottomleft",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],
@@ -1084,8 +1035,8 @@ for (iCol in iSamples) {
          " pts\n",
          formatInt(total_points_mgm),
          " pts MGM", MGM),
-      boxColor="#FFFFFFAA",
-      boxBorderColor="#999999AA",
+      boxColor="#FFFFFF77",
+      boxBorderColor="#99999977",
       labelCol="black",
       labelCex=1,
       drawBox=TRUE);
@@ -1126,13 +1077,13 @@ for (iCol in iSamples) {
    abline(v=MGM,
       lty="dotted",
       col="#333333");
-   jamba::drawLabels(preset="top",
-      txt=iCol,
-      boxColor=color_sub1[iCol],
-      boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
-      labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
-      labelCex=1.3,
-      drawBox=TRUE);
+   # jamba::drawLabels(preset="top",
+   #    txt=iCol,
+   #    boxColor=color_sub1[iCol],
+   #    boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
+   #    labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
+   #    labelCex=1.3,
+   #    drawBox=TRUE);
    jamba::drawLabels(preset="bottomleft",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],
@@ -1148,8 +1099,67 @@ for (iCol in iSamples) {
          " pts\n",
          formatInt(total_points_mgm),
          " pts MGM", MGM),
-      boxColor="#FFFFFFAA",
-      boxBorderColor="#999999AA",
+      boxColor="#FFFFFF77",
+      boxBorderColor="#99999977",
+      labelCol="black",
+      labelCex=1,
+      drawBox=TRUE);
+}
+par(mfrow=c(1, 1));
+```
+
+
+**Normal scale y-axis peak width:**
+
+```{r, peak_width_signal_norm2, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+total_n <- length(iSamples) + length(blank_pos);
+ma_nrow <- ceiling(total_n / ma_ncol);
+par(mfrow=c(ma_nrow, ma_ncol));
+par(mar=c(5, 4, 3, 1) + 0.1);
+panel_num <- 0;
+for (iCol in iSamples) {
+   panel_num <- panel_num + 1;
+   if (panel_num %in% blank_pos) {
+      next;
+   }
+   iRows <- rownames(iMatrix);
+   ix <- noiseFloor(iMatrixQB[, iCol],
+         minimum=1,
+         newValue=NA);
+   iy <- rowData(fc_se[iRows, ])$Length;
+   plotSmoothScatter(
+      x=ix,
+      y=iy,
+      xlab="log2(1 + x) raw counts",
+      ylab="Peak width",
+      main=iCol);
+   abline(v=MGM,
+      lty="dotted",
+      col="#333333");
+   # jamba::drawLabels(preset="top",
+   #    txt=iCol,
+   #    boxColor=color_sub1[iCol],
+   #    boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
+   #    labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
+   #    labelCex=1.3,
+   #    drawBox=TRUE);
+   jamba::drawLabels(preset="bottomleft",
+      txt=Run[iCol],
+      boxColor=run_colors1[iCol],
+      boxBorderColor=jamba::makeColorDarker(run_colors1[iCol]),
+      labelCol=jamba::setTextContrastColor(run_colors1[iCol]),
+      labelCex=1.3,
+      drawBox=TRUE);
+   total_points <- sum(!is.na(ix) & !is.na(iy));
+   total_points_mgm <- sum(!is.na(ix) & !is.na(iy) & ix >= MGM);
+   jamba::drawLabels(preset="bottomright",
+      txt=paste0(
+         formatInt(total_points),
+         " pts\n",
+         formatInt(total_points_mgm),
+         " pts MGM", MGM),
+      boxColor="#FFFFFF77",
+      boxBorderColor="#99999977",
       labelCol="black",
       labelCex=1,
       drawBox=TRUE);
