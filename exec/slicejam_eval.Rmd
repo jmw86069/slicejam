@@ -855,7 +855,8 @@ iCorM_hc <- tryCatch({
 });
 
 ## ComplexHeatmap
-hm_cor <- ComplexHeatmap::Heatmap(iCorM,
+hm_cor <- ComplexHeatmap::Heatmap(
+   iCorM[iSamplesUse, iSamplesUse, drop=FALSE],
    name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
@@ -903,7 +904,8 @@ iCorMBglobal_hc <- tryCatch({
 });
 
 ## ComplexHeatmap
-hm_corbg <- ComplexHeatmap::Heatmap(iCorMBglobal,
+hm_corbg <- ComplexHeatmap::Heatmap(
+   iCorMBglobal[iSamplesUse, iSamplesUse, drop=FALSE],
    name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
@@ -951,7 +953,8 @@ iCorMB_hc <- tryCatch({
 });
 
 ## ComplexHeatmap
-hm_corb <- ComplexHeatmap::Heatmap(iCorMB,
+hm_corb <- ComplexHeatmap::Heatmap(
+   iCorMB[iSamplesUse, iSamplesUse, drop=FALSE],
    name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
