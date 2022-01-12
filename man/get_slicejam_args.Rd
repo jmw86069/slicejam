@@ -8,6 +8,7 @@ get_slicejam_args(
   use_first_fc = TRUE,
   verbose = FALSE,
   type = c("printDebug", "data.frame"),
+  name = c("analysis", "eval"),
   ...
 )
 }

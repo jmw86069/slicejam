@@ -75,7 +75,15 @@ par("family"="Arial",
 
 ```{r, slicejam_args, include=TRUE, cache=FALSE}
 sliceargs <- slicejam::get_slicejam_args(verbose=TRUE,
+   name="eval",
    type="data.frame");
+if ("sliceargs_df" %in% names(attributes(sliceargs))) {
+   sliceargs_df <- attr(sliceargs, "sliceargs_df");
+   knitr::kable(
+      sliceargs_df,
+      caption=paste0(
+         "slicejam arguments:"));
+}
 
 DRYRUN <- sliceargs$DRYRUN;
 ATAC <- sliceargs$ATAC;
@@ -897,12 +905,14 @@ iCorM_hc <- tryCatch({
 
 ## ComplexHeatmap
 hm_cor <- ComplexHeatmap::Heatmap(iCorM,
+   name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
    cluster_rows=iCorM_hc,
    cluster_columns=iCorM_hc,
    heatmap_legend_param=list(
       color_bar="discrete",
+      at=seq(from=-1, to=1, by=0.25),
       border=TRUE),
    top_annotation=ComplexHeatmap::HeatmapAnnotation(
       border=TRUE,
@@ -920,9 +930,56 @@ ComplexHeatmap::draw(hm_cor,
 ```
 
 
-#### Normalized data, batch-adjusted, centered by Group control
+#### Normalized data, batch-adjusted, global-centered
 
 ```{r, cor_hm_b, fig.height=12, fig.width=12, dependson=c("batch_adjust_run", "sample_outliers")}
+## Center iMatrixQB
+## center all samples, but only relative to control samples in iSamplesUse
+iMatrixQBctrGlobal <- centerGeneData(iMatrixQB[,iSamples,drop=FALSE],
+   mean=TRUE);
+
+## Correlation matrix
+iCorMBglobal <- cor(use="pairwise.complete.obs",
+   iMatrixQBctrGlobal[,iSamplesUse,drop=FALSE])
+
+## hcluster
+iCorMBglobal_hc <- tryCatch({
+   amap::hcluster(iCorMBglobal);
+}, error=function(e){
+   printDebug("Error during hcluster(iCorM):");
+   print(e);
+   FALSE;
+});
+
+## ComplexHeatmap
+hm_corbg <- ComplexHeatmap::Heatmap(iCorMBglobal,
+   name="correlation",
+   border=TRUE,
+   col=colorjam::col_div_xf(1, lens=5),
+   cluster_rows=iCorMBglobal_hc,
+   cluster_columns=iCorMBglobal_hc,
+   heatmap_legend_param=list(
+      color_bar="discrete",
+      at=seq(from=-1, to=1, by=0.25),
+      border=TRUE),
+   top_annotation=ComplexHeatmap::HeatmapAnnotation(
+      border=TRUE,
+      annotation_legend_param=list(
+         border=TRUE),
+      df=data.frame(
+         Run=Run[iSamplesUse],
+         Group=iGroup[iSamplesUse]),
+      col=list(Group=group_colors,
+         Run=run_colors))
+)
+ComplexHeatmap::draw(hm_corbg,
+   column_title=paste0("Counts (", bnormname, ")"))
+
+```
+
+#### Normalized data, batch-adjusted, centered by Group control
+
+```{r, cor_hm_bg, fig.height=12, fig.width=12, dependson=c("batch_adjust_run", "sample_outliers")}
 ## Center iMatrixQB
 ## center all samples, but only relative to control samples in iSamplesUse
 iMatrixQBctr <- centerGeneData(iMatrixQB[,iSamples,drop=FALSE],
@@ -944,12 +1001,14 @@ iCorMB_hc <- tryCatch({
 
 ## ComplexHeatmap
 hm_corb <- ComplexHeatmap::Heatmap(iCorMB,
+   name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
    cluster_rows=iCorMB_hc,
    cluster_columns=iCorMB_hc,
    heatmap_legend_param=list(
       color_bar="discrete",
+      at=seq(from=-1, to=1, by=0.25),
       border=TRUE),
    top_annotation=ComplexHeatmap::HeatmapAnnotation(
       border=TRUE,
@@ -985,11 +1044,13 @@ for (iCol in iSamples) {
       next;
    }
    iRows <- rownames(iMatrix);
+   ix <- noiseFloor(iMatrixQ[, iCol],
+      minimum=1,
+      newValue=NA);
+   iy <- log2(1 + rowData(fc_se[iRows, ])$Length);
    plotSmoothScatter(
-      x=noiseFloor(iMatrix[, iCol],
-         minimum=1,
-         newValue=NA),
-      y=log2(1 + rowData(fc_se[iRows, ])$Length),
+      x=ix,
+      y=iy,
       xlab="log2(1 + x) raw counts",
       ylab="Peak width",
       main=iCol,
@@ -1006,14 +1067,27 @@ for (iCol in iSamples) {
       boxColor=color_sub1[iCol],
       boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
       labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
-      #labelCex=1.8,
+      labelCex=1.3,
       drawBox=TRUE);
    jamba::drawLabels(preset="bottomleft",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],
       boxBorderColor=jamba::makeColorDarker(run_colors1[iCol]),
       labelCol=jamba::setTextContrastColor(run_colors1[iCol]),
-      #labelCex=1.8,
+      labelCex=1.3,
+      drawBox=TRUE);
+   total_points <- sum(!is.na(ix) & !is.na(iy));
+   total_points_mgm <- sum(!is.na(ix) & !is.na(iy) & ix >= MGM);
+   jamba::drawLabels(preset="bottomright",
+      txt=paste0(
+         formatInt(total_points),
+         " pts\n",
+         formatInt(total_points_mgm),
+         " pts MGM", MGM),
+      boxColor="#FFFFFFAA",
+      boxBorderColor="#999999AA",
+      labelCol="black",
+      labelCex=1,
       drawBox=TRUE);
 }
 par(mfrow=c(1, 1));
@@ -1026,7 +1100,7 @@ par(mfrow=c(1, 1));
 total_n <- length(iSamples) + length(blank_pos);
 ma_nrow <- ceiling(total_n / ma_ncol);
 par(mfrow=c(ma_nrow, ma_ncol));
-par(mar=c(5, 4, 4, 2) + 0.1);
+par(mar=c(5, 4, 3, 1) + 0.1);
 panel_num <- 0;
 for (iCol in iSamples) {
    panel_num <- panel_num + 1;
@@ -1034,11 +1108,13 @@ for (iCol in iSamples) {
       next;
    }
    iRows <- rownames(iMatrix);
-   plotSmoothScatter(
-      x=noiseFloor(iMatrixQB[, iCol],
+   ix <- noiseFloor(iMatrixQB[, iCol],
          minimum=1,
-         newValue=NA),
-      y=log2(1 + rowData(fc_se[iRows, ])$Length),
+         newValue=NA);
+   iy <- log2(1 + rowData(fc_se[iRows, ])$Length);
+   plotSmoothScatter(
+      x=ix,
+      y=iy,
       xlab="log2(1 + x) raw counts",
       ylab="Peak width",
       main=iCol,
@@ -1055,14 +1131,27 @@ for (iCol in iSamples) {
       boxColor=color_sub1[iCol],
       boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
       labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
-      #labelCex=1.8,
+      labelCex=1.3,
       drawBox=TRUE);
    jamba::drawLabels(preset="bottomleft",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],
       boxBorderColor=jamba::makeColorDarker(run_colors1[iCol]),
       labelCol=jamba::setTextContrastColor(run_colors1[iCol]),
-      #labelCex=1.8,
+      labelCex=1.3,
+      drawBox=TRUE);
+   total_points <- sum(!is.na(ix) & !is.na(iy));
+   total_points_mgm <- sum(!is.na(ix) & !is.na(iy) & ix >= MGM);
+   jamba::drawLabels(preset="bottomright",
+      txt=paste0(
+         formatInt(total_points),
+         " pts\n",
+         formatInt(total_points_mgm),
+         " pts MGM", MGM),
+      boxColor="#FFFFFFAA",
+      boxBorderColor="#999999AA",
+      labelCol="black",
+      labelCex=1,
       drawBox=TRUE);
 }
 par(mfrow=c(1, 1));

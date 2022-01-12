@@ -54,9 +54,12 @@ get_slicejam_args <- function
  verbose=FALSE,
  type=c("printDebug",
     "data.frame"),
+ name=c("analysis",
+    "eval"),
  ...)
 {
    type <- match.arg(type);
+   name <- match.arg(name);
    # FC_FILE - featureCounts file usually with .fc file extension
    inplist <- list(...);
    if ("FC_FILE" %in% names(inplist)) {
@@ -319,7 +322,7 @@ get_slicejam_args <- function
    # knitr root path auto-generated or using OUTDIR directly
    # - either way it uses a fully described file path
    if (nchar(OUTDIR) == 0) {
-      fc_basedir <- paste0(fc_base,  "_analysis");
+      fc_basedir <- paste0(fc_base,  "_", name);
       knit_root_dir <- file.path(fc_dirname,
          fc_basedir);
       # knitr root directory
@@ -373,11 +376,7 @@ get_slicejam_args <- function
          type=type);
       if ("data.frame" %in% type) {
          # print kable
-         print(knitr::kable(
-            debug_df,
-            caption=paste0(
-               "slicejam arguments:")));
-         
+         attr(sliceargs, "sliceargs_df") <- debug_df;
       }
    }
    return(sliceargs);
