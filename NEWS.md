@@ -1,3 +1,18 @@
+# slicejam 0.0.34.900
+
+## bug fixes
+
+* `matrix_normalize()` was failing on an edge case where numeric matrix
+contained `NA` values, and `any(x <= floor)` failed because some
+values were `NA` instead of `TRUE` or `FALSE`. The fix is
+`any(x <= floor, na.rm=TRUE)` and again highlights one of the most
+annoying R defaults: `na.rm=FALSE`.
+It turns out `any()` will return `TRUE` if any value is `TRUE`, but
+requires all values to be `FALSE` to return `FALSE` otherwise the
+presence of one `NA` value will cause it to return `NA`.
+* Updated several places in the code that checked numeric thresholds
+that could possibly contain NA values.
+
 # slicejam 0.0.33.900
 
 ## enhancements

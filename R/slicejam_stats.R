@@ -195,7 +195,7 @@ se_normalize <- function
          inorm <- matrix_normalize(imatrix,
             method=imethod,
             params=params,
-            verbose=verbose - 1,
+            verbose=(verbose - 1) > 0,
             ...);
          
          # generate matrix of NA values to fill for normalized genes, samples
@@ -509,7 +509,7 @@ matrix_normalize <- function
 
    # apply log2 transform if needed
    if ("ifneeded" %in% apply_log2) {
-      if (any(abs(x) > 40)) {
+      if (any(abs(x) > 40 & !is.na(x))) {
          x <- jamba::log2signed(x,
             offset=1);
          if (verbose) {
@@ -532,8 +532,8 @@ matrix_normalize <- function
    }
    
    # apply optional floor
-   if (length(floor) > 0 & any(x <= floor)) {
-      x_floored <- (x <= floor);
+   if (length(floor) > 0 && any(x <= floor & !is.na(x))) {
+      x_floored <- (x <= floor & !is.na(x));
       x[x_floored] <- floor;
       if (verbose) {
          jamba::printDebug("matrix_normalize(): ",
@@ -851,7 +851,9 @@ se_contrast_stats <- function
 
       #######################################################
       ## Optionally convert zero (or less than zero) to NA
-      if (length(floor_min) == 1 && !is.na(floor_min) && any(imatrix <= floor_min)) {
+      if (length(floor_min) == 1 &&
+            !is.na(floor_min) &&
+            any(imatrix <= floor_min & !is.na(imatrix))) {
          if (verbose) {
             jamba::printDebug("se_contrast_stats(): ",
                c("Applying floor_min:",
@@ -1795,7 +1797,7 @@ ebayes2dfs <- function
       #}
       
       ## Assemble top table, handling single replicate data in a specific way
-      if (!any(lmFit3$df.residual > 0)) {
+      if (!any(lmFit3$df.residual > 0 & !is.na(lmFit3$df.residual))) {
          jamba::printDebug("ebayes2dfs(): ",
             "No values for df.residual>0.",
             fgText=c("darkorange1", "red1"));
