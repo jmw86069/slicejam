@@ -1,3 +1,11 @@
+# slicejam 0.0.35.900
+
+## bug fixes
+
+* Fixed typo bug in `genomic_regions_from_gtf` which caused user-defined
+`outfile` not to be assigned, causing the script to end without exporting
+results.
+
 # slicejam 0.0.34.900
 
 ## bug fixes

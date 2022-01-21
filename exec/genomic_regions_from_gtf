@@ -239,7 +239,7 @@ if (length(opt$bed) > 0 && file.exists(opt$bed)) {
          jamba::getDate(),
          ".txt");
    } else {
-      outfile - opt$outfile;
+      outfile <- opt$outfile;
    }
    #rtracklayer::export.bed(con=outfile,
    #   object=fc_gr2);
