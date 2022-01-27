@@ -477,7 +477,7 @@ volcano_plot <- function
    if (hi_hits) {
       hi_points <- hits_both | hi_points;
    }
-   if (any(hi_points) && length(label_colname) > 0) {
+   if (any(!is.na(hi_points) & hi_points) && length(label_colname) > 0) {
       hi_labels <- x[[label_colname]][hi_points];
    }
    
@@ -514,7 +514,9 @@ volcano_plot <- function
    }
    
    ## y-axis values
-   if (length(sig_floor) == 1 && sig_floor > 0 && any(sig_values < sig_floor)) {
+   if (length(sig_floor) == 1 &&
+         sig_floor > 0 &&
+         any(!is.na(sig_values) & sig_values < sig_floor)) {
       sig_values[sig_values < sig_floor] <- sig_floor;
    }
    y_values <- -log10(sig_values);
@@ -534,7 +536,7 @@ volcano_plot <- function
    #   pointsToLabel <- jamba::flipVector(row2name[pointsToLabel],
    #      makeNamesFunc=c);
    #}
-   if (any(hi_points)) {
+   if (any(!is.na(hi_points) & hi_points)) {
       if (verbose) {
          jamba::printDebug("Creating subset of points for highlighting.");
       }
@@ -559,7 +561,7 @@ volcano_plot <- function
    if (symmetric_axes) {
       xlim <- max(abs(xlim)) * c(-1, 1);
    }
-   if (length(sig_floor) == 0 || any(sig_floor < 1e-300)) {
+   if (length(sig_floor) == 0 || any(!is.na(sig_floor) & sig_floor < 1e-300)) {
       sig_floor <- 1e-300;
    }
    if (length(ylim) == 0) {
@@ -572,7 +574,7 @@ volcano_plot <- function
          na.rm=TRUE);
    }
 
-   if (any(hi_points)) {
+   if (any(!is.na(hi_points) & hi_points)) {
       ###############################################
       ## Position labels in quadrants of the plot
       namesX <- c(xlim[1] - xlim[1]/12,
@@ -788,7 +790,7 @@ volcano_plot <- function
          cex.axis=cex.axis,
          ...);
    }
-   if (any(hi_points)) {
+   if (any(!is.na(hi_points) & hi_points)) {
       if (do_both) {
          points(x=x_values[!hi_points],
             y=y_values[!hi_points],

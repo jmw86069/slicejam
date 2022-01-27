@@ -1,5 +1,23 @@
 # TODO items for Slicejam
 
+## 25jan2022
+
+Remove functions that were migrated into the `jamses` R package:
+
+* se_normalize(), matrix_normalize(), groups_to_sedesign()
+* se_contrast_stats(), run_limma_replicate(), etc.
+
+Add `jamses` to package dependencies.
+
+
+## 21jan2022: add epilogos annotations to genomic_regions_by_gtf
+
+* Note it will only work for hg19 genome, when epilogos `GRangesList` is given.
+* The epilogos data is 49 Mb, could be added as data to this package.
+* Might require adding functions to parse epilogos data into `GRangesList`,
+in the event someone found equivalent data from another genome.
+
+
 ## Bar chart alternative to pie charts
 
 Pie charts were originally requested, but sometimes a stacked
