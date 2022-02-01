@@ -79,7 +79,7 @@ sliceargs <- slicejam::get_slicejam_args(verbose=TRUE,
    type="data.frame");
 if ("sliceargs_df" %in% names(attributes(sliceargs))) {
    sliceargs_df <- attr(sliceargs, "sliceargs_df");
-   knitr::kable(
+   kable_coloring(
       sliceargs_df,
       caption=paste0(
          "slicejam arguments:"));
@@ -364,7 +364,7 @@ filenames <- jamba::nameVector(sample_df[[filename_colname]],
 fc_data <- fc_data[,c(fc_colnames, filenames),drop=FALSE];
 
 ## Print sample annotation table
-knitr::kable(sample_df,
+kable_coloring(sample_df,
    caption=paste0(
       "Sample Groups defined by curation_txt: '",
       basename(curation_txt),
@@ -449,7 +449,7 @@ if (file.exists(contrast_txt_file)) {
 ## Print sample annotation table
 if (length(contrastNames) > 0) {
    contrasts_df <- data.frame(Contrasts=contrastNames);
-   knitr::kable(contrasts_df,
+   kable_coloring(contrasts_df,
       caption=paste0(
          "Contrasts stored in contrast_txt_file: '",
          basename(contrast_txt_file),
@@ -529,7 +529,7 @@ iMatrix <- assays(fc_se[,iSamples])[["counts"]];
 
 ## Perform normalization
 if ("median" %in% NORM) {
-   fc_se <- se_normalize(fc_se,
+   fc_se <- jamses::se_normalize(fc_se,
       assay_names="counts",
       method=c("jammanorm"),
       param=list(
@@ -540,7 +540,7 @@ if ("median" %in% NORM) {
    );
    normname <- "jammanorm_counts";
 } else if ("mediangroup" %in% NORM) {
-   fc_se <- se_normalize(fc_se,
+   fc_se <- jamses::se_normalize(fc_se,
       assay_names="counts",
       method=c("jammanorm"),
       param=list(
@@ -554,7 +554,7 @@ if ("median" %in% NORM) {
    normname <- "jammanorm_counts";
 } else if ("quantile" %in% NORM) {
    ## Evaluate quantile normalization
-   fc_se <- se_normalize(fc_se,
+   fc_se <- jamses::se_normalize(fc_se,
       assay_names="counts",
       method=c("quantile"));
    normname <- "quantile_counts";
@@ -581,7 +581,7 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
    fc_group <- nameVector(colData(fc_se[,iSamples])[[group_colname]],
       iSamples);
    fc_se_b <- tryCatch({
-      se_normalize(fc_se,
+      jamses::se_normalize(fc_se[,iSamples],
          assay_names=unique(c("counts", normname)),
          method=c("limma_batch_adjust"),
          params=list(
@@ -1016,13 +1016,6 @@ for (iCol in iSamples) {
    abline(v=MGM,
       lty="dotted",
       col="#333333");
-   # jamba::drawLabels(preset="top",
-   #    txt=iCol,
-   #    boxColor=color_sub1[iCol],
-   #    boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
-   #    labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
-   #    labelCex=1.3,
-   #    drawBox=TRUE);
    jamba::drawLabels(preset="bottomleft",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],
@@ -1080,13 +1073,6 @@ for (iCol in iSamples) {
    abline(v=MGM,
       lty="dotted",
       col="#333333");
-   # jamba::drawLabels(preset="top",
-   #    txt=iCol,
-   #    boxColor=color_sub1[iCol],
-   #    boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
-   #    labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
-   #    labelCex=1.3,
-   #    drawBox=TRUE);
    jamba::drawLabels(preset="bottomleft",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],
@@ -1139,13 +1125,6 @@ for (iCol in iSamples) {
    abline(v=MGM,
       lty="dotted",
       col="#333333");
-   # jamba::drawLabels(preset="top",
-   #    txt=iCol,
-   #    boxColor=color_sub1[iCol],
-   #    boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
-   #    labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
-   #    labelCex=1.3,
-   #    drawBox=TRUE);
    jamba::drawLabels(preset="bottomleft",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],

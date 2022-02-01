@@ -1,3 +1,22 @@
+# slicejam 0.0.36.900
+
+## updates
+
+* Dependency was added to `jamses` into which several `SummarizedExperiments`
+functions will be moved.
+* `slicejam_analysis.Rmd` was updated to match the improved formatting
+from `slicejam_eval.Rmd`. Eventually there will be one Rmd file with
+switch that enables or disables the stats.
+* Removed a bunch of functions that were migrated into the `jamses` package.
+
+## possible bug fix
+
+* `slicejam_analysis.Rmd` was updated to confirm the order of samples
+in the batch adjustment step. The batch and group vectors are prepared
+using `iSamples` but the `SummarizedExperiment` object is not ordered
+using `iSamples`. In principle they should be the same order due to
+upstream steps, but they should be defined in order to confirm.
+
 # slicejam 0.0.35.900
 
 ## bug fixes

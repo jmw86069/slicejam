@@ -50,15 +50,6 @@ color saturation.
 }
 \seealso{
 Other slicejam deprecated: 
-\code{\link{blend_colors_deprecated}()},
-\code{\link{label_venn_polys}()},
-\code{\link{list2im_opt_deprecated}()},
-\code{\link{list2im_signed}()},
-\code{\link{overLapper}()},
-\code{\link{signed_venn_counts}()},
-\code{\link{signed_venn}()},
-\code{\link{symbol2utf8}()},
-\code{\link{vennPlotSets}()},
-\code{\link{venndir_deprecated}()}
+\code{\link{blend_colors_deprecated}()}
 }
 \concept{slicejam deprecated}

@@ -1,5 +1,39 @@
 # TODO items for Slicejam
 
+## 31jan2022
+
+
+### design ideas:
+
+* negative control lanes, e.g. Input, Vehicle, etc.
+
+   * expect no real signal here
+   * no normalization of these lanels
+   * useful for identifying high noise, plot signal vs negative control
+   and look for correlation where negative control has similar high signal,
+   or high correlation
+   * only allow comparisons within batch for negative control lanes
+   * use the same MGM threshold, above which peaks potentially masked/filtered
+   out of comparisons if the negative control signal is also above MGM
+
+* peak calling Venn diagram across groups
+
+   * requires peaks have signal above MGM in all samples of the group
+   * total number of peaks analyzed
+   * peaks passing MGM filter
+   * peaks passing negative control filter
+   * the current filtering only requires one replicate above MGM
+
+* Re-run `slicejam_evaluation.Rmd` to confirm `iSamples` is properly used
+at each step during batch adjustment.
+
+* Add peak annotation to the `slicejam_evaluation.Rmd`?
+
+   * alternative: Evaluation Mode for `slicejam_analysis.Rmd` that
+   skips the statistical comparisons
+
+
+
 ## 25jan2022
 
 Remove functions that were migrated into the `jamses` R package:

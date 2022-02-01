@@ -74,7 +74,16 @@ par("family"="Arial",
 #### SliceJam analysis parameters
 
 ```{r, slicejam_args, include=TRUE, cache=FALSE}
-sliceargs <- slicejam::get_slicejam_args(verbose=TRUE);
+sliceargs <- slicejam::get_slicejam_args(verbose=TRUE,
+   name="analysis",
+   type="data.frame");
+if ("sliceargs_df" %in% names(attributes(sliceargs))) {
+   sliceargs_df <- attr(sliceargs, "sliceargs_df");
+   kable_coloring(
+      sliceargs_df,
+      caption=paste0(
+         "slicejam arguments:"));
+}
 
 DRYRUN <- sliceargs$DRYRUN;
 ATAC <- sliceargs$ATAC;
@@ -138,8 +147,12 @@ if (!"CBioRUtils" %in% search()) {
 #   file.path(dirname(Sys.getenv("HOME")),
 #      "wardjm/R/x86_64-pc-linux-gnu-library/3.5")
 #);
-print(".libPaths():");
-print(.libPaths());
+knitr::kable(
+   data.frame(check.names=FALSE,
+      stringsAsFactors=FALSE,
+      `.libPaths()`=.libPaths()),
+   caption=paste0(
+      "R library paths in use."));
 
 suppressPackageStartupMessages(library(SummarizedExperiment));
 suppressPackageStartupMessages(library(colorjam));
@@ -304,20 +317,29 @@ if (nrow(sample_df) == 0) {
 
 ## Check for samples not curated, and therefore dropped from the analysis
 if (length(sample_df[[filename_colname]]) < length(filenames)) {
-   jamba::printDebug("Note: ",
-      "Some samples were dropped during curation:",
-      paste0("\n'",
-         setdiff(filenames,
-            sample_df[[filename_colname]]),
-         "'"));
-   jamba::printDebug("Note: ",
-      "Samples retained:",
-      paste0("\n'",
-         sample_df[[filename_colname]],
-         "'"));
+   samples_dropped <- setdiff(filenames,
+      sample_df[[filename_colname]]);
+   samples_retained <- sample_df[[filename_colname]];
+   samples_retmax <- max(c(
+      length(samples_dropped),
+      length(samples_retained)));
+   samples_dropped <- unlist(rep(list(samples_dropped, ""),
+      c(1, samples_retmax - length(samples_dropped))));
+   samples_retained <- unlist(rep(list(samples_retained, ""),
+      c(1, samples_retmax - length(samples_retained))));
+   
+   knitr::kable(
+      data.frame(
+         samples_retained=samples_retained,
+         samples_dropped=samples_dropped),
+      caption=paste0(
+         "Samples retained and dropped."));
 }
 
-sample_colname <- head(jamba::provigrep(c("^label$", "^sample$", "^sample.*(name|id)$"),
+sample_colname <- head(jamba::provigrep(
+   c("^label$",
+      "^sample$",
+      "^sample.*(name|id)$"),
    colnames(sample_df)), 1);
 if (length(sample_colname) == 0) {
    jamba::printDebug("Error: ",
@@ -329,7 +351,9 @@ if (length(sample_colname) == 0) {
 sample_df[[sample_colname]] <- jamba::makeNames(sample_df[[sample_colname]]);
 rownames(sample_df) <- sample_df[[sample_colname]];
 
-run_colname <- head(jamba::provigrep(c("^batch$", "^run$"),
+run_colname <- head(jamba::provigrep(
+   c("^batch$",
+      "^run$"),
    colnames(sample_df)), 1);
 if (length(run_colname) == 0) {
    jamba::printDebug("Error: ",
@@ -338,7 +362,10 @@ if (length(run_colname) == 0) {
       fgText=c("red", "dodgerblue"));
 }
 
-group_colname <- head(jamba::provigrep(c("^Group$", "^group.*name$", "group$"),
+group_colname <- head(jamba::provigrep(
+   c("^Group$",
+      "^group.*name$",
+      "group$"),
    colnames(sample_df)), 1);
 if (length(group_colname) == 0) {
    jamba::printDebug("Error: ",
@@ -355,11 +382,13 @@ sample_df[[group_colname]] <- gsub("[%]", "pct",
 sample_df[[group_colname]] <- factor(sample_df[[group_colname]],
    levels=unique(sample_df[[group_colname]]));
 
-normgroup_colname <- head(jamba::provigrep(c("^normGroup$", "norm.*group"),
+normgroup_colname <- head(jamba::provigrep(
+   c("^normgroup$",
+      "norm.*group"),
    colnames(sample_df)), 1);
 if (length(normgroup_colname) == 0) {
    normgroup_colname <- "normgroup";
-   sample_df[[group_colname]] <- sample_df[[normgroup_colname]];
+   sample_df[[normgroup_colname]] <- sample_df[[group_colname]];
 }
    
 ## Sort sample_df by group
@@ -382,19 +411,22 @@ filenames <- jamba::nameVector(sample_df[[filename_colname]],
 fc_data <- fc_data[,c(fc_colnames, filenames),drop=FALSE];
 
 ## Print sample annotation table
-knitr::kable(sample_df,
+kable_coloring(sample_df,
    caption=paste0(
-      "Sample Groups defined by curation_txt '",
-      curation_txt,
+      "Sample Groups defined by curation_txt: '",
+      basename(curation_txt),
       "'"));
 if (any(!sapply(c("iSamples", "Run", "iGroup", "iNormGroup"), exists))) {
    stop("One or more of iSamples,Run,Group could not be defined.");
 }
 
 ## Rename featureCounts columns to match iSamples
-jamba::printDebug("Renaming featureCounts colnames",
-   "\nfrom:", filenames,
-   "\nto:", iSamples);
+knitr::kable(
+   data.frame(
+      Rename_from=filenames,
+      Rename_to=iSamples),
+   caption=paste0(
+      "Renamed featureCounts colnames."));
 fc_data <- jamba::renameColumn(fc_data,
    from=filenames,
    to=iSamples);
@@ -428,6 +460,8 @@ run_colors1 <- nameVector(run_colors[colData(fc_se[,iSamples])[[run_colname]]],
    iSamples);
 ```
 
+#### Define statistical contrasts
+
 ```{r, define_contrasts}
 sample_txt_file <- file.path(OUTDIR,
    "curated_samples.txt");
@@ -450,8 +484,23 @@ if (file.exists(contrast_txt_file)) {
    contrastNames <- splicejam::groups2contrasts(
       sample_df[,group_colname,drop=FALSE],
       maxDepth=1)$contrastName;
-   writeLines(text=contrastNames,
-      con=contrast_txt_file);
+   if (length(contrastNames) > 0) {
+      writeLines(text=contrastNames,
+         con=contrast_txt_file);
+   } else {
+      jamba::printDebug("Note there are no contrasts defined.",
+         fgText="red");
+   }
+}
+
+## Print sample annotation table
+if (length(contrastNames) > 0) {
+   contrasts_df <- data.frame(Contrasts=contrastNames);
+   kable_coloring(contrasts_df,
+      caption=paste0(
+         "Contrasts stored in contrast_txt_file: '",
+         basename(contrast_txt_file),
+         "'"));
 }
 
 ## Optional GROUPCHECK which exits here to allow reviewing the sample grouping
@@ -527,7 +576,7 @@ iMatrix <- assays(fc_se[,iSamples])[["counts"]];
 
 ## Perform normalization
 if ("median" %in% NORM) {
-   fc_se <- se_normalize(fc_se,
+   fc_se <- jamses::se_normalize(fc_se,
       assay_names="counts",
       method=c("jammanorm"),
       param=list(
@@ -538,7 +587,7 @@ if ("median" %in% NORM) {
    );
    normname <- "jammanorm_counts";
 } else if ("mediangroup" %in% NORM) {
-   fc_se <- se_normalize(fc_se,
+   fc_se <- jamses::se_normalize(fc_se,
       assay_names="counts",
       method=c("jammanorm"),
       param=list(
@@ -552,7 +601,7 @@ if ("median" %in% NORM) {
    normname <- "jammanorm_counts";
 } else if ("quantile" %in% NORM) {
    ## Evaluate quantile normalization
-   fc_se <- se_normalize(fc_se,
+   fc_se <- jamses::se_normalize(fc_se,
       assay_names="counts",
       method=c("quantile"));
    normname <- "quantile_counts";
@@ -579,12 +628,13 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
    fc_group <- nameVector(colData(fc_se[,iSamples])[[group_colname]],
       iSamples);
    fc_se_b <- tryCatch({
-      se_normalize(fc_se,
+      jamses::se_normalize(fc_se[,iSamples],
          assay_names=unique(c("counts", normname)),
          method=c("limma_batch_adjust"),
          params=list(
-            limma_batch_adjust=list(batch=fc_batch,
-               group=fc_group))
+            limma_batch_adjust=list(
+               batch=fc_batch[iSamples],
+               group=fc_group[iSamples]))
       );
    }, error=function(e){
       printDebug("Error during batch adjustment by se_normalize():");
@@ -853,13 +903,16 @@ iCorM_hc <- tryCatch({
 });
 
 ## ComplexHeatmap
-hm_cor <- ComplexHeatmap::Heatmap(iCorM,
+hm_cor <- ComplexHeatmap::Heatmap(
+   iCorM[iSamplesUse, iSamplesUse, drop=FALSE],
+   name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
    cluster_rows=iCorM_hc,
    cluster_columns=iCorM_hc,
    heatmap_legend_param=list(
       color_bar="discrete",
+      at=seq(from=-1, to=1, by=0.25),
       border=TRUE),
    top_annotation=ComplexHeatmap::HeatmapAnnotation(
       border=TRUE,
@@ -874,35 +927,60 @@ hm_cor <- ComplexHeatmap::Heatmap(iCorM,
 ComplexHeatmap::draw(hm_cor,
    column_title=paste0("Counts (", normname, ")"))
 
-## Heatmap
-if (FALSE) {
-heatmap.3(
-   iCorM,
-   hclCutoff=60,
-   ColSideColors=data.frame(
-      Group=color_sub1[iSamplesUse],
-      Run=run_colors1[iSamplesUse]),
-   ColSideColorsNote=data.frame(
-      Group=iGroup[iSamplesUse],
-      Run=Run[iSamplesUse]),
-   cexColSideColorsNote=c(0.5, 1.5),
-   RowSideColors=color_sub1[iSamplesUse],
-   Rowv=iCorM_hc,
-   Colv=iCorM_hc,
-   margins=c(20,20),
-   colLensFactor=5,
-   add.expr=box(),
-   plotAltRowDendro=FALSE,
-   main=c("quantile-normalized data"),
-   subMain=paste0("centered by ", iControl)
-)
-}
 ```
 
 
-#### Quantile-normalized data, batch-adjusted, centered by Group control
+#### Normalized data, batch-adjusted, global-centered
 
 ```{r, cor_hm_b, fig.height=12, fig.width=12, dependson=c("batch_adjust_run", "sample_outliers")}
+## Center iMatrixQB
+## center all samples, but only relative to control samples in iSamplesUse
+iMatrixQBctrGlobal <- centerGeneData(iMatrixQB[,iSamples,drop=FALSE],
+   mean=TRUE);
+
+## Correlation matrix
+iCorMBglobal <- cor(use="pairwise.complete.obs",
+   iMatrixQBctrGlobal[,iSamplesUse,drop=FALSE])
+
+## hcluster
+iCorMBglobal_hc <- tryCatch({
+   amap::hcluster(iCorMBglobal);
+}, error=function(e){
+   printDebug("Error during hcluster(iCorM):");
+   print(e);
+   FALSE;
+});
+
+## ComplexHeatmap
+hm_corbg <- ComplexHeatmap::Heatmap(
+   iCorMBglobal[iSamplesUse, iSamplesUse, drop=FALSE],
+   name="correlation",
+   border=TRUE,
+   col=colorjam::col_div_xf(1, lens=5),
+   cluster_rows=iCorMBglobal_hc,
+   cluster_columns=iCorMBglobal_hc,
+   heatmap_legend_param=list(
+      color_bar="discrete",
+      at=seq(from=-1, to=1, by=0.25),
+      border=TRUE),
+   top_annotation=ComplexHeatmap::HeatmapAnnotation(
+      border=TRUE,
+      annotation_legend_param=list(
+         border=TRUE),
+      df=data.frame(
+         Run=Run[iSamplesUse],
+         Group=iGroup[iSamplesUse]),
+      col=list(Group=group_colors,
+         Run=run_colors))
+)
+ComplexHeatmap::draw(hm_corbg,
+   column_title=paste0("Counts (", bnormname, ")"))
+
+```
+
+#### Normalized data, batch-adjusted, centered by Group control
+
+```{r, cor_hm_bg, fig.height=12, fig.width=12, dependson=c("batch_adjust_run", "sample_outliers")}
 ## Center iMatrixQB
 ## center all samples, but only relative to control samples in iSamplesUse
 iMatrixQBctr <- centerGeneData(iMatrixQB[,iSamples,drop=FALSE],
@@ -923,13 +1001,16 @@ iCorMB_hc <- tryCatch({
 });
 
 ## ComplexHeatmap
-hm_corb <- ComplexHeatmap::Heatmap(iCorMB,
+hm_corb <- ComplexHeatmap::Heatmap(
+   iCorMB[iSamplesUse, iSamplesUse, drop=FALSE],
+   name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
    cluster_rows=iCorMB_hc,
    cluster_columns=iCorMB_hc,
    heatmap_legend_param=list(
       color_bar="discrete",
+      at=seq(from=-1, to=1, by=0.25),
       border=TRUE),
    top_annotation=ComplexHeatmap::HeatmapAnnotation(
       border=TRUE,
@@ -944,31 +1025,177 @@ hm_corb <- ComplexHeatmap::Heatmap(iCorMB,
 ComplexHeatmap::draw(hm_corb,
    column_title=paste0("Counts (", bnormname, ")"))
 
-## Heatmap
-if (FALSE) {
-heatmap.3(
-   iCorMB,
-   hclCutoff=60,
-   ColSideColors=data.frame(
-      Group=color_sub1[iSamplesUse],
-      Run=run_colors1[iSamples]),
-   ColSideColorsNote=data.frame(
-      Group=iGroup[iSamplesUse],
-      Run=Run[iSamplesUse]),
-   cexColSideColorsNote=c(0.5, 1.5),
-   RowSideColors=color_sub1[iSamplesUse],
-   Rowv=iCorMB_hc,
-   Colv=iCorMB_hc,
-   margins=c(20,20),
-   colLensFactor=5,
-   add.expr=box(),
-   plotAltRowDendro=FALSE,
-   main=c("quantile-normalized data", "batch-adjusted by 'Run'"),
-   subMain=paste0("centered by ", iControl)
-)
-}
 ```
 
+### Plot Peak Width by Peak Signal
+
+This section is intended to help evaluate peak width, and peak slice width
+when using `mergeSplitCountBed`.
+
+#### Raw data
+
+```{r, peak_width_signal_raw, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+total_n <- length(iSamples) + length(blank_pos);
+ma_nrow <- ceiling(total_n / ma_ncol);
+par(mfrow=c(ma_nrow, ma_ncol));
+par(mar=c(5, 4, 4, 2) + 0.1);
+panel_num <- 0;
+for (iCol in iSamples) {
+   panel_num <- panel_num + 1;
+   if (panel_num %in% blank_pos) {
+      next;
+   }
+   iRows <- rownames(iMatrix);
+   ix <- noiseFloor(iMatrixQ[, iCol],
+      minimum=1,
+      newValue=NA);
+   iy <- log2(1 + rowData(fc_se[iRows, ])$Length);
+   plotSmoothScatter(
+      x=ix,
+      y=iy,
+      xlab="log2(1 + x) raw counts",
+      ylab="Peak width",
+      main=iCol,
+      yaxt="n");
+   minorLogTicksAxis(2,
+      logBase=2,
+      offset=1,
+      displayBase=10);
+   abline(v=MGM,
+      lty="dotted",
+      col="#333333");
+   jamba::drawLabels(preset="bottomleft",
+      txt=Run[iCol],
+      boxColor=run_colors1[iCol],
+      boxBorderColor=jamba::makeColorDarker(run_colors1[iCol]),
+      labelCol=jamba::setTextContrastColor(run_colors1[iCol]),
+      labelCex=1.3,
+      drawBox=TRUE);
+   total_points <- sum(!is.na(ix) & !is.na(iy));
+   total_points_mgm <- sum(!is.na(ix) & !is.na(iy) & ix >= MGM);
+   jamba::drawLabels(preset="bottomright",
+      txt=paste0(
+         formatInt(total_points),
+         " pts\n",
+         formatInt(total_points_mgm),
+         " pts MGM", MGM),
+      boxColor="#FFFFFF77",
+      boxBorderColor="#99999977",
+      labelCol="black",
+      labelCex=1,
+      drawBox=TRUE);
+}
+par(mfrow=c(1, 1));
+```
+
+#### Normalized data
+
+
+```{r, peak_width_signal_norm, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+total_n <- length(iSamples) + length(blank_pos);
+ma_nrow <- ceiling(total_n / ma_ncol);
+par(mfrow=c(ma_nrow, ma_ncol));
+par(mar=c(5, 4, 3, 1) + 0.1);
+panel_num <- 0;
+for (iCol in iSamples) {
+   panel_num <- panel_num + 1;
+   if (panel_num %in% blank_pos) {
+      next;
+   }
+   iRows <- rownames(iMatrix);
+   ix <- noiseFloor(iMatrixQB[, iCol],
+         minimum=1,
+         newValue=NA);
+   iy <- log2(1 + rowData(fc_se[iRows, ])$Length);
+   plotSmoothScatter(
+      x=ix,
+      y=iy,
+      xlab="log2(1 + x) raw counts",
+      ylab="Peak width",
+      main=iCol,
+      yaxt="n");
+   minorLogTicksAxis(2,
+      logBase=2,
+      offset=1,
+      displayBase=10);
+   abline(v=MGM,
+      lty="dotted",
+      col="#333333");
+   jamba::drawLabels(preset="bottomleft",
+      txt=Run[iCol],
+      boxColor=run_colors1[iCol],
+      boxBorderColor=jamba::makeColorDarker(run_colors1[iCol]),
+      labelCol=jamba::setTextContrastColor(run_colors1[iCol]),
+      labelCex=1.3,
+      drawBox=TRUE);
+   total_points <- sum(!is.na(ix) & !is.na(iy));
+   total_points_mgm <- sum(!is.na(ix) & !is.na(iy) & ix >= MGM);
+   jamba::drawLabels(preset="bottomright",
+      txt=paste0(
+         formatInt(total_points),
+         " pts\n",
+         formatInt(total_points_mgm),
+         " pts MGM", MGM),
+      boxColor="#FFFFFF77",
+      boxBorderColor="#99999977",
+      labelCol="black",
+      labelCex=1,
+      drawBox=TRUE);
+}
+par(mfrow=c(1, 1));
+```
+
+
+**Normal scale y-axis peak width:**
+
+```{r, peak_width_signal_norm2, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+total_n <- length(iSamples) + length(blank_pos);
+ma_nrow <- ceiling(total_n / ma_ncol);
+par(mfrow=c(ma_nrow, ma_ncol));
+par(mar=c(5, 4, 3, 1) + 0.1);
+panel_num <- 0;
+for (iCol in iSamples) {
+   panel_num <- panel_num + 1;
+   if (panel_num %in% blank_pos) {
+      next;
+   }
+   iRows <- rownames(iMatrix);
+   ix <- noiseFloor(iMatrixQB[, iCol],
+         minimum=1,
+         newValue=NA);
+   iy <- rowData(fc_se[iRows, ])$Length;
+   plotSmoothScatter(
+      x=ix,
+      y=iy,
+      xlab="log2(1 + x) raw counts",
+      ylab="Peak width",
+      main=iCol);
+   abline(v=MGM,
+      lty="dotted",
+      col="#333333");
+   jamba::drawLabels(preset="bottomleft",
+      txt=Run[iCol],
+      boxColor=run_colors1[iCol],
+      boxBorderColor=jamba::makeColorDarker(run_colors1[iCol]),
+      labelCol=jamba::setTextContrastColor(run_colors1[iCol]),
+      labelCex=1.3,
+      drawBox=TRUE);
+   total_points <- sum(!is.na(ix) & !is.na(iy));
+   total_points_mgm <- sum(!is.na(ix) & !is.na(iy) & ix >= MGM);
+   jamba::drawLabels(preset="bottomright",
+      txt=paste0(
+         formatInt(total_points),
+         " pts\n",
+         formatInt(total_points_mgm),
+         " pts MGM", MGM),
+      boxColor="#FFFFFF77",
+      boxBorderColor="#99999977",
+      labelCol="black",
+      labelCex=1,
+      drawBox=TRUE);
+}
+par(mfrow=c(1, 1));
+```
 
 ### Statistical Comparisons
 
@@ -1005,17 +1232,29 @@ if (any(ctGroup > 1)) {
 
 ```{r, stats_design, dependson=c("batch_adjust_run", "sample_outliers", "check_reps")}
 ###############################################
-## Statistical comparisons
-conDesB <- splicejam::groups2contrasts(
-   as.data.frame(colData(fc_se_b[,iSamplesUse])[,group_colname,drop=FALSE]),
-   returnDesign=TRUE);
-iContrasts <- conDesB$iContrasts;
-iDesign <- conDesB$iDesign;
+# Statistical comparisons
+condesB <- jamses::groups_to_sedesign(
+   data.frame(check.names=FALSE,
+      colData(fc_se_b[,iSamplesUse])[, group_colname, drop=FALSE]),
+   max_depth=1);
+iDesign <- conDesB@design;
+iContrasts <- conDesB@contrasts;
 
 ## Custom contrastNames
 if (exists("contrastNames")) {
    iContrasts <- limma::makeContrasts(levels=iDesign,
       contrasts=contrastNames);
+   kable_coloring(
+      data.frame(contrasts=colnames(conDesB@contrasts)),
+      row.names=FALSE,
+      caption=paste0(
+         "Contrasts defined by contrastNames:"));
+} else {
+   kable_coloring(
+      data.frame(contrasts=colnames(conDesB@contrasts)),
+      row.names=FALSE,
+      caption=paste0(
+         "Contrasts defined:"));
 }
 
 ## Optionally remove denovo controls from contrasts if needed
@@ -1026,25 +1265,25 @@ if (denovo_controls) {
    }
 }
 
-color_sub_im <- c(`-1`="#2222AA", `0`="white", `1`="#BB5555");
+color_sub_im <- c(`-1`="#2656CC",
+   `0`="#DDDDDD",
+   `1`="#CC2626");
 
 kable_coloring(
+   data.frame(check.names=FALSE,
+      iDesign),
    colorSub=color_sub_im,
-   as.data.frame(iDesign),
-   row.names=TRUE,
-   caption="The sample design matrix: 'iDesign'"
-   ) %>%
-   kable_styling(bootstrap_options=c("striped","bordered")) %>%
-   row_spec(0, background="#DDDDDD");
+   caption="Group design matrix") %>%
+   kableExtra::column_spec(column=2:(ncol(iDesign) + 1),
+      border_left="1px solid #DDDDDD")
 
 kable_coloring(
+   data.frame(check.names=FALSE,
+      iContrasts),
    colorSub=color_sub_im,
-   as.data.frame(iContrasts),
-   row.names=TRUE,
-   caption="The group contrast matrix: 'iContrasts'"
-   ) %>%
-   kable_styling(bootstrap_options=c("striped","bordered")) %>%
-   row_spec(0, background="#DDDDDD");
+   caption="Statistical contrast matrix") %>%
+   kableExtra::column_spec(column=2:(ncol(iContrasts) + 1),
+      border_left="1px solid #DDDDDD")
 ```
 
 #### Limma stats
@@ -1069,21 +1308,23 @@ if (all(colSums(iDesign) == 1)) {
 }
 
 ## Stats using all batches
-mgm_cutoff <- 4;
 mgm_cutoff <- MGM;
+fold_cutoff <- 1.5;
+adjp_cutoff <- 0.05;
 AtacStats <- tryCatch({
-   se_contrast_stats(se=fc_se_b[,iSamplesUse],
+   jamses::se_contrast_stats(
+      se=fc_se_b[, iSamplesUse],
+      handle_na="none",
       assay_names=assay_names,
-      use_voom=use_voom,
-      icontrasts=iContrasts,
-      idesign=iDesign[iSamplesUse,,drop=FALSE],
+      p_cutoff=NULL,
+      adjp_cutoff=adjp_cutoff,
+      fold_cutoff=fold_cutoff,
       mgm_cutoff=mgm_cutoff,
+      use_voom=use_voom,
       igenes=iPeaks,
       isamples=iSamplesUse,
-      fold_cutoff=1.5,
-      p_cutoff=NULL,
-      adjp_cutoff=0.05,
-      #collapse_by_gene=FALSE,
+      idesign=iDesign[iSamplesUse, , drop=FALSE],
+      icontrasts=iContrasts,
       verbose=FALSE);
 }, error=function(e){
    jamba::printDebug("Error during se_contrast_stats():");
@@ -1091,8 +1332,8 @@ AtacStats <- tryCatch({
    NULL;
 });
 if (length(AtacStats) > 0) {
-   printDebug("Stats hits by contrast and hit criteria:");
-   print(aperm(AtacStats$hit_array, c(2, 1, 3)));
+   cat("Stats hits by contrast and hit criteria:\n");
+   print(aperm(AtacStats$hit_array, c(2, 3, 1)));
 }
 ```
 
@@ -1133,30 +1374,49 @@ if (length(AtacStats) > 0) {
       AtacStatsMgm4 <- NULL;
    } else {
       mgm_n <- length(mgm_values);
-      jamba::printDebug(sep="",
-         c("Filtered from: ",
-         format(mgm_n, big.mark=","),
-         " total peaks to ",
-         format(length(iPeaksMgm4), big.mark=","),
-         " (", format(length(iPeaksMgm4)*100/mgm_n, digits=1),
-         "%) with log2(1+x) max group mean >= ",
-         MGM,
-         " in signal ",
-         head(names(AtacStats$stats_df), 1)));
+      # jamba::printDebug(sep="",
+      #    c("Filtered from: ",
+      #    format(mgm_n, big.mark=","),
+      #    " total peaks to ",
+      #    format(length(iPeaksMgm4), big.mark=","),
+      #    " (", format(length(iPeaksMgm4)*100/mgm_n, digits=1),
+      #    "%) with log2(1+x) max group mean >= ",
+      #    MGM,
+      #    " in signal ",
+      #    head(names(AtacStats$stats_df), 1)));
+      filtered_df <- data.frame(check.names=FALSE,
+         `Total peaks:`=format(mgm_n, big.mark=","),
+         `Filtered to:`=format(length(iPeaksMgm4), big.mark=","),
+         `Filtered pct:`=paste0(
+            format(length(iPeaksMgm4)*100/mgm_n, digits=1), "%"));
+      kable_coloring(
+         filtered_df,
+         row.names=FALSE,
+         caption=paste0(
+            "log2( 1 + x ) of max group mean >= ",
+            head(MGM, 1),
+            " in signal ",
+            head(names(AtacStats$stats_df), 1))) %>%
+      kableExtra::column_spec(column=2:(ncol(filtered_df)),
+         border_left="1px solid #DDDDDD")
       
       ## Stats using all batches
+      fold_cutoff <- c(1.5, 1.5);
+      adjp_cutoff <- c(1, 0.05);
+      p_cutoff <- c(0.05, 0.05);
       AtacStatsMgm4 <- tryCatch({
-         se_contrast_stats(se=fc_se_b[iPeaksMgm4,iSamplesUse],
+         se_contrast_stats(se=fc_se_b[iPeaksMgm4, iSamplesUse],
+            handle_na="none",
             assay_names=assay_names,
-            use_voom=TRUE,
-            icontrasts=iContrasts,
-            idesign=iDesign[iSamplesUse,,drop=FALSE],
+            p_cutoff=p_cutoff,
+            adjp_cutoff=adjp_cutoff,
+            fold_cutoff=fold_cutoff,
             mgm_cutoff=c(MGM),
+            use_voom=TRUE,
             igenes=iPeaksMgm4,
-            fold_cutoff=c(1.5, 1.5),
-            p_cutoff=c(0.05,0.05),
-            adjp_cutoff=c(1,0.05),
             isamples=iSamplesUse,
+            idesign=iDesign[iSamplesUse, , drop=FALSE],
+            icontrasts=iContrasts,
             verbose=FALSE);
       }, error=function(e){
          jamba::printDebug("Error during allNormStatsTests():");
@@ -1165,10 +1425,10 @@ if (length(AtacStats) > 0) {
       });
    }
    if (length(AtacStatsMgm4) > 0) {
-      printDebug("Stats hits by contrast and hit criteria ",
-         c("(", "MGM ", ">= ", MGM, ")"), ":",
-         sep="");
-      print(aperm(AtacStatsMgm4$hit_array, c(2, 1, 3)));
+      cat(paste0(
+         "Stats hits by contrast and hit criteria ",
+         "(MGM >= ", MGM, "):\n"));
+      print(aperm(AtacStatsMgm4$hit_array, c(2, 3, 1)));
    }
 }
 ```
@@ -1180,7 +1440,7 @@ if (length(AtacStats) > 0) {
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
          iDF <- AtacStats$stats_dfs[[iSig]][[iCon]];
-         par("mar"=c(7,7,4,3));
+         par("mar"=c(7, 7, 4, 3));
          vp1p <- volcano_plot(iDF,
             sig_cutoff=0.05,
             fold_cutoff=1.5,
@@ -1195,7 +1455,7 @@ if (length(AtacStats) > 0) {
             main=iCon,
             submain="All peaks",
             sig_colname="adj.P.Val");
-         par("mar"=c(5,4,4,2)+0.1);
+         par("mar"=c(5, 4, 4, 2) + 0.1);
       }
    }
 }
@@ -1261,7 +1521,7 @@ if (length(AtacStatsMgm4) > 0) {
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       for (iCon in dimnames(AtacStatsMgm4$hit_array)[[2]]) {
          iDF <- AtacStatsMgm4$stats_dfs[[iSig]][[iCon]];
-         par("mar"=c(7,7,4,3))
+         par("mar"=c(7, 7, 4, 3))
          tryCatch({
             vp2p <- volcano_plot(iDF,
                sig_cutoff=0.05,
@@ -1283,7 +1543,7 @@ if (length(AtacStatsMgm4) > 0) {
             jamba::printDebug("iCon:", iCon);
             print(e);
          });
-         par("mar"=c(5,4,4,2)+0.1);
+         par("mar"=c(5, 4, 4, 2) + 0.1);
       }
    }
 }
@@ -1292,13 +1552,8 @@ if (length(AtacStatsMgm4) > 0) {
 
 #### Venn diagrams (all peaks)
 
-**`r if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams are skipped.")}`**
+`r if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {("Venn diagrams are created for all pairs of results, and indicate the direction of shared hits.")} else {("Venn diagrams are skipped.")}`
 
-Venn diagrams are created for all pairs of results, and represent
-directionality of the shared hits.
-
-Note that Venn diagrams are not produced when there is only one
-comparison.
 
 ```{r, venn_pairs, fig.height=10, fig.width=10, dependson=c("run_limma")}
 if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
@@ -1306,12 +1561,13 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
       apply(combn(dimnames(AtacStats$hit_array)[[2]], 2), 2, list));
    contrast_colors <- group2colors(dimnames(AtacStats$hit_array)[[2]]);
    
-   par("mar"=c(5,4,4,2));
+   par("mar"=c(5, 4, 4, 2) + 0.1);
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStats$hit_array)[[1]]) {
          for (iCon in pair_l) {
             tryCatch({
                venndir::venndir(AtacStats$hit_array[iHit, iCon, iSig],
+                  overlap_type="each",
                   set_colors=contrast_colors[iCon],
                   main=paste0("signal:", iSig,
                      "\nthreshold:", iHit));
@@ -1321,12 +1577,6 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
                   ", iHit:", iHit,
                   ", iCon:", iCon);
             });
-            if (FALSE) {
-               statsHitsAvenn(AtacStats$hit_array,
-                  iCon=iCon,
-                  iHit=iHit,
-                  iSig=iSig);
-            }
          }
       }
    }
@@ -1335,7 +1585,7 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
 
 #### Venn diagrams (subset peaks)
 
-**`r if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped.")}`**
+`r if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped.")}`
 
 ```{r, venn_pairs_mgm4, fig.height=10, fig.width=10, dependson=c("run_limma_mgm4")}
 if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) > 1) {
@@ -1343,12 +1593,13 @@ if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) 
       apply(combn(dimnames(AtacStatsMgm4$hit_array)[[2]], 2), 2, list));
    contrast_colors <- group2colors(dimnames(AtacStatsMgm4$hit_array)[[2]]);
    
-   par("mar"=c(5,4,4,2));
+   par("mar"=c(5, 4, 4, 2) + 0.1);
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       for (iHit in dimnames(AtacStatsMgm4$hit_array)[[1]]) {
          for (iCon in pair_l_mgm4) {
             tryCatch({
                venndir::venndir(AtacStatsMgm4$hit_array[iHit, iCon, iSig],
+                  overlap_type="each",
                   set_colors=contrast_colors[iCon],
                   main=paste0("signal:", iSig,
                      "\nthreshold:", iHit));
@@ -1358,12 +1609,6 @@ if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) 
                   ", iHit:", iHit,
                   ", iCon:", iCon);
             });
-            if (FALSE) {
-               statsHitsAvenn(AtacStatsMgm4$hit_array,
-                  iCon=iCon,
-                  iHit=iHit,
-                  iSig=iSig);
-            }
          }
       }
    }
@@ -1378,8 +1623,10 @@ with only one of the following categories, assigned in order.
 Therefore a peak that overlaps a promoter and an exon is only
 annotated "promoter".
 
-* **promoters**: 2,000 upstream and 200 downstream the TSS for each transcript
-* **TTS**: the last stranded nucleotide position in each transcript
+* **promoters**: `r upstream_promoter` upstream, and `r downstream_promoter`
+downstream each transcript TSS
+* **TTS**: `r upstream_tts` upstream, and `r downstream_tts` downstream
+the last stranded nucleotide position in each transcript.
 * **exon**: each stranded exon per transcript
 * **intron**: non-exonic region within a stranded transcript region
 * **intergenic**: all other regions.
@@ -1390,14 +1637,14 @@ annotated "promoter".
 The GTF file is used to derive a filename to store genome regions
 derived from the gene-transcript-exon features.
 
-The GTF file:
+The GTF input file:
 
 `r jamba::printDebug(unlist(strsplit(GTF, "/")), collapse="/", sep="")`
-**`r GTF`**
+
 
 is renamed to have file extension:
 
-      `.genome_regions.RData`
+> `.genome_regions.RData`
 
 If the RData file does not exist, genome regions are defined, then
 saved into that RData file.
