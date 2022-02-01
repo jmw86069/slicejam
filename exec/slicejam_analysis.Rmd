@@ -1334,7 +1334,7 @@ AtacStats <- tryCatch({
 });
 if (length(AtacStats) > 0) {
    cat("Stats hits by contrast and hit criteria:\n");
-   print(aperm(AtacStats$hit_array, c(2, 3, 1)));
+   print(aperm(AtacStats$hit_array, c(2, 1, 3)));
 }
 ```
 
@@ -1363,13 +1363,21 @@ The max group mean threshold: **`r MGM`**
 if (length(AtacStats) > 0) {
    
    ## TODO: change to use the full stat df
-   mgm_colnames <- jamba::vigrep("^mgm[_ ]|[_ ]mean$",
+   mgm_colnames <- jamba::vigrep("^mgm[_ .]|[_ .]mean$",
       colnames(AtacStats$stats_df[[1]]));
-   mgm_m <- as.matrix(AtacStats$stats_df[[1]][,mgm_colnames,drop=FALSE]);
-   mgm_values <- jamba::nameVector(rowMaxs(mgm_m),
-      rownames(mgm_m));
-   rm(mgm_m);
-   iPeaksMgm4 <- names(mgm_values)[mgm_values >= head(MGM, 1)];
+   if (length(mgm_colnames) > 0) {
+      mgm_m <- as.matrix(AtacStats$stats_df[[1]][,mgm_colnames,drop=FALSE]);
+      if (length(rownames(mgm_m)) == 0) {
+         rownames(mgm_m) <- AtacStats$stats_df[[1]][,1];
+      }
+      mgm_values <- rowMaxs(mgm_m);
+      names(mgm_values) <- rownames(mgm_m);
+      rm(mgm_m);
+      iPeaksMgm4 <- names(mgm_values)[mgm_values >= head(MGM, 1)];
+   } else {
+      iPeaksMgm4 <- iPeaks;
+      printDebug("Note that iPeaks are being re-used for some reason. Check upstream data.");
+   }
    
    if (length(AtacStats) == 0 || length(iPeaksMgm4) == 0) {
       AtacStatsMgm4 <- NULL;
@@ -1429,7 +1437,7 @@ if (length(AtacStats) > 0) {
       cat(paste0(
          "Stats hits by contrast and hit criteria ",
          "(MGM >= ", MGM, "):\n"));
-      print(aperm(AtacStatsMgm4$hit_array, c(2, 3, 1)));
+      print(aperm(AtacStatsMgm4$hit_array, c(2, 1, 3)));
    }
 }
 ```
@@ -1437,6 +1445,7 @@ if (length(AtacStats) > 0) {
 #### Volcano plots (all peaks)
 
 ```{r, volcano_plots, fig.height=12, fig.width=12, dependson=c("run_limma")}
+options("warn"=-1);
 if (length(AtacStats) > 0) {
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
       for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
@@ -1518,6 +1527,7 @@ after subsetting peaks for max group mean >=
 **`r MGM`**.
 
 ```{r, volcano_plots_mgm4, fig.height=12, fig.width=12, dependson=c("run_limma_mgm4")}
+options("warn"=-1);
 if (length(AtacStatsMgm4) > 0) {
    for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
       for (iCon in dimnames(AtacStatsMgm4$hit_array)[[2]]) {
@@ -2005,7 +2015,7 @@ peak_pie_by_region <- function
 ```
 
 
-```{r, peak_region_pies, fig.height=12, fig.width=12}
+```{r, peak_region_pies, fig.height=15, fig.width=15}
 if (length(AtacStats) > 0) {
    par("mfrow"=c(3, 2), "mar"=c(5, 7, 6, 10));
    colorSub_pie <- nameVector(
@@ -2040,7 +2050,7 @@ The pie charts below reflect the peaks after filtering
 for the max group mean threshold: **`r MGM`**
 
 
-```{r, peak_region_pies_mgm4, fig.height=12, fig.width=12}
+```{r, peak_region_pies_mgm4, fig.height=15, fig.width=15}
 if (length(AtacStatsMgm4) > 0) {
    par("mfrow"=c(3,3), "mar"=c(5,5,6,8));
    j_df_mgm4_s <- peak_pie_by_region(AtacStatsMgm4$hit_array,
@@ -2170,6 +2180,7 @@ if (length(AtacStats) > 0) {
    peak_hits <- unique(unlist(lapply(dimnames2, function(i){
       names(AtacStats$hit_array[head(dimnames1, 1), i, 1][[1]])
    })));
+   mgm_used <- tail(mgm_dimnames1, 1);
    peak_hits_q <- unique(unlist(lapply(dimnames2, function(i){
       names(AtacStats$hit_array[tail(dimnames1, 1), i, 1][[1]])
    })));
@@ -2181,9 +2192,17 @@ if (length(AtacStatsMgm4) > 0) {
    peak_hits_mgm4 <- unique(unlist(lapply(mgm_dimnames2, function(i){
       names(AtacStatsMgm4$hit_array[head(mgm_dimnames1, 1), i, 1][[1]])
    })));
+   mgm_used <- tail(mgm_dimnames1, 1);
    peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
       names(AtacStatsMgm4$hit_array[tail(mgm_dimnames1, 1), i, 1][[1]])
    })));
+   if (length(peak_hits_mgm4_q) == 0) {
+      mgm_used <- head(mgm_dimnames1, 1);
+      peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
+         names(AtacStatsMgm4$hit_array[mgm_used, i, 1][[1]])
+      })));
+   }
+
 
    if (denovo_controls) {
       iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
@@ -2220,6 +2239,7 @@ if (length(AtacStatsMgm4) > 0) {
       ComplexHeatmap::draw(hm_mgm4,
          column_title=paste0(
             "Centered counts\n(", bnormname, ")\n",
+            mgm_used, "\n",
             jamba::formatInt(nrow(iM)),
             " hits (MGM >= ", MGM, ")"))
 
@@ -2298,6 +2318,7 @@ if (length(AtacStatsMgm4) > 0) {
       ComplexHeatmap::draw(hm_mgm4_grp,
          column_title=paste0(
             "Group mean centered counts\n(", bnormname, ")\n",
+            mgm_used, "\n",
             jamba::formatInt(nrow(iM_grp)),
             " hits (MGM >= ", MGM, ")"))
 
