@@ -1234,7 +1234,7 @@ if (any(ctGroup > 1)) {
 ```{r, stats_design, dependson=c("batch_adjust_run", "sample_outliers", "check_reps")}
 ###############################################
 # Statistical comparisons
-condesB <- jamses::groups_to_sedesign(
+conDesB <- jamses::groups_to_sedesign(
    data.frame(check.names=FALSE,
       colData(fc_se_b[,iSamplesUse])[, group_colname, drop=FALSE]),
    max_depth=1);
