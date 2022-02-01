@@ -79,7 +79,8 @@ sliceargs <- slicejam::get_slicejam_args(verbose=TRUE,
    type="data.frame");
 if ("sliceargs_df" %in% names(attributes(sliceargs))) {
    sliceargs_df <- attr(sliceargs, "sliceargs_df");
-   kable_coloring(
+   suppressPackageStartupMessages(library(kableExtra));
+   jamba::kable_coloring(
       sliceargs_df,
       caption=paste0(
          "slicejam arguments:"));
