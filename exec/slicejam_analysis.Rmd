@@ -233,7 +233,7 @@ from featureCounts to populate rows, such as
 * Annotate peaks
 
     * Associate each peak with one or more overlapping feature_types
-    * Call one feature_type_winner per peak, based upon order: promoter, TTS, exon, intron, intergenic
+    * Call one feature_type_winner per peak, based upon order: promoter, TTS, exon, intron, extragenic
     * Create pie charts showing distribution of feature_type for differential
     peaks from the "all peaks" comparison
     * Create pie charts showing distribution of feature_type for differential
@@ -560,14 +560,12 @@ if (length(MGM) == 0) {
 kable_coloring(
    data.frame(check.names=FALSE,
       `max group mean threshold (MGM)`=MGM),
-   row.names=FALSE,
-   caption="max group mean threshold:");
+   row.names=FALSE);
 ```
 
 
 ### Apply Normalization
 
-The normalization method defined: **`r cat(NORM, "\n")`**.
 
 ```{r, apply_norm, dependson="import_fc"}
 kable_coloring(
@@ -908,13 +906,38 @@ iCorM <- cor(use="pairwise.complete.obs",
    iMatrixQctr[,iSamplesUse,drop=FALSE]);
 
 ## hcluster
-iCorM_hc <- tryCatch({
-   amap::hcluster(iCorM);
-}, error=function(e){
-   printDebug("Error during hcluster(iCorM):");
-   print(e);
-   FALSE;
-});
+# iCorM_hc <- tryCatch({
+#    amap::hcluster(iCorM);
+# }, error=function(e){
+#    printDebug("Error during hcluster(iCorM):");
+#    print(e);
+#    FALSE;
+# });
+
+## ComplexHeatmap
+hm_cor_u <- ComplexHeatmap::Heatmap(
+   iCorM[iSamplesUse, iSamplesUse, drop=FALSE],
+   name="correlation",
+   border=TRUE,
+   col=colorjam::col_div_xf(1, lens=5),
+   cluster_rows=FALSE,
+   cluster_columns=FALSE,
+   heatmap_legend_param=list(
+      color_bar="discrete",
+      at=seq(from=-1, to=1, by=0.25),
+      border=TRUE),
+   top_annotation=ComplexHeatmap::HeatmapAnnotation(
+      border=TRUE,
+      annotation_legend_param=list(
+         border=TRUE),
+      df=data.frame(
+         Run=Run[iSamplesUse],
+         Group=iGroup[iSamplesUse]),
+      col=list(Group=group_colors,
+         Run=run_colors))
+)
+ComplexHeatmap::draw(hm_cor_u,
+   column_title=paste0("Counts (", normname, ")"))
 
 ## ComplexHeatmap
 hm_cor <- ComplexHeatmap::Heatmap(
@@ -922,8 +945,10 @@ hm_cor <- ComplexHeatmap::Heatmap(
    name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
-   cluster_rows=iCorM_hc,
-   cluster_columns=iCorM_hc,
+   #cluster_rows=iCorM_hc,
+   #cluster_columns=iCorM_hc,
+   clustering_method_rows="ward.D",
+   clustering_method_columns="ward.D",
    heatmap_legend_param=list(
       color_bar="discrete",
       at=seq(from=-1, to=1, by=0.25),
@@ -939,7 +964,7 @@ hm_cor <- ComplexHeatmap::Heatmap(
          Run=run_colors))
 )
 ComplexHeatmap::draw(hm_cor,
-   column_title=paste0("Counts (", normname, ")"))
+   column_title=paste0("Counts (", normname, ")\nhierarchical clustered"))
 
 ```
 
@@ -957,13 +982,38 @@ iCorMBglobal <- cor(use="pairwise.complete.obs",
    iMatrixQBctrGlobal[,iSamplesUse,drop=FALSE])
 
 ## hcluster
-iCorMBglobal_hc <- tryCatch({
-   amap::hcluster(iCorMBglobal);
-}, error=function(e){
-   printDebug("Error during hcluster(iCorM):");
-   print(e);
-   FALSE;
-});
+# iCorMBglobal_hc <- tryCatch({
+#    amap::hcluster(iCorMBglobal);
+# }, error=function(e){
+#    printDebug("Error during hcluster(iCorM):");
+#    print(e);
+#    FALSE;
+# });
+
+## ComplexHeatmap
+hm_corbg_u <- ComplexHeatmap::Heatmap(
+   iCorMBglobal[iSamplesUse, iSamplesUse, drop=FALSE],
+   name="correlation",
+   border=TRUE,
+   col=colorjam::col_div_xf(1, lens=5),
+   cluster_rows=FALSE,
+   cluster_columns=FALSE,
+   heatmap_legend_param=list(
+      color_bar="discrete",
+      at=seq(from=-1, to=1, by=0.25),
+      border=TRUE),
+   top_annotation=ComplexHeatmap::HeatmapAnnotation(
+      border=TRUE,
+      annotation_legend_param=list(
+         border=TRUE),
+      df=data.frame(
+         Run=Run[iSamplesUse],
+         Group=iGroup[iSamplesUse]),
+      col=list(Group=group_colors,
+         Run=run_colors))
+)
+ComplexHeatmap::draw(hm_corbg_u,
+   column_title=paste0("Counts (", bnormname, ")"))
 
 ## ComplexHeatmap
 hm_corbg <- ComplexHeatmap::Heatmap(
@@ -971,8 +1021,10 @@ hm_corbg <- ComplexHeatmap::Heatmap(
    name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
-   cluster_rows=iCorMBglobal_hc,
-   cluster_columns=iCorMBglobal_hc,
+   #cluster_rows=iCorMBglobal_hc,
+   #cluster_columns=iCorMBglobal_hc,
+   clustering_method_rows="ward.D",
+   clustering_method_columns="ward.D",
    heatmap_legend_param=list(
       color_bar="discrete",
       at=seq(from=-1, to=1, by=0.25),
@@ -988,7 +1040,7 @@ hm_corbg <- ComplexHeatmap::Heatmap(
          Run=run_colors))
 )
 ComplexHeatmap::draw(hm_corbg,
-   column_title=paste0("Counts (", bnormname, ")"))
+   column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
 
 ```
 
@@ -1006,13 +1058,38 @@ iCorMB <- cor(use="pairwise.complete.obs",
    iMatrixQBctr[,iSamplesUse,drop=FALSE])
 
 ## hcluster
-iCorMB_hc <- tryCatch({
-   amap::hcluster(iCorMB);
-}, error=function(e){
-   printDebug("Error during hcluster(iCorM):");
-   print(e);
-   FALSE;
-});
+# iCorMB_hc <- tryCatch({
+#    amap::hcluster(iCorMB);
+# }, error=function(e){
+#    printDebug("Error during hcluster(iCorM):");
+#    print(e);
+#    FALSE;
+# });
+
+## ComplexHeatmap
+hm_corb_u <- ComplexHeatmap::Heatmap(
+   iCorMB[iSamplesUse, iSamplesUse, drop=FALSE],
+   name="correlation",
+   border=TRUE,
+   col=colorjam::col_div_xf(1, lens=5),
+   cluster_rows=FALSE,
+   cluster_columns=FALSE,
+   heatmap_legend_param=list(
+      color_bar="discrete",
+      at=seq(from=-1, to=1, by=0.25),
+      border=TRUE),
+   top_annotation=ComplexHeatmap::HeatmapAnnotation(
+      border=TRUE,
+      annotation_legend_param=list(
+         border=TRUE),
+      df=data.frame(
+         Run=Run[iSamplesUse],
+         Group=iGroup[iSamplesUse]),
+      col=list(Group=group_colors,
+         Run=run_colors))
+)
+ComplexHeatmap::draw(hm_corb_u,
+   column_title=paste0("Counts (", bnormname, ")"))
 
 ## ComplexHeatmap
 hm_corb <- ComplexHeatmap::Heatmap(
@@ -1020,8 +1097,10 @@ hm_corb <- ComplexHeatmap::Heatmap(
    name="correlation",
    border=TRUE,
    col=colorjam::col_div_xf(1, lens=5),
-   cluster_rows=iCorMB_hc,
-   cluster_columns=iCorMB_hc,
+   #cluster_rows=iCorMB_hc,
+   #cluster_columns=iCorMB_hc,
+   clustering_method_rows="ward.D",
+   clustering_method_columns="ward.D",
    heatmap_legend_param=list(
       color_bar="discrete",
       at=seq(from=-1, to=1, by=0.25),
@@ -1037,7 +1116,7 @@ hm_corb <- ComplexHeatmap::Heatmap(
          Run=run_colors))
 )
 ComplexHeatmap::draw(hm_corb,
-   column_title=paste0("Counts (", bnormname, ")"))
+   column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
 
 ```
 
@@ -1676,7 +1755,7 @@ downstream each transcript TSS
 the last stranded nucleotide position in each transcript.
 * **exon**: each stranded exon per transcript
 * **intron**: non-exonic region within a stranded transcript region
-* **intergenic**: all other regions.
+* **extragenic**: all other regions.
 
 
 #### Define genome regions (or load previously defined genome regions)
@@ -1721,7 +1800,7 @@ genome_regions <- genomic_regions_from_gtf(gtf=GTF,
 ##    - TTS
 ##    - exon
 ##    - intron
-##    - anything else is "intergenic"
+##    - anything else is "extragenic"
 ## - third pass: assign gene of "winner"
 ## - fourth pass: distance to nearest gene body
 ##    - gene_name of nearest gene body
@@ -1763,7 +1842,7 @@ values(genome_regions_exp)[,"gene_feature_type"] <- pasteByRow(
       gene_id=values(genome_regions_exp[subjectHits(fco)])$gene_id,
       feature_type=factor(
          values(genome_regions_exp[subjectHits(fco)])$feature_type,
-         levels=provigrep(c("promoter", "tts", "exon", "intron", "intergenic", "."),
+         levels=provigrep(c("promoter", "tts", "exon", "intron", "extragenic", "."),
             unique(values(genome_regions_exp[subjectHits(fco)])$feature_type))),
       gene_feature_type=values(genome_regions_exp[subjectHits(fco)])$gene_feature_type);
    ## Iterate each column, combine multi-row features into one row
@@ -1787,7 +1866,7 @@ values(genome_regions_exp)[,"gene_feature_type"] <- pasteByRow(
       printDebug(i);
       imatch <- match(names(grd_vals[[i]]), values(fc_gr)$Gene);
       if ("feature_type" == i) {
-         values(fc_gr)[,i] <- unname(c("intergenic", grd_vals[[i]][1])[1]);
+         values(fc_gr)[,i] <- unname(c("extragenic", grd_vals[[i]][1])[1]);
       } else {
          values(fc_gr)[,i] <- unname(c(NA, grd_vals[[i]][1])[1]);
       }
@@ -1849,7 +1928,7 @@ is_duplicate <- function(x) {
       imatch <- match(names(grdt0_bestvalue),
          values(fc_gr)$Gene);
       if ("feature_type" %in% i) {
-         values(fc_gr)[,inewcolname] <- "intergenic";
+         values(fc_gr)[,inewcolname] <- "extragenic";
       } else {
          values(fc_gr)[,inewcolname] <- c(NA, "")[1];
       }
@@ -1906,7 +1985,7 @@ names(feature_type_winner) <- values(fc_gr)$Gene;
 
 ```{r, peak_featuretype_im}
 ## For fun make an logical matrix of feature_type
-ftcols <- c("Promoter", "TTS", "exon", "intron", "intergenic")
+ftcols <- c("Promoter", "TTS", "exon", "intron", "extragenic")
 fc_typem <- as.data.frame(lapply(nameVector(ftcols), function(i){
    j <- grepl(i, values(fc_gr)$feature_type);
    names(j) <- values(fc_gr)$Gene;
@@ -1932,7 +2011,7 @@ kable_coloring(as.data.frame(m1_counts),
 A pie chart is created for each statistical comparison, showing
 the number of peaks overlapping each genome region. A peak
 is only assigned one genome region, with preference in order:
-promoter, TTS, exon, intron, intergenic.
+promoter, TTS, exon, intron, extragenic.
 
 For comparison, the pie chart using all peaks is also shown.
 
@@ -2208,7 +2287,7 @@ if (length(AtacStatsMgm4) > 0) {
 
 ### Heatmap of peak hits
 
-```{r, heatmap_hits, fig.height=14, fig.width=3 + sqrt(length(iSamplesUse))}
+```{r, heatmap_hits, fig.height=14, fig.width=5 + sqrt(length(iSamplesUse))}
 peak_hits_q <- NULL;
 peak_hits_mgm4_q <- NULL;
 if (length(AtacStats) > 0) {
@@ -2263,6 +2342,26 @@ if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
    }
    iM <- iMatrixQBctr[peak_hits_hm, iSamplesUse, drop=FALSE];
    
+   ## optional row_split
+   row_split_hm <- 4;
+   left_annotation_hm <- NULL;
+   if (length(peak_hits_hm) > 10) {
+      feature_type_colors <- colorjam::group2colors(unique(as.character(values(fc_gr)$feature_type_winner)));
+      peak_hits_hm_ft <- nameVector(
+         values(fc_gr[peak_hits_hm])$feature_type_winner,
+         peak_hits_hm);
+      row_split_hm <- peak_hits_hm_ft;
+      left_annotation_hm <- ComplexHeatmap::rowAnnotation(
+         border=TRUE,
+         annotation_legend_param=list(
+            border=TRUE
+         ),
+         df=data.frame(check.names=FALSE,
+            feature_type=values(fc_gr[peak_hits_hm])$feature_type_winner),
+         col=list(feature_type=feature_type_colors)
+      );
+   }
+   
    ## ComplexHeatmap
    iMq99 <- ceiling(quantile(abs(iM), c(0.99), na.rm=TRUE));
    iMq99 <- 4;
@@ -2275,6 +2374,9 @@ if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
       cluster_column_slices=FALSE,
       clustering_method_rows="ward.D",
       clustering_method_columns="ward.D",
+      row_split=row_split_hm,
+      row_title_rot=0,
+      left_annotation=left_annotation_hm,
       col=colorjam::col_div_xf(iMq99,
          lens=5),
       heatmap_legend_param=list(
@@ -2309,7 +2411,7 @@ if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
 ### Heatmap of peak hits using group means
 
 
-```{r, heatmap_groupmeans, fig.height=14, fig.width=length(unique(iGroup[iSamplesUse])) * 1 + 2}
+```{r, heatmap_groupmeans, fig.height=14, fig.width=5 + length(unique(iGroup[iSamplesUse])) * 1}
 if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
    #if (length(AtacStatsMgm4) > 0) {
    if (denovo_controls) {
@@ -2329,6 +2431,9 @@ if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
       show_row_dend=nrow(iM_grp) < 2500,
       clustering_method_rows="ward.D",
       cluster_column_slices=FALSE,
+      row_split=row_split_hm,
+      row_title_rot=0,
+      left_annotation=left_annotation_hm,
       col=colorjam::col_div_xf(iMq99,
          lens=5),
       heatmap_legend_param=list(
