@@ -2180,7 +2180,7 @@ if (length(AtacStats) > 0) {
    peak_hits <- unique(unlist(lapply(dimnames2, function(i){
       names(AtacStats$hit_array[head(dimnames1, 1), i, 1][[1]])
    })));
-   mgm_used <- tail(mgm_dimnames1, 1);
+   mgm_used <- tail(dimnames1, 1);
    peak_hits_q <- unique(unlist(lapply(dimnames2, function(i){
       names(AtacStats$hit_array[tail(dimnames1, 1), i, 1][[1]])
    })));
