@@ -73,6 +73,24 @@ par("family"="Arial",
 
 #### SliceJam analysis parameters
 
+```{r, slicejam_minimum_version}
+# check version of slicejam
+min_slicejam_version <- "0.0.37.900";
+if (compareVersion(as.character(packageVersion("slicejam")), "0.0.37.900") < 0) {
+   jamba::kable_coloring(
+   data.frame(check.names=FALSE,
+      stringsAsFactors=FALSE,
+      `.libPaths()`=.libPaths()),
+   caption=paste0(
+      "R library paths in use."));
+
+   stop(paste0("Slicejam must be at least slicejam-", min_slicejam_version,
+      ", please verify .libPaths():\n",
+      jamba::cPaste(paste0("'", .libPaths(), "'"), sep="\n")));
+}
+```
+
+
 ```{r, slicejam_args, include=TRUE, cache=FALSE}
 sliceargs <- slicejam::get_slicejam_args(verbose=TRUE,
    name="analysis",
@@ -121,30 +139,10 @@ knit_root_dir <- sliceargs$knit_root_dir;
 
 #### R package initialization
 
-```{r, cbiorutils, cache=TRUE}
-# Load custom CBioRUtils that will be removed
-# once functions are ported into Jam packages
-suppressPackageStartupMessages(library(jamba));
-
-if (FALSE) {
-   if (!"cbioenv" %in% ls() && !"package:cbioenv" %in% search()) {
-      cbiopaths <- c(".",
-         file.path(dirname(Sys.getenv("HOME")),
-            "wardjm/Builds/NIEHS_IntegrativeBIx-svn/Bpipe/bpipeScripts"));
-      jamsession::refresh_functions(session="CBioRUtils",
-         fn_pattern=".R",
-         functions_path=cbiopaths,
-         pkg_name="cbioenv");
-   }
-}
-```
 
 ```{r, r_initialization, cache=FALSE}
-## Prepend a common R package install location to .libPaths()
-#.libPaths(
-#   file.path(dirname(Sys.getenv("HOME")),
-#      "wardjm/R/x86_64-pc-linux-gnu-library/3.5")
-#);
+suppressPackageStartupMessages(library(jamba));
+
 jamba::kable_coloring(
    data.frame(check.names=FALSE,
       stringsAsFactors=FALSE,
@@ -461,7 +459,7 @@ run_colors1 <- nameVector(run_colors[colData(fc_se[,iSamples])[[run_colname]]],
    iSamples);
 ```
 
-#### Define statistical contrasts
+#### Experiment Design and Contrasts
 
 ```{r, define_contrasts}
 sample_txt_file <- file.path(OUTDIR,
@@ -472,37 +470,66 @@ data.table::fwrite(
    sep="\t",
    col.names=TRUE);
 
+## define experimental design groups and contrasts
+conDesB <- jamses::groups_to_sedesign(
+   data.frame(check.names=FALSE,
+      colData(fc_se[, iSamples])[, group_colname, drop=FALSE]),
+   max_depth=1);
+iDesign <- conDesB@design;
+iContrasts <- conDesB@contrasts;
+
+contrastNames <- NULL;
+if (length(iContrasts) > 0) {
+   contrastNames <- colnames(iContrasts);
+}
 contrast_txt_file <- file.path(OUTDIR,
    "contrasts.txt");
 if (file.exists(contrast_txt_file)) {
    contrastNames <- gsub("^[ \t\r\n]+|[ \t\r\n]+$",
       "",
       readLines(contrast_txt_file));
-   jamba::printDebug("Loaded contrastNames from pre-existing file: '",
-      contrast_txt_file,
-      "'");
+   iContrasts <- tryCatch({limma::makeContrasts(
+         contrasts=contrastNames,
+         levels=iDesign);
+   }, error=function(e){
+      jamba::printDebug("Error during limma::makeContrasts() from contrasts file: ",
+         contrast_txt_file);
+      print(e);
+      NULL;
+   })
+   if (length(iContrasts) > 0) {
+      rownames(iContrasts) <- colnames(iDesign);
+      conDesB@contrasts <- iContrasts;
+      print(kable_coloring(
+         data.frame(Note=paste0("contrastNames were loaded from file: '",
+            contrast_txt_file,
+            "'")),
+         row.names=FALSE));
+   } else {
+      contrastNames <- NULL;
+      iContrasts <- NULL;
+   }
 } else {
-   contrastNames <- splicejam::groups2contrasts(
-      sample_df[,group_colname,drop=FALSE],
-      maxDepth=1)$contrastName;
    if (length(contrastNames) > 0) {
       writeLines(text=contrastNames,
          con=contrast_txt_file);
+      print(kable_coloring(
+         data.frame(Note=paste0("contrastNames were stored in file: '",
+            contrast_txt_file,
+            "'")),
+         row.names=FALSE));
    } else {
-      jamba::printDebug("Note there are no contrasts defined.",
-         fgText="red");
+      print(kable_coloring(
+         data.frame(Note=paste0("There are no contrasts defined."),
+         row.names=FALSE)));
    }
 }
+kable_coloring(
+   data.frame(contrastNames=contrastNames),
+   row.names=FALSE,
+   caption=paste0(
+      "Contrasts defined:"));
 
-## Print sample annotation table
-if (length(contrastNames) > 0) {
-   contrasts_df <- data.frame(Contrasts=contrastNames);
-   kable_coloring(contrasts_df,
-      caption=paste0(
-         "Contrasts stored in contrast_txt_file: '",
-         basename(contrast_txt_file),
-         "'"));
-}
 
 ## Optional GROUPCHECK which exits here to allow reviewing the sample grouping
 if (GROUPCHECK) {
@@ -511,16 +538,17 @@ if (GROUPCHECK) {
    #   gsub("[.]fc$|[.]fc[.]txt$",
    #      txt_ext,
    #      basename(fc_file)));
-   stop(paste0("Curated sample data for review: '",
+   printDebug("Curated sample data for review: '",
       sample_txt_file,
       "' and contrastNames file '",
       contrast_txt_file,
-      "'"));
+      "'");
+   knitr::knit_exit(fully=TRUE);
 }
 
 ```
 
-### Plot distribution of peak sizes
+#### Distribution of Peak Sizes
 
 If the featureCounts output included column name `"Length"`,
 the plots below will show the distribution of lengths.
@@ -540,7 +568,7 @@ if ("Length" %in% colnames(rowData(fc_se))) {
 }
 ```
 
-### Define Max Group Mean (MGM) Threshold
+#### Max Group Mean (MGM) Threshold
 
 The maxGroupMean threshold is defined by the environmental
 variable `MGM`, used to customize the threshold during the stats
@@ -616,7 +644,7 @@ iMatrixQ <- assays(fc_se[,iSamples])[[normname]];
 
 ```
 
-### Apply batch-adjustment by "Run", grouped by "Group"
+#### Batch Adjust by "Run", Grouped by "Group"
 
 This section performs batch adjustment when there are multiple
 distinct values in the `"Run"` column.
@@ -672,7 +700,7 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
 
 ```
 
-### Create MA-plots
+### MA-Plots
 
 #### Un-normalized data, global-centered
 
@@ -1120,7 +1148,7 @@ ComplexHeatmap::draw(hm_corb,
 
 ```
 
-### Plot Peak Width by Peak Signal
+### Peak Width by Peak Signal
 
 This section is intended to help evaluate peak width, and peak slice width
 when using `mergeSplitCountBed`.
@@ -1294,7 +1322,7 @@ par(mfrow=c(1, 1));
 
 ### Statistical Comparisons
 
-#### Confirm biological replicates
+#### Confirm Biological Replicates
 
 If there is only one replicate per sample group, then
 the collection of samples are used to estimate
@@ -1306,6 +1334,13 @@ measurements.
 
 
 ```{r, check_reps}
+## check for any available contrasts
+if (length(contrastNames) == 0) {
+   printDebug("There were no statistical contrasts defined, exiting now.");
+   knitr::knit_exit(fully=TRUE);
+}
+
+##
 ctGroup <- table(iGroup[iSamplesUse]);
 denovo_controls <<- FALSE;
 if (any(ctGroup > 1)) {
@@ -1319,6 +1354,26 @@ if (any(ctGroup > 1)) {
    colData(fc_se_ctrl)[,"Sample"] <- colnames(fc_se_ctrl);
    fc_se_b <- cbind(fc_se_ctrl, fc_se_b);
    iSamplesUse <- colnames(fc_se_b);
+   
+   ## update design and contrasts
+   conDesB <- jamses::groups_to_sedesign(
+      data.frame(check.names=FALSE,
+         colData(fc_se[, iSamplesUse])[, group_colname, drop=FALSE]),
+      max_depth=1);
+   iDesign <- conDesB@design;
+   if (length(contrastNames) > 0) {
+      iContrasts <- tryCatch({limma::makeContrasts(
+            contrasts=contrastNames,
+            levels=iDesign);
+      }, error=function(e){
+         jamba::printDebug("Error during limma::makeContrasts() from contrasts file: ",
+            contrast_txt_file);
+         print(e);
+         conDesB@contrasts;
+      })
+   } else {
+      iContrasts <- conDesB@contrasts;
+   }
 }
 kable_coloring(
    data.frame(Outcome=Outcome),
@@ -1326,33 +1381,31 @@ kable_coloring(
    caption="Samples were evaluated for presence of biological replicates.")
 ```
 
-#### Define Design and Contrast Matrices
+#### Design and Contrast Matrices
 
 ```{r, stats_design, dependson=c("batch_adjust_run", "sample_outliers", "check_reps")}
 ###############################################
 # Statistical comparisons
-conDesB <- jamses::groups_to_sedesign(
-   data.frame(check.names=FALSE,
-      colData(fc_se_b[,iSamplesUse])[, group_colname, drop=FALSE]),
-   max_depth=1);
-iDesign <- conDesB@design;
-iContrasts <- conDesB@contrasts;
 
-## Custom contrastNames
-if (exists("contrastNames")) {
-   iContrasts <- limma::makeContrasts(levels=iDesign,
-      contrasts=contrastNames);
-   kable_coloring(
-      data.frame(contrasts=colnames(conDesB@contrasts)),
-      row.names=FALSE,
-      caption=paste0(
-         "Contrasts defined by contrastNames:"));
+## subset by iSamplesUse
+conDesB <- jamses::validate_sedesign(conDesB,
+   min_reps=1,
+   samples=iSamplesUse,
+   verbose=FALSE);
+iDesign <- conDesB@design;
+if (length(contrastNames) > 0) {
+   iContrasts <- tryCatch({limma::makeContrasts(
+         contrasts=contrastNames,
+         levels=iDesign);
+   }, error=function(e){
+      jamba::printDebug("Error during limma::makeContrasts() from contrasts file: ",
+         contrast_txt_file);
+      print(e);
+      conDesB@contrasts;
+   });
+   conDesB@contrasts <- iContrasts;
 } else {
-   kable_coloring(
-      data.frame(contrasts=colnames(conDesB@contrasts)),
-      row.names=FALSE,
-      caption=paste0(
-         "Contrasts defined:"));
+   iContrasts <- conDesB@contrasts;
 }
 
 ## Optionally remove denovo controls from contrasts if needed
@@ -1360,13 +1413,14 @@ if (denovo_controls) {
    iRemove <- igrep("DenovoControl-|-DenovoControl", colnames(iContrasts));
    if (length(iRemove) > 0) {
       iContrasts <- iContrasts[, -iRemove, drop=FALSE];
+      conDesB@contrasts <- iContrasts;
    }
 }
 
+## Print design matrix
 color_sub_im <- c(`-1`="#2656CC",
    `0`="#DDDDDD",
    `1`="#CC2626");
-
 kable_coloring(
    data.frame(check.names=FALSE,
       iDesign),
@@ -1374,7 +1428,7 @@ kable_coloring(
    caption="Group design matrix") %>%
    kableExtra::column_spec(column=2:(ncol(iDesign) + 1),
       border_left="1px solid #DDDDDD")
-
+## Print contrast matrix
 kable_coloring(
    data.frame(check.names=FALSE,
       iContrasts),
@@ -1384,7 +1438,7 @@ kable_coloring(
       border_left="1px solid #DDDDDD")
 ```
 
-#### Limma stats
+#### Limma Stats for All Peaks
 
 Limma uses a "moderated t-test" for statistics, and the method
 below enables "limma-voom" which is intended for
@@ -1435,7 +1489,7 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### Limma stats with subset peaks by signal threshold
+#### Limma Stats for MGM Subset Peaks
 
 The method below is identical to that used above, except that
 peaks are filtered by minimum signal first, since we also apply
@@ -1539,7 +1593,10 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### Volcano plots (all peaks)
+### Volcano Plots
+
+#### Volcano for All Peaks
+
 
 ```{r, volcano_plots, fig.height=12, fig.width=12, dependson=c("run_limma")}
 options("warn"=-1);
@@ -1568,7 +1625,7 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### Distribution of MGM for putative hits
+#### MGM Distribution for Statistical Hits
 
 These plots represent the distribution of max group mean values (MGM)
 among those peaks which are considered statistical hits using
@@ -1635,7 +1692,7 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### Volcano plots (subset peaks)
+#### Volcano for MGM Subset Peaks
 
 Volcano plots below were created using the limma results
 after subsetting peaks for max group mean >= 
@@ -1676,7 +1733,9 @@ if (length(AtacStatsMgm4) > 0) {
 ```
 
 
-#### Venn diagrams (all peaks)
+### Venn diagrams
+
+#### Venn for All Peaks
 
 `r if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {("Venn diagrams are created for all pairs of results, and indicate the direction of shared hits.")} else {("Venn diagrams are skipped since there are not two or more comparisons.")}`
 
@@ -1709,7 +1768,7 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
 }
 ```
 
-#### Venn diagrams (subset peaks)
+#### Venn for MGM Subset Peaks
 
 `r if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped since there are not two or more comparisons.")}`
 
@@ -1742,7 +1801,7 @@ if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) 
 ```
 
 
-### Annotate peaks
+### Annotate Peaks
 
 The GTF file was used to define genomic regions. Each peak is annotated
 with only one of the following categories, assigned in order.
@@ -1758,22 +1817,19 @@ the last stranded nucleotide position in each transcript.
 * **extragenic**: all other regions.
 
 
-#### Define genome regions (or load previously defined genome regions)
+#### Define Genome Regions
 
-The GTF file is used to derive a filename to store genome regions
-derived from the gene-transcript-exon features.
+This section converts the given GTF file to a set of genome regions.
 
 The GTF input file:
 
 `r jamba::printDebug(unlist(strsplit(GTF, "/")), collapse="/", sep="")`
 
 
-is renamed to have file extension:
+A cached RData file is stored for future re-use, using this file extension:
 
 > `.genome_regions.RData`
 
-If the RData file does not exist, genome regions are defined, then
-saved into that RData file.
 
 ```{r, define_genome_regions}
 genome_regions <- genomic_regions_from_gtf(gtf=GTF,
@@ -1788,10 +1844,27 @@ genome_regions <- genomic_regions_from_gtf(gtf=GTF,
 ```
 
 
-#### Annotate peaks by genome region
+#### Annotate by Genome Region
 
+
+```{r, peak_genes_fn}
+## Annotate ATAC peaks
+fc_gr <- as(rowData(fc_se), "GRanges");
+values(fc_gr) <- renameColumn(values(fc_gr),
+   from="Geneid",
+   to="Gene");
+
+# Call function that wraps the logic together
+fc_gr <- annotate_gr_by_genome_region(
+   gr=fc_gr,
+   genome_regions=genome_regions,
+   mask_regions=opt$mask,
+   verbose=FALSE));
+
+```
 
 ```{r, peak_genes}
+if (FALSE) {
 ## Rules:
 ## - first pass: annotate anything that overlaps the peak
 ##    - gene_name, feature_type
@@ -1978,10 +2051,23 @@ for (i in c("nearest_gene_name", "nearest_gene_id", "nearest_gene_distance")) {
 
 feature_type_winner <- values(fc_gr)$feature_type_winner;
 names(feature_type_winner) <- values(fc_gr)$Gene;
-
+}
 ```
 
-#### Peak feature_type incidence matrix
+#### Incidence Matrix by feature_type
+
+The plot below shows the association of each peak with one or more
+`feature_type` values.
+
+Along the diagonal, it represents a count of overlaps for all
+peaks over each `feature_type` value.
+
+The cells off the diagonal indicate the number of peaks
+that overlap two `feature_type` values. For example, `"Promoter"`
+often also overlaps `"Exon"` particularly when the peak covers
+the TSS itself. Similarly, `"Exon"` often overlaps `"Intron"`
+partly because the average exon is only 100 bases wide, which
+is usually smaller than most peaks.
 
 ```{r, peak_featuretype_im}
 ## For fun make an logical matrix of feature_type
@@ -2006,7 +2092,9 @@ kable_coloring(as.data.frame(m1_counts),
 
 ```
 
-#### Pie chart of statistical hits by genome region
+### Pie Charts
+
+#### Statistical Hits by Genome Region
 
 A pie chart is created for each statistical comparison, showing
 the number of peaks overlapping each genome region. A peak
@@ -2016,121 +2104,10 @@ promoter, TTS, exon, intron, extragenic.
 For comparison, the pie chart using all peaks is also shown.
 
 
-```{r, pie_functions}
-feature_to_pie <- function
-(x,
- do_pie=TRUE,
- main=NULL,
- colorSub=NULL,
- ...)
-{
-   j <- table(rmNA(x));
-   if (length(j) == 0) {
-      return(NULL);
-   }
-   j_pct <- format(j / sum(j) * 100, digits=1, trim=TRUE);
-   j_df <- data.frame(
-      j,
-      pct=paste0(j_pct, "%")
-   );
-   main_v <- strsplit(main, "\n")[[1]];
-   if (length(main_v) == 4) {
-      names(main_v) <- c("Contrast", "Hit", "Signal", "PeakSet");
-   } else {
-      main_v <- c(Contrast=main, Hit="", Signal="", PeakSet="");
-   }
-   j_df[,names(main_v)] <- data.frame(as.list(main_v));
-   j_names <- names(j);
-   colorSub <- rmNA(colorSub[j_names]);
-   if (length(colorSub) == length(j_names)) {
-      colorSub <- nameVector(rainbowJam(length(j_names)),
-         j_names);
-   }
-   names(j) <- paste0(j_names,
-      " (",
-      format(trim=TRUE, big.mark=",", j),
-      "; ",
-      j_pct,
-      "%)");
-   main <- paste0(main,
-      "\n(",
-      sum(j),
-      " total)");
-   if (do_pie) {
-      pie(j,
-         col=rainbowJam(length(j)));
-      title(main=main,
-         ...);
-   }
-   return(j_df);
-}
-
-peak_pie_by_region <- function
-(hit_array,
- feature_type_winner=NULL,
- PeakSet="",
- iHit=NULL,
- iSig=NULL,
- iCon=NULL,
- iPeaks=NULL,
- do_pie=TRUE,
- main=NULL,
- colorSub=NULL,
- ...)
-{
-   ## Wrapper function for peak-to-region
-   if (length(iPeaks) > 0) {
-      k <- iPeaks;
-      if (length(main) == 0) {
-         main <- "All Peaks";
-      }
-      #printDebug("peak_pie_by_region(): ",
-      #   "main:", main);
-      j_df <- feature_to_pie(feature_type_winner[k],
-         main=main,
-         colorSub=colorSub,
-         do_pie=do_pie);
-      return(j_df);
-   } else {
-      if (length(iHit) == 0) {
-         iHit <- dimnames(hit_array)[[1]];
-      } else if (is.numeric(iHit)) {
-         iHit <- dimnames(hit_array)[[1]][iHit];
-      }
-      if (length(iSig) == 0) {
-         iSig <- dimnames(hit_array)[[3]];
-      } else if (is.numeric(iSig)) {
-         iSig <- dimnames(hit_array)[[3]][iSig];
-      }
-      if (length(iCon) == 0) {
-         iCon <- dimnames(hit_array)[[2]];
-      } else if (is.numeric(iSig)) {
-         iCon <- dimnames(hit_array)[[2]][iSig];
-      }
-      #printDebug("peak_pie_by_region(): ",
-      #   "\niCon:", iCon,
-      #   "\niHit:", iHit,
-      #   "\niSig:", iSig);
-      j_df_l <- rbindList(lapply(iHit, function(iHit1) {
-         rbindList(lapply(iSig, function(iSig1) {
-            rbindList(lapply(iCon, function(iCon1) {
-               k <- names(hit_array[iHit1, iCon1, iSig1][[1]]);
-               main <- paste(c(iCon1, iHit1, iSig1, PeakSet), collapse="\n");
-               j_df <- feature_to_pie(feature_type_winner[k],
-                  main=main,
-                  colorSub=colorSub,
-                  do_pie=do_pie);
-               j_df;
-            }))
-         }))
-      }));
-      return(j_df_l);
-   }
-}
-```
-
-
 ```{r, peak_region_pies, fig.height=15, fig.width=15}
+feature_type_winner <- values(fc_gr)$feature_type_winner;
+names(feature_type_winner) <- values(fc_gr)$Gene;
+
 if (length(AtacStats) > 0) {
    par("mfrow"=c(3, 2), "mar"=c(5, 7, 6, 10));
    colorSub_pie <- nameVector(
@@ -2159,7 +2136,7 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### Pie chart (subset peaks)
+#### MGM Subset Hits by Genome Region
 
 The pie charts below reflect the peaks after filtering
 for the max group mean threshold: **`r MGM`**
@@ -2199,18 +2176,28 @@ if (length(AtacStatsMgm4) > 0) {
 ```
 
 
-### Annotate peaks using continuous numbering
+### Annotate Broad Peaks
 
-Peaks are re-annotated so that contiguous peaks are numbered
-in column "broak_peak", with slices of each peak given suffix
-numbers in column "broak_peak_number". This process makes it
-feasible to count the number of contiguous peaks, that is
-before peaks were sliced to a max width threshold.
+Peaks are re-numbered so that contiguous peaks are numbered
+in column `"broak_peak"` to indicate when one broad peak
+has been sliced by `mergeSplitCountBed` into multiple pieces.
+Each peak slice is labeled in `"broak_peak_number"` with
+a suffix to indicate the slice number.
 
-We refer to "broad peaks" as the contiguous peaks.
+This process makes it feasible to count the number of contiguous enriched
+regions, and to evaluate the statistical hits across different slices
+in the same region.
+
+For example, in one `"broad_peak"`, one slice may have enriched signal,
+while another slice may be reduced. The total signal in the `"broad_peak"`
+may remain constant even while there is significant change in the
+detected chromatin signal.
+
+> *TODO: This section may optionally allow a gap distance between adjacent*
+> *peaks, consistent with the settings used in `mergeSplitCountBed`.*
 
 ```{r, peak_renumbering}
-fc_gr_red <- reduce(fc_gr);
+fc_gr_red <- GenomicRanges::reduce(fc_gr);
 values(fc_gr_red)$broad_peak <- makeNames(
    rep("broad", length(fc_gr_red)),
    doPadInteger=TRUE,
@@ -2231,22 +2218,18 @@ rowData(fc_se)$broad_peak_slices <- fc_gr_bp_ct[values(fc_gr)$broad_peak];
 ```
 
 
-#### Broad peak hit counts
+#### Broad Peaks Statistical Hits
 
-The peak statistical hits are re-counted by unique "broad_peak" values,
-to indicate how many unique broad peaks are found to be statistically
-changing.
+Statistical hits are tabulate by unique `"broad_peak"` values.
 
-If most peaks are not sliced, this number should be almost identical
-to the number of sliced peak hits above.
+There are two potential outcomes of this process:
 
-Similarly, if most hits involve only one slice from broad_peaks that
-have multiple slices, the number of broad_peak hits should be nearly
-identical to the number of sliced peak hits above.
-
-Lastly, if the number of broad_peak hits is substantially lower than
-the number of sliced peak hits above, it suggests that broad_peaks
-are statistically changing across multiple slices per peak.
+1. **Significant broad_peak hits is nearly identical to individual peak hits.**
+This result suggests most peaks are not sliced, or that
+significantly changing peaks are not regions broader than the slice width.
+2. **Significant broad_peak hits is much smaller than individual peak hits.**
+This result suggests most peaks are sliced, or that
+significantly changing peaks tend to be regions broader than the slice width.
 
 
 ```{r, broad_hit_counts}
@@ -2285,7 +2268,9 @@ if (length(AtacStatsMgm4) > 0) {
 
 ```
 
-### Heatmap of peak hits
+### Heatmap of Peak Hits
+
+#### Heatmap of Replicate Values
 
 ```{r, heatmap_hits, fig.height=14, fig.width=5 + sqrt(length(iSamplesUse))}
 peak_hits_q <- NULL;
@@ -2408,7 +2393,7 @@ if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
 }
 ```
 
-### Heatmap of peak hits using group means
+#### Heatmap of Group Mean Values
 
 
 ```{r, heatmap_groupmeans, fig.height=14, fig.width=5 + length(unique(iGroup[iSamplesUse])) * 1}
@@ -2461,8 +2446,7 @@ if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
 
 
 
-
-### Peak to ATAC-promoter analysis (optional)
+### ATAC Mode Annotation (Optional)
 
 **`r if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {("ATAC-mode is enabled.")} else {("ATAC-mode is disabled.")}`**
 
@@ -2470,17 +2454,24 @@ This workflow is enabled only when environment variable `ATAC=1`,
 and when stats have been performed, and when the max group mean
 filter has been applied.
 
-When enabled, this workflow defines a subset of genes as having
-"active promoters" if there are any ATAC-seq peaks found in the
-upstream promoter/TSS region of the gene. In practice, most genes
-that are active, or poised to be active, have an ATAC-seq peak
-across all conditions of an experiment. That said, this process
-greatly reduced the total set of GTF-defined genes, which can make
-the process of annotating peaks by genes much more accurate
-and informative.
+This workflow defines a subset of genes with "active promoters" if
+any ATAC-seq peaks are found in the `"Promoter"` region of the gene.
+For this purpose, we require the peak to meet the MGM threshold
+for detection above background.
 
-Peaks are annotated by the neared Mgm-filtered promoter peak,
-along with the distance to that peak.
+The purpose of this step is to reduce the total genes defined in the GTF
+to the subset of genes that were observed to have "active promoter",
+so the subset of GTF genes can be used to annotate peaks.
+The result is improved accuracy in assigning genes to peaks,
+by removing GTF entries that are not associated with active
+transcription in the given experiment.
+
+In practice, most actively transcribed genes, or genes that are
+poised to become actively transcribed, have open chromatin
+seen by ATAC-seq across most or all conditions of an experiment.
+
+Peaks are annotated to the nearese MGM-filtered gene TSS, as
+defined by the promoter regions, along with the distance to that region.
 
 
 ```{r, peak_promoters}
@@ -2502,23 +2493,6 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
          feature_type));
    #values(promoters_gr)[,"gene_strand"] <- as.character(strand(promoters_gr));
    
-   promoter2tss <- function
-   (gr,
-    upstream=2000,
-    downstream=200)
-   {
-      ## Purpose is to convert coordinates of promoters back to original TSS
-      gr2pos <- strand(gr) %in% "+";
-      newstart <- ifelse(gr2pos,
-         start(gr) + upstream,
-         start(gr) + (downstream-1));
-      newend <- ifelse(gr2pos,
-         end(gr) - (downstream-1),
-         end(gr) - upstream);
-      ranges(gr) <- IRanges::IRanges(start=newstart,
-         end=newend);
-      return(gr);
-   }
    upstream <- upstream_promoter;
    downstream <- downstream_promoter;
    
@@ -2526,7 +2500,7 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
       mgm_promoter_gr <- IRanges::subsetByOverlaps(promoters_gr,
          fc_gr[iPeaksMgm4],
          ignore.strand=TRUE);
-      mgm_tss_gr <- promoter2tss(mgm_promoter_gr[,c("gene_name", "gene_id")],
+      mgm_tss_gr <- promoter_to_tss(mgm_promoter_gr[,c("gene_name", "gene_id")],
          upstream=upstream,
          downstream=downstream);
       
@@ -2581,26 +2555,15 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
 }
 ```
 
-### Annotate peaks with full gene name
+### Annotate by Full Gene Name
 
-This section uses the gene symbol or Entrez Gene ID to
+This section uses each `_gene_id` column to
 retrieve the Entrez gene description, using the R package
-`"genejam"` (if available).
+`"genejam"` if available. The resulting column has suffix
+`_gene_description`.
 
 ```{r, add_gene_names}
 if (suppressPackageStartupMessages(require(genejam))) {
-   trim_multigenedesc <- function(genedf3, max_genes=4){
-      multigrep <- paste0("^(",
-         paste(rep("[^;]+", max_genes), collapse=";"),
-         ");.+$");
-      multirows <- grepl(multigrep, genedf3$SYMBOL);
-      if (any(multirows)) {
-         jamba::printDebug(c("   Trimming ", formatInt(sum(multirows)), " multi-gene rows."), sep="");
-         genedf3$GENENAME <- gsub(multigrep, "\\1", genedf3$GENENAME);
-         genedf3$SYMBOL <- gsub(multigrep, "\\1", genedf3$SYMBOL);
-      }
-      return(genedf3);
-   }
    if (igrepHas("gene_id", colnames(values(fc_gr)))) {
       genecols <- head(rev(vigrep("gene_id", colnames(values(fc_gr)))), 1);
       for (genecol in genecols) {
@@ -2712,12 +2675,12 @@ if (length(AtacStats) > 0) {
          file=txt_file,
          sep="\t",
          col.names=TRUE);
-      kable_coloring(
+      print(kable_coloring(
          data.frame(check.names=FALSE,
             `Rows saved:`=formatInt(nrow(iDF_all2)),
             `Output file:`=txt_file),
          row.names=FALSE,
-         caption="File saved:");
+         caption="File saved:"));
 
       ## Save all peaks in BED format
       statsbed <- statsdf2bed(iDF_all2,
@@ -2748,12 +2711,12 @@ if (length(AtacStats) > 0) {
          append=TRUE,
          sep="\t",
          col.names=FALSE);
-      kable_coloring(
+      print(kable_coloring(
          data.frame(check.names=FALSE,
             `Rows saved:`=formatInt(nrow(statsbed)),
             `BED file:`=bed_file),
          row.names=FALSE,
-         caption="File saved:");
+         caption="File saved:"));
    }
 }
 ```
@@ -2824,12 +2787,12 @@ if (length(AtacStatsMgm4) > 0) {
          file=txt_file,
          sep="\t",
          col.names=TRUE);
-      kable_coloring(
+      print(kable_coloring(
          data.frame(check.names=FALSE,
             `Rows saved:`=formatInt(nrow(iDF_all2)),
             `Output file:`=txt_file),
          row.names=FALSE,
-         caption="File saved:");
+         caption="File saved:"));
 
       ## Save all peaks in BED format
       statsbed <- statsdf2bed(iDF_all2,
@@ -2862,12 +2825,12 @@ if (length(AtacStatsMgm4) > 0) {
             append=TRUE,
             sep="\t",
             col.names=FALSE);
-         kable_coloring(
+         print(kable_coloring(
             data.frame(check.names=FALSE,
                `Rows saved:`=formatInt(nrow(statsbed)),
                `BED file:`=bed_file),
             row.names=FALSE,
-            caption="File saved:");
+            caption="File saved:"));
       }
       
       ## Save all peaks in BED format
@@ -2901,12 +2864,12 @@ if (length(AtacStatsMgm4) > 0) {
             append=TRUE,
             sep="\t",
             col.names=FALSE);
-         kable_coloring(
+         print(kable_coloring(
             data.frame(check.names=FALSE,
                `Rows saved:`=formatInt(nrow(statsbed)),
                `BED file:`=bed_file),
             row.names=FALSE,
-            caption="File saved:");
+            caption="File saved:"));
       }
    }
 }
@@ -2933,15 +2896,15 @@ if (SAVE_RDATA) {
       fc_dat_file <- paste0(fc_dat_file, ".RData");
    }
    save.image(fc_dat_file);
-   kable_coloring(
+   print(kable_coloring(
       data.frame(check.names=FALSE,
          `RData file saved:`=fc_dat_file),
-      row.names=FALSE);
+      row.names=FALSE));
 } else {
-   kable_coloring(
+   print(kable_coloring(
       data.frame(check.names=FALSE,
          `RData session not saved:`=paste0("SAVE_RDATA=", SAVE_RDATA)),
-      row.names=FALSE);
+      row.names=FALSE));
 }
 ```
 

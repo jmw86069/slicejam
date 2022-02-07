@@ -1205,6 +1205,8 @@ annotate_gr_by_genome_region <- function
 #' described by `genome_regions` will be considered `extragenic`. In this
 #' way, every region in the genome will be represented.
 #' 
+#' @family slicejam genome regions
+#' 
 #' @param genome_regions `GRanges` object as produced by
 #'    `genomic_regions_from_gtf()`
 #' @param genome `character` string indicating the genome, recognized
@@ -1334,5 +1336,172 @@ flatten_genome_regions <- function
          unique(GenomicRanges::values(genome_regions_ann)$feature_type_winner)));
    
    return(genome_regions_ann);
+}
+
+#' Convert promoter region to a single TSS position
+#' 
+#' Convert promoter region to a single TSS position
+#' 
+#' This function is called by `slicejam_analysis.Rmd`. It takes the promoter
+#' region defined around a transcript start site (TSS) by `upstream` and
+#' `downstream` distances from the TSS, and instead returns the original
+#' TSS position.
+#' 
+#' ### Note
+#' 
+#' This function detects regions which are smaller than
+#' `upstream + downstream`, which would cause an error during adjustment.
+#' In this case, features at the start of the chromosome with start `0` or `1`
+#' will adjust the `GenomicRanges::end()` position, then will define the
+#' start position to have `width=1`.
+#' 
+#' In that case this function should trust the point farthest from the end
+#' of the chromosome, since that distance would not have been truncated by
+#' the chromosome size.
+#' 
+#' This step makes the assumption of the expected
+#' starting region width, which may not be correct and may need to be
+#' an optional argument. For example `upstream=2000,downstream=200` may
+#' imply a region with `width=2200`, or `width=2201`, depending upon
+#' the source data.
+#' 
+#' Bonus points: calculate `width(gr) - upstream - downstream` and take
+#' the most frequently occuring value. If this value is `0` or `1` then
+#' proceed to check for peaks that are smaller.
+#' 
+#' 
+#' @return `GRanges` object after adjusting the `upstream` and `downstream`
+#'    positions, relative to the `GenomicRanges::strand()` of each feature.
+#' 
+#' @family slicejam genome regions
+#' 
+#' @param gr `GRanges` object representing TSS regions defined using the
+#'    `upstream` and `downstream` argument values.
+#' @param upstream,downstream `integer` number of bases upstream, and downstream
+#'    the stranded gene TSS position, used to define
+#'    a "promoter region" around that site.
+#' @param minimum_width `integer` width below which a feature will be
+#'    adjusted only using the start or end of the range, and the output
+#'    will automatically have `width=1`.
+#' @param positive `character` vector indicating `GenomicRanges::strand()`
+#'    values processed as positive strands.
+#' 
+#' @export
+promoter_to_tss <- function
+(gr,
+ upstream=2000,
+ downstream=200,
+ minimum_width=upstream + downstream,
+ positive=c("+", "*"))
+{
+   ## Purpose is to convert coordinates of promoters back to original TSS
+   to_process <- (GenomicRanges::width(gr) >= (minimum_width));
+   
+   
+   # Process entries with at least the minimum width, on "+" or "-" strand
+   gr2pos <- (GenomicRanges::strand(gr) %in% positive);
+   newstart <- ifelse(gr2pos[to_process],
+      GenomicRanges::start(gr[to_process]) + upstream,
+      GenomicRanges::start(gr[to_process]) + downstream - 1);
+   newend <- ifelse(gr2pos[to_process],
+      GenomicRanges::end(gr[to_process]) - downstream + 1,
+      GenomicRanges::end(gr[to_process]) - upstream);
+   GenomicRanges::ranges(gr[to_process]) <- IRanges::IRanges(
+      start=newstart,
+      end=newend);
+   
+   # Handle entries too small for processing above
+   if (any(!to_process)) {
+      front_clip <- GenomicRanges::start(gr[!to_process]) <= 1;
+      # A front_clip happens when one end of the feature is at
+      # the front of a chromosome, suggesting it was clipped here.
+      # Otherwise assume it was clipped at the far end of the chromosome.
+      # For front_clip trust the end(),
+      # otherwise trust the start().
+      newstart_small <- ifelse(front_clip,
+         ifelse(gr2pos[!to_process],
+            GenomicRanges::end(gr[!to_process]) - downstream,
+            GenomicRanges::end(gr[!to_process]) - upstream),
+         ifelse(gr2pos[!to_process],
+            GenomicRanges::start(gr[!to_process]) + upstream,
+            GenomicRanges::start(gr[!to_process]) + downstream))
+      newend_small <- ifelse(front_clip,
+         ifelse(gr2pos[!to_process],
+            (GenomicRanges::end(gr[!to_process]) - downstream) + 1,
+            (GenomicRanges::end(gr[!to_process]) - upstream) + 1),
+         ifelse(gr2pos[!to_process],
+            GenomicRanges::start(gr[!to_process]) + upstream + 1,
+            GenomicRanges::start(gr[!to_process]) + downstream + 1));
+      GenomicRanges::ranges(gr[!to_process]) <- IRanges::IRanges(
+         start=newstart_small,
+         end=newend_small);
+   }
+   return(gr);
+}
+
+#' Trim multiple gene descriptions to max number of entries per field
+#' 
+#' Trim multiple gene descriptions to max number of entries per field
+#' 
+#' This function is internally called by `slicejam_analysis.Rmd` and is
+#' not intended for much wider use.
+#' 
+#' @param df `data.frame`
+#' @param max_genes `integer` maximum number of delimited entries to keep.
+#' @param symbol_colname `character` indicating the column to test for
+#'    multiple entries.
+#' @param gene_colnames `character` indicating the columns to update
+#'    for rows where multiple entries are detected in `symbol_colname`.
+#' @param sep `character` string of the expected delimiter between multiple
+#'    values.
+#' @param verbose `logical` indicating whether to print verbose output.
+#' @param ... additional arguments are ignored.
+#' 
+#' @export
+trim_multigenedesc <- function
+(df,
+ max_genes=4,
+ symbol_colname="SYMBOL",
+ gene_colnames=c("SYMBOL", "GENENAME"),
+ sep=";",
+ verbose=FALSE,
+ ...)
+{
+   # build grap patterns
+   if (!symbol_colname %in% colnames(df)) {
+      stop("symbol_colname must be present in colnames(df)")
+   }
+   if (!any(gene_colnames %in% colnames(df))) {
+      stop("gene_colnames must be present in colnames(df)")
+   }
+   gene_colnames <- intersect(gene_colnames,
+      colnames(df));
+   if (!length(sep) == 1) {
+      stop("sep must have length=1")
+   }
+   multigrep <- paste0("^(",
+      paste(
+         rep(
+            paste0("[^", sep, "]+"),
+            max_genes),
+         collapse=";"),
+      ");.+$");
+   
+   # detect rows to process
+   multirows <- grepl(multigrep, df[[symbol_colname]]);
+   if (any(multirows)) {
+      if (verbose) {
+         jamba::printDebug(c("   Trimming ",
+            jamba::formatInt(sum(multirows)),
+            " multi-gene rows."),
+            sep="");
+      }
+      for (icol in gene_colnames) {
+         df[[icol]] <- gsub(multigrep,
+            "\\1",
+            df[[icol]]);
+      }
+   }
+   return(df);
 }
 

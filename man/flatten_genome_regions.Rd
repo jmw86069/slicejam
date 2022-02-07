@@ -71,3 +71,10 @@ are used to create chromosome-length \code{GRanges}, so that any region not
 described by \code{genome_regions} will be considered \code{extragenic}. In this
 way, every region in the genome will be represented.
 }
+\seealso{
+Other slicejam genome regions: 
+\code{\link{annotate_gr_by_genome_region}()},
+\code{\link{genomic_regions_from_gtf}()},
+\code{\link{promoter_to_tss}()}
+}
+\concept{slicejam genome regions}

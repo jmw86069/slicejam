@@ -1,3 +1,30 @@
+# slicejam 0.0.37.900
+
+## updates
+
+* `slicejam_analysis.Rmd` was updated:
+
+   * Section headings were slightly reorganized
+   * to call `annotate_gr_by_genome_region()`
+   instead of containing the logic inside the Rmarkdown file. The logic
+   had been moved and tested outside Rmarkdown, since this function
+   is also used by `genomic_regions_from_gtf`.
+   * `feature_to_pie()` and `peak_pie_by_region()` were also
+   moved outside the Rmarkdown file.
+   * it now checks that the version of `slicejam` meets minimum requirements,
+   in the unlikely event that the wrong `.libPaths()` location is used.
+   * dependency on CBioRUtils was removed altogether. Woot!
+   * `promoter_to_tss()` was moved out of `slicejam_analysis.Rmd` into
+   a separate function.
+  
+
+## new functions
+
+* `feature_to_pie()`, `peak_pie_by_region()` - draw pie charts by feature_type.
+* `promoter_to_tss()` shrinks a promoter region down to its TSS position.
+* `trim_multigenedesc()` is an internal function used to trim strings that
+contain multiple gene descriptions, down to a maximum set number.
+
 # slicejam 0.0.36.900
 
 ## updates

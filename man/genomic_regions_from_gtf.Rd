@@ -153,6 +153,8 @@ by default. If the GTF file uses different attributes, adjust
 }
 \seealso{
 Other slicejam genome regions: 
-\code{\link{annotate_gr_by_genome_region}()}
+\code{\link{annotate_gr_by_genome_region}()},
+\code{\link{flatten_genome_regions}()},
+\code{\link{promoter_to_tss}()}
 }
 \concept{slicejam genome regions}
