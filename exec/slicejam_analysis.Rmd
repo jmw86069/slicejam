@@ -10,7 +10,8 @@ output:
     theme: cerulean
     highlight: pygments
     df_print: kable
-    self_contained: false
+    self_contained: true
+    keep_md: true
 ---
    
 About this document:
@@ -49,11 +50,10 @@ knitr::opts_chunk$set(cache=TRUE,
    cache.extra=list(
       packageVersion("jamba"),
       packageVersion("jamma"),
-      packageVersion("splicejam"),
+      packageVersion("platjam"),
       packageVersion("slicejam"),
-      paste0("FC_FILE:", Sys.getenv("FC_FILE")),
-      paste0("CURATION_TXT:", Sys.getenv("CURATION_TXT")),
-      paste0("GTF:", Sys.getenv("GTF"))
+      packageVersion("jamses"),
+      paste0("CURATION_TXT:", Sys.getenv("CURATION_TXT"))
    )
 );
 
@@ -111,6 +111,7 @@ fc_filepath <- sliceargs$fc_filepath;
 CURATION_TXT <- sliceargs$CURATION_TXT;
 GTF <- sliceargs$GTF;
 GTFNAME <- sliceargs$GTFNAME;
+MASK <- sliceargs$MASK;
 DRYRUN <- sliceargs$DRYRUN;
 OUTDIR <- sliceargs$OUTDIR;
 CACHEDIR <- sliceargs$CACHEDIR;
@@ -1858,8 +1859,8 @@ values(fc_gr) <- renameColumn(values(fc_gr),
 fc_gr <- annotate_gr_by_genome_region(
    gr=fc_gr,
    genome_regions=genome_regions,
-   mask_regions=opt$mask,
-   verbose=FALSE));
+   mask_regions=MASK,
+   verbose=FALSE);
 
 ```
 
@@ -2085,6 +2086,8 @@ color_sub_imct <- colorjam::vals2colorLevels(
 kable_coloring(as.data.frame(m1_counts),
    colorSub=color_sub_imct,
    color_cells=TRUE,
+   format.args=list(big.mark = ",",
+      scientific=FALSE),
    row.names=TRUE) %>%
    kable_styling(bootstrap_options=c("striped","bordered")) %>%
    row_spec(0, background="#DDDDDD", color="#333333", bold=TRUE) %>%
@@ -2123,8 +2126,8 @@ if (length(AtacStats) > 0) {
       feature_type_winner=feature_type_winner);
       #PeakSet="All Peaks Tested",
    gg2_num <- attr(gg2, "panel_count");
-   gg2_width <- 7 + 7 * (gg2_num > 1);
-   gg2_height <- ceiling(gg2_num / 2) * 6;
+   gg2_width <- 10 + 7 * (gg2_num > 1);
+   gg2_height <- ceiling(gg2_num / 2) * 7;
 }
 ```
 
@@ -2194,8 +2197,8 @@ if (length(AtacStatsMgm4) > 0) {
       do_pie=FALSE,
       feature_type_winner=feature_type_winner);
    gg2_num <- attr(gg2, "panel_count");
-   gg2_width <- 7 + 7 * (gg2_num > 1);
-   gg2_height <- ceiling(gg2_num / 2) * 6;
+   gg2_width <- 10 + 7 * (gg2_num > 1);
+   gg2_height <- ceiling(gg2_num / 2) * 7;
 }
 ```
 
@@ -2688,7 +2691,7 @@ Statistical results are saved in text file for the full set
 of peaks.
 Look in the folder defined by OUTDIR:
 
-> **`r OUTDIR`**.
+> **`r OUTDIR`**
 
 
 ```{r, stats_df, dependson=c("run_limma")}
@@ -2747,12 +2750,14 @@ if (length(AtacStats) > 0) {
          file=txt_file,
          sep="\t",
          col.names=TRUE);
-      print(kable_coloring(
+      kable_coloring(
          data.frame(check.names=FALSE,
             `Rows saved:`=formatInt(nrow(iDF_all2)),
             `Output file:`=txt_file),
          row.names=FALSE,
-         caption="File saved:"));
+         caption="File saved:") %>%
+      kableExtra::column_spec(column=2,
+         border_left="1px solid #DDDDDD")
 
       ## Save all peaks in BED format
       statsbed <- statsdf2bed(iDF_all2,
@@ -2783,12 +2788,14 @@ if (length(AtacStats) > 0) {
          append=TRUE,
          sep="\t",
          col.names=FALSE);
-      print(kable_coloring(
+      kable_coloring(
          data.frame(check.names=FALSE,
             `Rows saved:`=formatInt(nrow(statsbed)),
             `BED file:`=bed_file),
          row.names=FALSE,
-         caption="File saved:"));
+         caption="File saved:") %>%
+      kableExtra::column_spec(column=2,
+         border_left="1px solid #DDDDDD")
    }
 }
 ```
@@ -2859,12 +2866,14 @@ if (length(AtacStatsMgm4) > 0) {
          file=txt_file,
          sep="\t",
          col.names=TRUE);
-      print(kable_coloring(
+      kable_coloring(
          data.frame(check.names=FALSE,
             `Rows saved:`=formatInt(nrow(iDF_all2)),
             `Output file:`=txt_file),
          row.names=FALSE,
-         caption="File saved:"));
+         caption="File saved:") %>%
+      kableExtra::column_spec(column=2,
+         border_left="1px solid #DDDDDD")
 
       ## Save all peaks in BED format
       statsbed <- statsdf2bed(iDF_all2,
@@ -2897,12 +2906,14 @@ if (length(AtacStatsMgm4) > 0) {
             append=TRUE,
             sep="\t",
             col.names=FALSE);
-         print(kable_coloring(
+         kable_coloring(
             data.frame(check.names=FALSE,
                `Rows saved:`=formatInt(nrow(statsbed)),
                `BED file:`=bed_file),
             row.names=FALSE,
-            caption="File saved:"));
+            caption="File saved:") %>%
+         kableExtra::column_spec(column=2,
+            border_left="1px solid #DDDDDD")
       }
       
       ## Save all peaks in BED format
@@ -2936,12 +2947,14 @@ if (length(AtacStatsMgm4) > 0) {
             append=TRUE,
             sep="\t",
             col.names=FALSE);
-         print(kable_coloring(
+         kable_coloring(
             data.frame(check.names=FALSE,
                `Rows saved:`=formatInt(nrow(statsbed)),
                `BED file:`=bed_file),
             row.names=FALSE,
-            caption="File saved:"));
+            caption="File saved:") %>%
+         kableExtra::column_spec(column=2,
+            border_left="1px solid #DDDDDD")
       }
    }
 }

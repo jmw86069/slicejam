@@ -34,6 +34,7 @@ Recognized arguments:
 \item CURATION_TXT - path to tab-delimited curation.txt file
 \item GTF - path to GTF file
 \item GTFNAME - optional short GTF name
+\item MASK - path to optional BED file with MASK regions
 \item DRYRUN - 1/0 whether to enable dry-run mode
 \item OUTDIR - optional output directory
 \item ATAC - 1/0 whether to enable ATAC mode

@@ -1,6 +1,6 @@
 Package: slicejam
 Title: Jam Slice ChIP-seq/ATAC-seq peak slice analysis
-Version: 0.0.37.900
+Version: 0.0.38.900
 Authors@R: person(given="James M.", family="Ward",
    email="jmw86069@gmail.com", role=c("aut", "cre"))
 Description: Jam Slice ChIP-seq/ATAC-seq peak slice analysis.
@@ -13,9 +13,13 @@ Depends: R (>= 3.6.0),
 Imports: jamba(>= 0.0.64.900),
    jamma (>= 0.0.16.900),
    colorjam (>= 0.0.21.900),
+   platjam (>= 0.0.42.900),
+   splicejam (>= 0.0.74.900),
+   genejam,
+   multienrichjam,
+   venndir,
    kableExtra,
    SummarizedExperiment,
-   splicejam (>= 0.0.74.900),
    data.table,
    matrixStats,
    extrafont,
@@ -26,19 +30,20 @@ Imports: jamba(>= 0.0.64.900),
    amap,
    kableExtra,
    knitr,
-   multienrichjam,
    ggrepel
 Suggests:
-   genejam,
    farrisdata
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
 Remotes: github::jmw86069/jamba,
-    github::jmw86069/colorjam,
     github::jmw86069/jamma,
+    github::jmw86069/colorjam,
+    github::jmw86069/platjam,
     github::jmw86069/splicejam,
     github::jmw86069/genejam,
+    github::jmw86069/multienrichjam,
+    github::jmw86069/venndir,
     github::jmw86069/jamses,
     github::jmw86069/farrisdata
 URL: http://github.com/jmw86069/slicejam

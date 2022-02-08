@@ -1,3 +1,15 @@
+# slicejam 0.0.38.900
+
+## changes to existing functions
+
+* `get_slicejam_args()` now recognizes MASK with optional path to
+a BED file containing regions to mask. It is currently used by
+`annotate_gr_by_genome_region()` only to add a flag under column `"Mask"`,
+indicating whether a region overlaps a mask region.
+* `gg_pie_by_feature_type()` was updated to force two-column out,
+using `ggplot2::facet_wrap(..., ncol=2)`.
+
+
 # slicejam 0.0.37.900
 
 ## updates

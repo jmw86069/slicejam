@@ -352,7 +352,8 @@ gg_pie_by_feature_type <- function
          #strip.text=ggplot2::element_text(size=strip_size)) +
          strip.text=ggtext::element_markdown(size=strip_size,
             lineheight=1.1)) +
-      ggplot2::facet_wrap(~Set + HitLab + SignalLab);
+      ggplot2::facet_wrap(~Set + HitLab + SignalLab,
+         ncol=2);
    
    # define categorical colors
    if (length(colorSub) == 0) {

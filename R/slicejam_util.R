@@ -22,6 +22,7 @@
 #' * CURATION_TXT - path to tab-delimited curation.txt file
 #' * GTF - path to GTF file
 #' * GTFNAME - optional short GTF name
+#' * MASK - path to optional BED file with MASK regions
 #' * DRYRUN - 1/0 whether to enable dry-run mode
 #' * OUTDIR - optional output directory
 #' * ATAC - 1/0 whether to enable ATAC mode
@@ -135,6 +136,16 @@ get_slicejam_args <- function
       Sys.setenv(GTFNAME=GTFNAME);
    } else {
       stop("GTF was not supplied and is required.");
+   }
+   
+   # MASK used to annotate peaks for neighboring genes
+   if ("MASK" %in% names(inplist)) {
+      MASK <- inplist$MASK;
+   } else {
+      MASK <- Sys.getenv("MASK");
+   }
+   if (length(MASK) > 0 && any(nchar(MASK) == 0)) {
+      MASK <- MASK[nchar(MASK) > 0];
    }
    
    # DRYRUN not likely to be used here but defines "dry-run"
@@ -348,6 +359,7 @@ get_slicejam_args <- function
    sliceargs$CURATION_TXT <- CURATION_TXT;
    sliceargs$GTF <- GTF;
    sliceargs$GTFNAME <- GTFNAME;
+   sliceargs$MASK <- MASK;
    sliceargs$DRYRUN <- DRYRUN;
    sliceargs$OUTDIR <- OUTDIR;
    sliceargs$CACHEDIR <- CACHEDIR;
