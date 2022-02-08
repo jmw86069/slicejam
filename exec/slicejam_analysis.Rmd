@@ -2981,12 +2981,12 @@ if (SAVE_RDATA) {
       fc_dat_file <- paste0(fc_dat_file, ".RData");
    }
    save.image(fc_dat_file);
-   print(kable_coloring(
+   (kable_coloring(
       data.frame(check.names=FALSE,
          `RData file saved:`=fc_dat_file),
       row.names=FALSE));
 } else {
-   print(kable_coloring(
+   (kable_coloring(
       data.frame(check.names=FALSE,
          `RData session not saved:`=paste0("SAVE_RDATA=", SAVE_RDATA)),
       row.names=FALSE));
