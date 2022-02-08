@@ -20,6 +20,8 @@
 
 ## new functions
 
+* `gg_pie_by_feature_type()` is a replacement pie chart function that
+uses ggplot2 for improved aesthetics.
 * `feature_to_pie()`, `peak_pie_by_region()` - draw pie charts by feature_type.
 * `promoter_to_tss()` shrinks a promoter region down to its TSS position.
 * `trim_multigenedesc()` is an internal function used to trim strings that

@@ -57,6 +57,7 @@ legible labels.
 }
 \seealso{
 Other slicejam plot functions: 
-\code{\link{feature_to_pie}()}
+\code{\link{feature_to_pie}()},
+\code{\link{gg_pie_by_feature_type}()}
 }
 \concept{slicejam plot functions}

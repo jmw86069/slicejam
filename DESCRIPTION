@@ -26,7 +26,8 @@ Imports: jamba(>= 0.0.64.900),
    amap,
    kableExtra,
    knitr,
-   multienrichjam
+   multienrichjam,
+   ggrepel
 Suggests:
    genejam,
    farrisdata
