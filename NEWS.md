@@ -1,3 +1,11 @@
+# slicejam 0.0.39.900
+
+## bug fixes
+
+* `gg_pie_by_feature_type()` was updated to handle having zero hits
+in any given comparison.
+
+
 # slicejam 0.0.38.900
 
 ## changes to existing functions

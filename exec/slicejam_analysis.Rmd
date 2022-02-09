@@ -2113,7 +2113,7 @@ names(feature_type_winner) <- values(fc_gr)$Gene;
 gg2 <- NULL;
 gg2_width <- 14;
 gg2_height <- 8;
-if (length(AtacStats) > 0) {
+if (length(AtacStats) > 0 && max(lengths(AtacStats$hit_array)) > 0) {
    gg2 <- gg_pie_by_feature_type(hit_array=AtacStats$hit_array,
       add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm4,
          `All Peaks`=iPeaks),
@@ -2184,7 +2184,7 @@ for the max group mean threshold: **`r MGM`**
 gg2 <- NULL;
 gg2_width <- 14;
 gg2_height <- 8;
-if (length(AtacStatsMgm4) > 0) {
+if (length(AtacStatsMgm4) > 0 && max(lengths(AtacStatsMgm4$hit_array)) > 0) {
    gg2 <- gg_pie_by_feature_type(hit_array=AtacStatsMgm4$hit_array,
       add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm4,
          `All Peaks`=iPeaks),

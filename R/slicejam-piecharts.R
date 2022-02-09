@@ -275,11 +275,14 @@ gg_pie_by_feature_type <- function
       jamba::rbindList(lapply(iSig, function(iSig1) {
          jamba::rbindList(lapply(iCon, function(iCon1) {
             k <- names(hit_array[iHit1, iCon1, iSig1][[1]]);
-            j_df <- peak_to_tabledf(k,
-               feature_type_winner,
-               iCon1,
-               iHit1,
-               iSig1);
+            j_df <- NULL;
+            if (length(k) > 0) {
+               j_df <- peak_to_tabledf(k,
+                  feature_type_winner,
+                  iCon1,
+                  iHit1,
+                  iSig1);
+            }
             j_df;
          }))
       }))
