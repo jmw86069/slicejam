@@ -1,3 +1,11 @@
+# slicejam 0.0.40.900
+
+## bug fixes
+
+* `slicejam_analysis.Rmd` threw an error with n=1 group size during
+ComplexHeatmap clustering by group, so these sections were wrapped
+inside `tryCatch()` and will be skipped upon any error.
+
 # slicejam 0.0.39.900
 
 ## bug fixes

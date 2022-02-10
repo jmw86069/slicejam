@@ -969,6 +969,7 @@ ComplexHeatmap::draw(hm_cor_u,
    column_title=paste0("Counts (", normname, ")"))
 
 ## ComplexHeatmap
+tryCatch({
 hm_cor <- ComplexHeatmap::Heatmap(
    iCorM[iSamplesUse, iSamplesUse, drop=FALSE],
    name="correlation",
@@ -994,7 +995,9 @@ hm_cor <- ComplexHeatmap::Heatmap(
 )
 ComplexHeatmap::draw(hm_cor,
    column_title=paste0("Counts (", normname, ")\nhierarchical clustered"))
-
+}, error=function(e){
+   printDebug("Hierarchical clustering was skipped for this section.");
+})
 ```
 
 
@@ -1045,6 +1048,7 @@ ComplexHeatmap::draw(hm_corbg_u,
    column_title=paste0("Counts (", bnormname, ")"))
 
 ## ComplexHeatmap
+tryCatch({
 hm_corbg <- ComplexHeatmap::Heatmap(
    iCorMBglobal[iSamplesUse, iSamplesUse, drop=FALSE],
    name="correlation",
@@ -1070,6 +1074,9 @@ hm_corbg <- ComplexHeatmap::Heatmap(
 )
 ComplexHeatmap::draw(hm_corbg,
    column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
+}, error=function(e){
+   printDebug("Hierarchical clustering was skipped for this section.");
+})
 
 ```
 
@@ -1121,6 +1128,7 @@ ComplexHeatmap::draw(hm_corb_u,
    column_title=paste0("Counts (", bnormname, ")"))
 
 ## ComplexHeatmap
+tryCatch({
 hm_corb <- ComplexHeatmap::Heatmap(
    iCorMB[iSamplesUse, iSamplesUse, drop=FALSE],
    name="correlation",
@@ -1146,6 +1154,9 @@ hm_corb <- ComplexHeatmap::Heatmap(
 )
 ComplexHeatmap::draw(hm_corb,
    column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
+}, error=function(e){
+   printDebug("Hierarchical clustering was skipped for this section.");
+})
 
 ```
 
