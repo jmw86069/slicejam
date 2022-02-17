@@ -101,7 +101,7 @@ ERROR="0";
 ## Genome-specific chromsizes
 ## path to tab-delimited chromosome names and lengths
 CHROMSIZES=${CHROMSIZES:-"/ddn/gs1/shared/dirib/reference_genomes/hg19/hg19.chromSizes"};
-if [ ! -f "${BEDTOOLS}" ]; then
+if [ ! -f "${CHROMSIZES}" ]; then
    echo -e "${FRED}CHROMSIZES file is not available at path:${BOLD}${CHROMSIZES}${RESET}";
    ERROR="1";
 fi;
