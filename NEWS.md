@@ -1,3 +1,26 @@
+# slicejam 0.0.41.900
+
+## bug fixes
+
+* `mergeSplitCountBed.sh` had a bug in the usage of the BEDOPS tool `bedmap`,
+which requires the input BED and target BED both be sorted consistent
+with the BEDOPS utility `sort-bed`.
+On the plus side, `bedmap` is blazing fast, making this step less frustrating.
+
+   * **Effect**: The effect is that the `.multiBed` output file only had zero
+   counts for each `chr10` and above.
+   * **Solution**: wrap the input and merged BED files
+   in `sort-bed` commands so they are consistent and properly sorted at
+   the time `bedmap` is run.
+   * **Previous sort order**, very civilized and sensible:
+
+      * `chr1, chr2, chr3, ... , chr10, chr11, etc.`
+      
+   * **BEDOPS expected sort order**, like our ancestors before us in the ye olden days:
+   
+      * `chr1, chr10, chr11, ... , chr2, chr3, etc.`
+
+
 # slicejam 0.0.40.900
 
 ## bug fixes

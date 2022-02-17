@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# version 0.0.23.900
+# version 0.0.41.900
 #
 # merge, slop, split, count peaks
 #
@@ -277,7 +277,7 @@ for NUM in $(seq 1 ${INCT}); do
    FILENUM=$((NUM-1));
    MULTINUMBED=${TEMPBED/.bed/.bedops_${NUM}};
    #MULTICMD="grep -v ^track ${PEAKFILES[${FILENUM}]} | ${BEDOPS}bedmap --echo --count ${MERGEBED} -";
-   MULTICMD="grep -v ^track ${PEAKFILES[${FILENUM}]} | ${BEDOPS}bedmap --echo --count ${SPLITBED} -";
+   MULTICMD="grep -v ^track ${PEAKFILES[${FILENUM}]} | ${BEDOPS}sort-bed - | ${BEDOPS}bedmap --echo --count <(${BEDOPS}sort-bed ${SPLITBED}) -";
    echo -e "   ${BOLD}Counting overlaps${RESET}:";
    echo -e "   ${FYELLOW}${MULTICMD} > ${MULTINUMBED}${RESET}"
    if [ ! "1" == "${DRYRUN}" ]; then
