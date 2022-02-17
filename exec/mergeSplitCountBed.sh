@@ -281,8 +281,7 @@ for NUM in $(seq 1 ${INCT}); do
    echo -e "   ${BOLD}Counting overlaps${RESET}:";
    echo -e "   ${FYELLOW}${MULTICMD} > ${MULTINUMBED}${RESET}"
    if [ ! "1" == "${DRYRUN}" ]; then
-      #grep -v ^track ${PEAKFILES[${FILENUM}]} | ${BEDOPS}bedmap --echo --count --delim "${TAB}" ${MERGEBED} - > ${MULTINUMBED};
-      grep -v ^track ${PEAKFILES[${FILENUM}]} | ${BEDOPS}bedmap --echo --count --delim "${TAB}" ${SPLITBED} - > ${MULTINUMBED};
+      grep -v ^track ${PEAKFILES[${FILENUM}]} | ${BEDOPS}sort-bed - | ${BEDOPS}bedmap --echo --count --delim "${TAB}" <(${BEDOPS}sort-bed ${SPLITBED}) - > ${MULTINUMBED};
    else
       echo -e "      ${FRED}DRYRUN${RESET}";
    fi;
