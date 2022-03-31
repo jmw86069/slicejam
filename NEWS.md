@@ -1,3 +1,14 @@
+# slicejam 0.0.42.900
+
+## updates to executable files
+
+* `mergeSplitCountBed.sh` was updated to add variable `SLICEJAM_VERSION`
+to ensure the version of the script and associated R package is
+reported by the script.
+
+   * `BEDTOOLS` and `BEDOPS` now use more flexible logic
+   to find the correct path.
+
 # slicejam 0.0.41.900
 
 ## bug fixes

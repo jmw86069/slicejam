@@ -13,6 +13,7 @@
 # BEDOPS="/path/to/bedops-v2.4.35/bin"
 # DATE="17jun2021"
 
+SLICEJAM_VERSION="0.0.41.900"
 
 ## BED peak files
 #PEAKS=($(ls *VEH*_25*sing*bed));
@@ -37,7 +38,7 @@ export    FCYAN="\e[36m"   # foreground cyan
 ####################################################################
 ## Print documentation when PEAKS is empty
 if [ "." == ".${PEAKFILES}" ]; then
-   echo -e "${BOLD}mergeSplitCountBed.sh${RESET}:";
+   echo -e "${BOLD}mergeSplitCountBed.sh${RESET}: (version: ${SLICEJAM_VERSION})";
    echo -e "=====================";
    echo -e "This program:";
    echo -e " - takes bed peak files (${BOLD}BEDS${RESET})";
@@ -68,9 +69,9 @@ if [ "." == ".${PEAKFILES}" ]; then
    echo -e "   PEAKMAX     peaks are sliced to this maximum width, default ${BOLD}PEAKMAX=1000${RESET}";
    echo -e "   CHROMSIZES  path to tab-delimited chromosome sizes, default";
    echo -e "               ${BOLD}/ddn/gs1/shared/dirib/reference_genomes/hg19/hg19.chromSizes${RESET}";
-   echo -e "   FCTHREADS   number of cpu threads for featureCounts, default ${BOLD}FCTHREADS=32${RESET}";
-   echo -e "   BEDTOOLS    path to bedtools binary, optional";
-   echo -e "   BEDOPS      path to bedops binaries, optional";
+   echo -e "   FCTHREADS   number of threads for featureCounts, largely ignored, ${BOLD}FCTHREADS=32${RESET}";
+   echo -e "   BEDTOOLS    path to the binary executable file 'bedtools', optional";
+   echo -e "   BEDOPS      path to folder that contains bedops binaries, optional";
    echo -e "   DO_FC       1 runs featureCounts if BAMS is defined, default ${BOLD}DO_FC=1${RESET}";
    echo -e "   DO_AUC      1 runs bedtools multicov if BAMS is defined, default ${BOLD}DO_AUC=0${RESET}";
    echo "";
@@ -110,14 +111,21 @@ fi;
 FCTHREADS=${FCTHREADS:-"32"};
 
 ## path to bedtool executable
-BEDTOOLS=${BEDTOOLS:-"/ddn/gs1/biotools/bedtools/bin/bedtools"};
+BEDTOOLS_DEFAULT="/ddn/gs1/biotools/bedtools/bin/bedtools";
+BEDTOOLS_FOUND=$(dirname $(which bedtools));
+BEDTOOLS_FOUND=${BEDTOOLS_FOUND:-"${BEDTOOLS_DEFAULT}"};
+BEDTOOLS=${BEDTOOLS:-"${BEDTOOLS_FOUND}"};
 if [ ! -f "${BEDTOOLS}" ]; then
    echo -e "${FRED}bedtools is not available at path:${BOLD}${BEDTOOLS}${RESET}";
    ERROR="1";
 fi;
 
 ## path to bedops executable
-BEDOPS=${BEDOPS:-"/ddn/gs1/home/wardjm/Builds/bedops/bedops-v2.4.35/bin"};
+BEDOPS_DEFAULT="/ddn/gs1/biotools/bedops/bin";
+BEDOPS_FOUND=$(dirname $(which bedops));
+BEDOPS_FOUND=${BEDOPS_FOUND:-"${BEDOPS_DEFAULT}"};
+echo ${BEDOPS_FOUND}
+BEDOPS=${BEDOPS:-"${BEDOPS_FOUND}"};
 if [[ ( ! "." == ".${BEDOPS}" ) ]]; then
    BEDOPS="${BEDOPS}/"
 fi;
@@ -146,6 +154,7 @@ strdither() {
 ####################################################################
 ## Print user-defined parameters
 echo -e "${FCYAN}${BOLD}mergeSplitCountBed parameters:${RESET}";
+echo -e "${FCYAN}   VERSION:${BOLD}${SLICEJAM_VERSION}${RESET}";
 echo -e "${FCYAN}   PEAKGAP:${BOLD}${PEAKGAP}${RESET}";
 echo -e "${FCYAN}  PEAKSLOP:${BOLD}${PEAKSLOP}${RESET}";
 echo -e "${FCYAN}   PEAKMAX:${BOLD}${PEAKMAX}${RESET}";
