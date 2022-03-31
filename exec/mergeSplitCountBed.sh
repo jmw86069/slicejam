@@ -244,7 +244,7 @@ echo -e "${BOLD}Combining BED files${RESET}:";
 # else
 #    echo -e "   ${FRED}DRYRUN${RESET}";
 # fi;
-echo -e "${FYELLOW}{ ${RESET}:";
+echo -e "${FYELLOW}{ ${RESET}";
 for PEAKFILE in ${PEAKFILES[*]}; do
    if [[ "${PEAKFILE##*\.}" == "gz" ]]; then
       echo -e "   ${FYELLOW}gzcat '${BOLD}${PEAKFILE}${RESET}${FYELLOW}' | cut -f1-3${RESET}";
@@ -252,6 +252,7 @@ for PEAKFILE in ${PEAKFILES[*]}; do
       echo -e "   ${FYELLOW}  cat '${BOLD}${PEAKFILE}${RESET}${FYELLOW}' | cut -f1-3${RESET}";
    fi;
 done;
+echo -e "${FYELLOW}} | sort -k1,1 -k2,2n > ${BOLD}${TEMPBED}${RESET}";
 if [ ! "1" == "${DRYRUN}" ]; then
    for ${PEAKFILE} in ${PEAKFILES[*]}; do
       if [[ "${PEAKFILE##*\.}" == "gz" ]]; then
@@ -263,7 +264,6 @@ if [ ! "1" == "${DRYRUN}" ]; then
 else
    echo -e "   ${FRED}DRYRUN${RESET}";
 fi;
-echo -e "${FYELLOW}} | sort -k1,1 -k2,2n > ${BOLD}${TEMPBED}${RESET}";
 
 ####################################################################
 ## Merge peaks
@@ -302,12 +302,21 @@ echo -e "${BOLD}Counting peak overlaps${RESET}:";
 for NUM in $(seq 1 ${INCT}); do
    FILENUM=$((NUM-1));
    MULTINUMBED=${TEMPBED/.bed/.bedops_${NUM}};
-   #MULTICMD="grep -v ^track ${PEAKFILES[${FILENUM}]} | ${BEDOPS}bedmap --echo --count ${MERGEBED} -";
-   MULTICMD="grep -v ^track ${PEAKFILES[${FILENUM}]} | ${BEDOPS}sort-bed - | ${BEDOPS}bedmap --echo --count <(${BEDOPS}sort-bed ${SPLITBED}) -";
+   # test for .gz files
+   PEAKFILE="${PEAKFILES[${FILENUM}]}"
+   if [[ "${PEAKFILE##*\.}" == "gz" ]]; then
+      MULTICMD="gzcat ${PEAKFILE} | grep -v ^track | ${BEDOPS}sort-bed - | ${BEDOPS}bedmap --echo --count <(${BEDOPS}sort-bed ${SPLITBED}) -";
+   else
+      MULTICMD="grep -v ^track ${PEAKFILE} | ${BEDOPS}sort-bed - | ${BEDOPS}bedmap --echo --count <(${BEDOPS}sort-bed ${SPLITBED}) -";
+   fi;
    echo -e "   ${BOLD}Counting overlaps${RESET}:";
    echo -e "   ${FYELLOW}${MULTICMD} > ${MULTINUMBED}${RESET}"
    if [ ! "1" == "${DRYRUN}" ]; then
-      grep -v ^track ${PEAKFILES[${FILENUM}]} | ${BEDOPS}sort-bed - | ${BEDOPS}bedmap --echo --count --delim "${TAB}" <(${BEDOPS}sort-bed ${SPLITBED}) - > ${MULTINUMBED};
+      if [[ "${PEAKFILE##*\.}" == "gz" ]]; then
+         gzcat "${PEAKFILE}" | grep -v ^track | ${BEDOPS}sort-bed - | ${BEDOPS}bedmap --echo --count --delim "${TAB}" <(${BEDOPS}sort-bed ${SPLITBED}) - > "${MULTINUMBED}";
+      else
+         grep -v ^track "${PEAKFILE}" | ${BEDOPS}sort-bed - | ${BEDOPS}bedmap --echo --count --delim "${TAB}" <(${BEDOPS}sort-bed ${SPLITBED}) - > "${MULTINUMBED}";
+      fi;
    else
       echo -e "      ${FRED}DRYRUN${RESET}";
    fi;
