@@ -1,7 +1,5 @@
 #!/bin/bash
 #
-# version 0.0.41.900
-#
 # merge, slop, split, count peaks
 #
 #
@@ -13,7 +11,7 @@
 # BEDOPS="/path/to/bedops-v2.4.35/bin"
 # DATE="17jun2021"
 
-SLICEJAM_VERSION="0.0.41.900"
+SLICEJAM_VERSION="0.0.42.900"
 
 ## BED peak files
 #PEAKS=($(ls *VEH*_25*sing*bed));
