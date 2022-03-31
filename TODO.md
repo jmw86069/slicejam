@@ -1,5 +1,12 @@
 # TODO items for Slicejam
 
+## 31mar2022
+
+* `mergeSplitCountBed.sh`
+
+   * allow to define output filename directly, otherwise use previous approach
+
+
 ## 31jan2022
 
 

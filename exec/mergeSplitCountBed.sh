@@ -110,7 +110,7 @@ FCTHREADS=${FCTHREADS:-"32"};
 
 ## path to bedtool executable
 BEDTOOLS_DEFAULT="/ddn/gs1/biotools/bedtools/bin/bedtools";
-BEDTOOLS_FOUND=$(dirname $(which bedtools));
+BEDTOOLS_FOUND=$(which bedtools);
 BEDTOOLS_FOUND=${BEDTOOLS_FOUND:-"${BEDTOOLS_DEFAULT}"};
 BEDTOOLS=${BEDTOOLS:-"${BEDTOOLS_FOUND}"};
 if [ ! -f "${BEDTOOLS}" ]; then
@@ -122,7 +122,6 @@ fi;
 BEDOPS_DEFAULT="/ddn/gs1/biotools/bedops/bin";
 BEDOPS_FOUND=$(dirname $(which bedops));
 BEDOPS_FOUND=${BEDOPS_FOUND:-"${BEDOPS_DEFAULT}"};
-echo ${BEDOPS_FOUND}
 BEDOPS=${BEDOPS:-"${BEDOPS_FOUND}"};
 if [[ ( ! "." == ".${BEDOPS}" ) ]]; then
    BEDOPS="${BEDOPS}/"
@@ -159,6 +158,8 @@ echo -e "${FCYAN}   PEAKMAX:${BOLD}${PEAKMAX}${RESET}";
 echo -e "${FCYAN}CHROMSIZES:${BOLD}${CHROMSIZES}${RESET}";
 echo -e "${FCYAN}     DO_FC:${BOLD}${DO_FC}${RESET}";
 echo -e "${FCYAN}    DO_AUC:${BOLD}${DO_AUC}${RESET}";
+echo -e "${FCYAN}    BEDOPS:${BOLD}${BEDOPS}${RESET}";
+echo -e "${FCYAN}  BEDTOOLS:${BOLD}${BEDTOOLS}${RESET}";
 
 ####################################################################
 ## list the BED peak files being used
