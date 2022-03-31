@@ -4,6 +4,7 @@
 
 * `mergeSplitCountBed.sh`
 
+   * allow flexibly providing gz BED files at input, and with variable columns
    * allow to define output filename directly, otherwise use previous approach
 
 

@@ -237,15 +237,33 @@ fi;
 ## Not all sort offer "V" in which case it should be omitted.
 echo -e "${FMAGENTA}==================================================${RESET}";
 echo -e "${BOLD}Combining BED files${RESET}:";
-#echo -e "${FYELLOW}cat $(strdither ${PEAKFILES[*]}) | sort -k1,1V -k2,2n > ${BOLD}${TEMPBED}${RESET}";
-echo -e "${FYELLOW}cat $(strdither ${PEAKFILES[*]}) | sort -k1,1 -k2,2n > ${BOLD}${TEMPBED}${RESET}";
+# echo -e "${FYELLOW}cat $(strdither ${PEAKFILES[*]}) | sort -k1,1 -k2,2n > ${BOLD}${TEMPBED}${RESET}";
+# if [ ! "1" == "${DRYRUN}" ]; then
+#    #cat ${PEAKFILES[*]} | grep -v ^track | sort -k1,1V -k2,2n > ${TEMPBED};
+#    cat ${PEAKFILES[*]} | grep -v ^track | sort -k1,1 -k2,2n > ${TEMPBED};
+# else
+#    echo -e "   ${FRED}DRYRUN${RESET}";
+# fi;
+echo -e "${FYELLOW}{ ${RESET}:";
+for PEAKFILE in ${PEAKFILES[*]}; do
+   if [[ "${PEAKFILE##*\.}" == "gz" ]]; then
+      echo -e "   ${FYELLOW}gzcat '${BOLD}${PEAKFILE}${RESET}${FYELLOW}' | cut -f1-3${RESET}";
+   else
+      echo -e "   ${FYELLOW}  cat '${BOLD}${PEAKFILE}${RESET}${FYELLOW}' | cut -f1-3${RESET}";
+   fi;
+done;
 if [ ! "1" == "${DRYRUN}" ]; then
-   #cat ${PEAKFILES[*]} | grep -v ^track | sort -k1,1V -k2,2n > ${TEMPBED};
-   cat ${PEAKFILES[*]} | grep -v ^track | sort -k1,1 -k2,2n > ${TEMPBED};
+   for ${PEAKFILE} in ${PEAKFILES[*]}; do
+      if [[ "${PEAKFILE##*\.}" == "gz" ]]; then
+         gzcat "${PEAKFILE}" | cut -f1-3
+      else
+         cat "${PEAKFILE}" | cut -f1-3
+      fi;
+   done | sort -k1,1 -k2,2n > "${TEMPBED}"
 else
    echo -e "   ${FRED}DRYRUN${RESET}";
 fi;
-
+echo -e "${FYELLOW}} | sort -k1,1 -k2,2n > ${BOLD}${TEMPBED}${RESET}";
 
 ####################################################################
 ## Merge peaks
