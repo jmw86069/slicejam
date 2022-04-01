@@ -1,3 +1,48 @@
+# slicejam 0.0.43.900
+
+## updates to `slicejam_analysis.Rmd`
+
+* Pie chart figure dimensions are properly set for All Hits.
+* Heatmaps:
+
+   * width is adjusted to `5 + 1.5 * sqrt(num_samples)`
+   adding the 1.5 multiplier.
+   * default changed to `column_title_rot=90` so the column
+   labels do not overlap by default.
+
+* Heatmap of group means:
+
+   * default `cluster_columns=FALSE` so the
+   group order will be consistent between the two heatmaps, in the
+   order of experiment design.
+
+* Venn diagrams:
+
+   * place set labels outside, preferring to be across the top
+   * contrast names wrap to new line between group names
+
+* Volcano plots:
+
+   * `Volcano for All Peaks` was split into two sections `(adj.P.Val)`
+   and `(raw P-Value)`. The `submain` also indicates the format,
+   even though it is printed on the y-axis label.
+
+* Sample Correlation Heatmaps:
+
+   * all hierarchical clustered versions are commented out, they're
+   not practical for making interpretations and ultimately are more
+   confusing than helpful.
+
+* MA-plots:
+
+   * figure dimensions are calculated based upon expected ncol and nrow
+   for the plot panel layout, to estimate a roughly consistent
+   square panel format.
+
+* Peak Width plots:
+
+   * figure dimensions re-use those calculated for MA-plots
+
 # slicejam 0.0.42.900
 
 ## updates to executable files

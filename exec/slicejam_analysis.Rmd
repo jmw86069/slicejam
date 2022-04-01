@@ -708,6 +708,8 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
 ```{r, ma_layout, dependson="apply_norm"}
 ## Determine blank plot positions to organize Group and Run
 blank_pos <- NULL;
+ma_ncol <- ceiling(sqrt(ncol(fc_se)));
+ma_nrow <- ceiling(sqrt(ncol(fc_se)));
 tryCatch({
    Group_ctm <- as.matrix(table(
       data.frame(check.names=FALSE,
@@ -719,6 +721,7 @@ tryCatch({
       byrow=TRUE);
    #ctm_n;
    ma_ncol <- sum(sub_n);
+   ma_nrow <- nrow(Group_ctm);
    blank_pos <- unlist(lapply(seq_len(nrow(Group_ctm)), function(i){
       jamba::rmNULL(lapply(seq_len(ncol(Group_ctm)), function(j){
          iseq <- seq(from=ctm_n[i,j], by=-1, length.out=sub_n[j]);
@@ -728,10 +731,12 @@ tryCatch({
 }, error=function(e){
    print(e);
 })
-
+ma_height <- fig.height=5 + sqrt(ma_nrow) * 3;
+ma_width <- fig.width=5 + sqrt(ma_ncol) * 3;
 ```
 
-```{r, ma_raw_global, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+
+```{r, ma_raw_global, fig.height=ma_height, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
 jp_raw <- jammaplot(
    noiseFloor(iMatrix[,iSamples,drop=FALSE],
       minimum=1,
@@ -777,7 +782,7 @@ jp_raw_run <- jammaplot(
 
 #### Normalized data, global-centered
 
-```{r, ma_norm_global, fig.height=10, fig.width=14, dependson=c("apply_norm", "ma_layout")}
+```{r, ma_norm_global, fig.height=ma_height, fig.width=ma_width, dependson=c("apply_norm", "ma_layout")}
 jp_norm <- jammaplot(
    noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
       minimum=1,
@@ -800,7 +805,7 @@ jp_norm <- jammaplot(
 
 #### Normalized data, centered by "Run"
 
-```{r, ma_norm_run, fig.height=10, fig.width=14, dependson=c("apply_norm", "ma_layout")}
+```{r, ma_norm_run, fig.height=ma_height, fig.width=ma_width, dependson=c("apply_norm", "ma_layout")}
 # Only create when there are multiple Run values
 if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
 jp_norm_run <- jammaplot(
@@ -832,7 +837,7 @@ biological replicates within the same batch `"Run"`. If there
 is only one biological replicate in the same batch, the sample
 will be shown as a horizontal line at y=0.
 
-```{r, ma_norm_group_run, fig.height=10, fig.width=14, dependson=c("apply_norm", "ma_layout")}
+```{r, ma_norm_group_run, fig.height=ma_height, fig.width=ma_width, dependson=c("apply_norm", "ma_layout")}
 grouprun_ct <- tcount(pasteByRow(colData(fc_se[,iSamples])[,c(group_colname, run_colname)]));
 if (any(grouprun_ct > 1)) {
    subtitle_color_set <- as.list(as.data.frame(
@@ -876,7 +881,7 @@ twice the median variability across all samples.
 > **At this point, outlier samples are not removed from
 downstream statistical comparisons.**
 
-```{r, ma_norm_b_run, fig.height=10, fig.width=14, dependson=c("batch_adjust_run", "ma_layout")}
+```{r, ma_norm_b_run, fig.height=ma_height, fig.width=ma_width, dependson=c("batch_adjust_run", "ma_layout")}
 jp_norm_b_run <- jammaplot(
    noiseFloor(iMatrixQB[,iSamples,drop=FALSE],
       minimum=1,
@@ -911,7 +916,6 @@ printDebug("Using samples:", iSamplesUse);
 ```
 
 ### Sample Correlation Heatmaps
-
 
 #### Normalized data, centered by Group control
 
@@ -969,35 +973,35 @@ ComplexHeatmap::draw(hm_cor_u,
    column_title=paste0("Counts (", normname, ")"))
 
 ## ComplexHeatmap
-tryCatch({
-hm_cor <- ComplexHeatmap::Heatmap(
-   iCorM[iSamplesUse, iSamplesUse, drop=FALSE],
-   name="correlation",
-   border=TRUE,
-   col=colorjam::col_div_xf(1, lens=5),
-   #cluster_rows=iCorM_hc,
-   #cluster_columns=iCorM_hc,
-   clustering_method_rows="ward.D",
-   clustering_method_columns="ward.D",
-   heatmap_legend_param=list(
-      color_bar="discrete",
-      at=seq(from=-1, to=1, by=0.25),
-      border=TRUE),
-   top_annotation=ComplexHeatmap::HeatmapAnnotation(
-      border=TRUE,
-      annotation_legend_param=list(
-         border=TRUE),
-      df=data.frame(
-         Run=Run[iSamplesUse],
-         Group=iGroup[iSamplesUse]),
-      col=list(Group=group_colors,
-         Run=run_colors))
-)
-ComplexHeatmap::draw(hm_cor,
-   column_title=paste0("Counts (", normname, ")\nhierarchical clustered"))
-}, error=function(e){
-   printDebug("Hierarchical clustering was skipped for this section.");
-})
+# tryCatch({
+# hm_cor <- ComplexHeatmap::Heatmap(
+#    iCorM[iSamplesUse, iSamplesUse, drop=FALSE],
+#    name="correlation",
+#    border=TRUE,
+#    col=colorjam::col_div_xf(1, lens=5),
+#    #cluster_rows=iCorM_hc,
+#    #cluster_columns=iCorM_hc,
+#    clustering_method_rows="ward.D",
+#    clustering_method_columns="ward.D",
+#    heatmap_legend_param=list(
+#       color_bar="discrete",
+#       at=seq(from=-1, to=1, by=0.25),
+#       border=TRUE),
+#    top_annotation=ComplexHeatmap::HeatmapAnnotation(
+#       border=TRUE,
+#       annotation_legend_param=list(
+#          border=TRUE),
+#       df=data.frame(
+#          Run=Run[iSamplesUse],
+#          Group=iGroup[iSamplesUse]),
+#       col=list(Group=group_colors,
+#          Run=run_colors))
+# )
+# ComplexHeatmap::draw(hm_cor,
+#    column_title=paste0("Counts (", normname, ")\nhierarchical clustered"))
+# }, error=function(e){
+#    printDebug("Hierarchical clustering was skipped for this section.");
+# })
 ```
 
 
@@ -1048,35 +1052,35 @@ ComplexHeatmap::draw(hm_corbg_u,
    column_title=paste0("Counts (", bnormname, ")"))
 
 ## ComplexHeatmap
-tryCatch({
-hm_corbg <- ComplexHeatmap::Heatmap(
-   iCorMBglobal[iSamplesUse, iSamplesUse, drop=FALSE],
-   name="correlation",
-   border=TRUE,
-   col=colorjam::col_div_xf(1, lens=5),
-   #cluster_rows=iCorMBglobal_hc,
-   #cluster_columns=iCorMBglobal_hc,
-   clustering_method_rows="ward.D",
-   clustering_method_columns="ward.D",
-   heatmap_legend_param=list(
-      color_bar="discrete",
-      at=seq(from=-1, to=1, by=0.25),
-      border=TRUE),
-   top_annotation=ComplexHeatmap::HeatmapAnnotation(
-      border=TRUE,
-      annotation_legend_param=list(
-         border=TRUE),
-      df=data.frame(
-         Run=Run[iSamplesUse],
-         Group=iGroup[iSamplesUse]),
-      col=list(Group=group_colors,
-         Run=run_colors))
-)
-ComplexHeatmap::draw(hm_corbg,
-   column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
-}, error=function(e){
-   printDebug("Hierarchical clustering was skipped for this section.");
-})
+# tryCatch({
+# hm_corbg <- ComplexHeatmap::Heatmap(
+#    iCorMBglobal[iSamplesUse, iSamplesUse, drop=FALSE],
+#    name="correlation",
+#    border=TRUE,
+#    col=colorjam::col_div_xf(1, lens=5),
+#    #cluster_rows=iCorMBglobal_hc,
+#    #cluster_columns=iCorMBglobal_hc,
+#    clustering_method_rows="ward.D",
+#    clustering_method_columns="ward.D",
+#    heatmap_legend_param=list(
+#       color_bar="discrete",
+#       at=seq(from=-1, to=1, by=0.25),
+#       border=TRUE),
+#    top_annotation=ComplexHeatmap::HeatmapAnnotation(
+#       border=TRUE,
+#       annotation_legend_param=list(
+#          border=TRUE),
+#       df=data.frame(
+#          Run=Run[iSamplesUse],
+#          Group=iGroup[iSamplesUse]),
+#       col=list(Group=group_colors,
+#          Run=run_colors))
+# )
+# ComplexHeatmap::draw(hm_corbg,
+#    column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
+# }, error=function(e){
+#    printDebug("Hierarchical clustering was skipped for this section.");
+# })
 
 ```
 
@@ -1128,35 +1132,35 @@ ComplexHeatmap::draw(hm_corb_u,
    column_title=paste0("Counts (", bnormname, ")"))
 
 ## ComplexHeatmap
-tryCatch({
-hm_corb <- ComplexHeatmap::Heatmap(
-   iCorMB[iSamplesUse, iSamplesUse, drop=FALSE],
-   name="correlation",
-   border=TRUE,
-   col=colorjam::col_div_xf(1, lens=5),
-   #cluster_rows=iCorMB_hc,
-   #cluster_columns=iCorMB_hc,
-   clustering_method_rows="ward.D",
-   clustering_method_columns="ward.D",
-   heatmap_legend_param=list(
-      color_bar="discrete",
-      at=seq(from=-1, to=1, by=0.25),
-      border=TRUE),
-   top_annotation=ComplexHeatmap::HeatmapAnnotation(
-      border=TRUE,
-      annotation_legend_param=list(
-         border=TRUE),
-      df=data.frame(
-         Run=Run[iSamplesUse],
-         Group=iGroup[iSamplesUse]),
-      col=list(Group=group_colors,
-         Run=run_colors))
-)
-ComplexHeatmap::draw(hm_corb,
-   column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
-}, error=function(e){
-   printDebug("Hierarchical clustering was skipped for this section.");
-})
+# tryCatch({
+# hm_corb <- ComplexHeatmap::Heatmap(
+#    iCorMB[iSamplesUse, iSamplesUse, drop=FALSE],
+#    name="correlation",
+#    border=TRUE,
+#    col=colorjam::col_div_xf(1, lens=5),
+#    #cluster_rows=iCorMB_hc,
+#    #cluster_columns=iCorMB_hc,
+#    clustering_method_rows="ward.D",
+#    clustering_method_columns="ward.D",
+#    heatmap_legend_param=list(
+#       color_bar="discrete",
+#       at=seq(from=-1, to=1, by=0.25),
+#       border=TRUE),
+#    top_annotation=ComplexHeatmap::HeatmapAnnotation(
+#       border=TRUE,
+#       annotation_legend_param=list(
+#          border=TRUE),
+#       df=data.frame(
+#          Run=Run[iSamplesUse],
+#          Group=iGroup[iSamplesUse]),
+#       col=list(Group=group_colors,
+#          Run=run_colors))
+# )
+# ComplexHeatmap::draw(hm_corb,
+#    column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
+# }, error=function(e){
+#    printDebug("Hierarchical clustering was skipped for this section.");
+# })
 
 ```
 
@@ -1169,7 +1173,7 @@ A vertical dotted line is drawn to indicate the MGM threshold.
 
 #### Raw data
 
-```{r, peak_width_by_signal_raw, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+```{r, peak_width_by_signal_raw, fig.height=ma_height, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
 total_n <- length(iSamples) + length(blank_pos);
 ma_nrow <- ceiling(total_n / ma_ncol);
 par(mfrow=c(ma_nrow, ma_ncol));
@@ -1226,7 +1230,7 @@ par(mfrow=c(1, 1));
 #### Normalized data
 
 
-```{r, peak_width_by_signal_norm, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+```{r, peak_width_by_signal_norm, fig.height=ma_height, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
 total_n <- length(iSamples) + length(blank_pos);
 ma_nrow <- ceiling(total_n / ma_ncol);
 par(mfrow=c(ma_nrow, ma_ncol));
@@ -1283,7 +1287,7 @@ par(mfrow=c(1, 1));
 
 **Normal scale y-axis peak width:**
 
-```{r, peak_width_signal_norm2, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+```{r, peak_width_signal_norm2, fig.height=ma_height, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
 total_n <- length(iSamples) + length(blank_pos);
 ma_nrow <- ceiling(total_n / ma_ncol);
 par(mfrow=c(ma_nrow, ma_ncol));
@@ -1607,10 +1611,31 @@ if (length(AtacStats) > 0) {
 
 ### Volcano Plots
 
-#### Volcano for All Peaks
-
+#### Volcano for All Peaks (adj.P.Val)
 
 ```{r, volcano_plots, fig.height=12, fig.width=12, dependson=c("run_limma")}
+options("warn"=-1);
+if (length(AtacStats) > 0) {
+   for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
+      for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
+         iDF <- AtacStats$stats_dfs[[iSig]][[iCon]];
+         par("mar"=c(7, 7, 4, 3));
+         vp1adjp <- volcano_plot(iDF,
+            sig_cutoff=0.05,
+            fold_cutoff=1.5,
+            expr_cutoff=MGM,
+            main=iCon,
+            submain="All peaks (adj.P.Val)",
+            sig_colname="adj.P.Val");
+         par("mar"=c(5, 4, 4, 2) + 0.1);
+      }
+   }
+}
+```
+
+#### Volcano for All Peaks (raw P-Value)
+
+```{r, volcano_plots_raw, fig.height=12, fig.width=12, dependson=c("run_limma")}
 options("warn"=-1);
 if (length(AtacStats) > 0) {
    for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
@@ -1622,15 +1647,8 @@ if (length(AtacStats) > 0) {
             fold_cutoff=1.5,
             expr_cutoff=MGM,
             main=iCon,
-            submain="All peaks",
+            submain="All peaks (P-Value)",
             sig_colname="P.Value");
-         vp1adjp <- volcano_plot(iDF,
-            sig_cutoff=0.05,
-            fold_cutoff=1.5,
-            expr_cutoff=MGM,
-            main=iCon,
-            submain="All peaks",
-            sig_colname="adj.P.Val");
          par("mar"=c(5, 4, 4, 2) + 0.1);
       }
    }
@@ -1704,7 +1722,7 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### Volcano for MGM Subset Peaks
+#### Volcano for MGM Subset Peaks (adj.P.Val)
 
 Volcano plots below were created using the limma results
 after subsetting peaks for max group mean >= 
@@ -1718,20 +1736,42 @@ if (length(AtacStatsMgm4) > 0) {
          iDF <- AtacStatsMgm4$stats_dfs[[iSig]][[iCon]];
          par("mar"=c(7, 7, 4, 3))
          tryCatch({
-            vp2p <- volcano_plot(iDF,
-               sig_cutoff=0.05,
-               fold_cutoff=1.5,
-               expr_cutoff=MGM,
-               main=iCon,
-               submain=paste0("Subset peaks mgm >= ", MGM),
-               sig_colname="P.Value");
             vp2adjp <- volcano_plot(iDF,
                sig_cutoff=0.05,
                fold_cutoff=1.5,
                expr_cutoff=MGM,
                main=iCon,
-               submain=paste0("Subset peaks mgm >= ", MGM),
+               submain=paste0("Subset peaks mgm >= ", MGM, " (adj.P.Val)"),
                sig_colname="adj.P.Val");
+         }, error=function(e){
+            jamba::printDebug("Error during volcano_plot(), skipping.");
+            jamba::printDebug("iSig:", iSig);
+            jamba::printDebug("iCon:", iCon);
+            print(e);
+         });
+         par("mar"=c(5, 4, 4, 2) + 0.1);
+      }
+   }
+}
+```
+
+#### Volcano for MGM Subset Peaks (raw P-Value)
+
+```{r, volcano_plots_mgm4_raw, fig.height=12, fig.width=12, dependson=c("run_limma_mgm4")}
+options("warn"=-1);
+if (length(AtacStatsMgm4) > 0) {
+   for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
+      for (iCon in dimnames(AtacStatsMgm4$hit_array)[[2]]) {
+         iDF <- AtacStatsMgm4$stats_dfs[[iSig]][[iCon]];
+         par("mar"=c(7, 7, 4, 3))
+         tryCatch({
+            vp2p <- volcano_plot(iDF,
+               sig_cutoff=0.05,
+               fold_cutoff=1.5,
+               expr_cutoff=MGM,
+               main=iCon,
+               submain=paste0("Subset peaks mgm >= ", MGM, " (P-Value)"),
+               sig_colname="P.Value");
          }, error=function(e){
             jamba::printDebug("Error during volcano_plot(), skipping.");
             jamba::printDebug("iSig:", iSig);
@@ -1763,8 +1803,13 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
       for (iHit in dimnames(AtacStats$hit_array)[[1]]) {
          for (iCon in pair_l) {
             tryCatch({
-               venndir::venndir(AtacStats$hit_array[iHit, iCon, iSig],
+               setlist <- AtacStats$hit_array[iHit, iCon, iSig];
+               names(setlist) <- gsub("-", "-<br>\n", names(setlist));
+               venndir::venndir(setlist,
                   overlap_type="each",
+                  offset=c(0, -1),
+                  show_segments=FALSE,
+                  label_preset="main outside",
                   set_colors=contrast_colors[iCon],
                   main=paste0("signal:", iSig,
                      "\nthreshold:", iHit));
@@ -1795,8 +1840,13 @@ if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) 
       for (iHit in dimnames(AtacStatsMgm4$hit_array)[[1]]) {
          for (iCon in pair_l_mgm4) {
             tryCatch({
-               venndir::venndir(AtacStatsMgm4$hit_array[iHit, iCon, iSig],
+               setlist <- AtacStatsMgm4$hit_array[iHit, iCon, iSig];
+               names(setlist) <- gsub("-", "-<br>\n", names(setlist));
+               venndir::venndir(setlist,
                   overlap_type="each",
+                  offset=c(0, -1),
+                  show_segments=FALSE,
+                  label_preset="main outside",
                   set_colors=contrast_colors[iCon],
                   main=paste0("signal:", iSig,
                      "\nthreshold:", iHit));
@@ -2143,7 +2193,7 @@ if (length(AtacStats) > 0 && max(lengths(AtacStats$hit_array)) > 0) {
 ```
 
 
-```{r, peak_pies_gg_all, fig.height=15, fig.width=15}
+```{r, peak_pies_gg_all, fig.height=gg2_height, fig.width=gg2_width}
 if (length(gg2) > 0) {
    print(gg2);
    
@@ -2358,7 +2408,7 @@ if (length(AtacStatsMgm4) > 0) {
 
 #### Heatmap of Replicate Values
 
-```{r, heatmap_hits, fig.height=14, fig.width=5 + sqrt(length(iSamplesUse))}
+```{r, heatmap_hits, fig.height=14, fig.width=5 + sqrt(length(iSamplesUse))*1.5}
 peak_hits_q <- NULL;
 peak_hits_mgm4_q <- NULL;
 if (length(AtacStats) > 0) {
@@ -2443,10 +2493,12 @@ if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
       show_row_names=FALSE,
       show_row_dend=nrow(iM) < 2500,
       cluster_column_slices=FALSE,
+      cluster_row_slices=FALSE,
       clustering_method_rows="ward.D",
       clustering_method_columns="ward.D",
       row_split=row_split_hm,
       row_title_rot=0,
+      column_title_rot=90,
       left_annotation=left_annotation_hm,
       col=colorjam::col_div_xf(iMq99,
          lens=5),
@@ -2501,7 +2553,9 @@ if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
       show_row_names=FALSE,
       show_row_dend=nrow(iM_grp) < 2500,
       clustering_method_rows="ward.D",
+      cluster_row_slices=FALSE,
       cluster_column_slices=FALSE,
+      cluster_columns=FALSE,
       row_split=row_split_hm,
       row_title_rot=0,
       left_annotation=left_annotation_hm,

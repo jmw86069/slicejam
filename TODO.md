@@ -2,10 +2,86 @@
 
 ## 31mar2022
 
+* slicejam Rmarkdown
+
+   * When the MA-plot layout is odd, for example 2 columns, 6 rows,
+   the output plot dimensions should be adjusted to approximate
+   square panels for each plot.
+   
+      * Affects: all MA-plots, Peak Width by Peak Signal
+
+   * Contrasts:
+   
+      * need some way to limit contrasts to specific factors.
+   
+   * Sample correlations should probably not use hierarchical clustering
+   * Section `"Limma Stats for All Peaks"` numbers do not appear to
+   match the subsequent Volcano plots filtered to same criteria
+   * Section `"Volcano for MGM Subset Peaks"` appears to be using the less
+   stringent criteria, with `adjP=1`, instead of `adjP=0.05` as intended.
+   
+      * Correction: It displays Pval<0.05, then adjP<0.05 in adjacent plots,
+      confusing. Should probably lead with adjP<0.05 for all plots, then
+      a section with Pval<0.05 for all plots.
+   
+   * Venn diagrams:
+   
+      * contrasts should probably insert a line break between
+      contrasts, otherwise labels get too wide to be displayed effectively.
+      * Venn diagrams need a little table with total counts in each set.
+      (Must be added to `venndir` package.)
+      * Ideally place set labels outside, and all count labels inside,
+      making sure that labels are near the top of the figure.
+   
+   * Pie charts:
+   
+      * Section `"Statistical Hits by Genome Region"`:
+      Figure width is too narrow? Yikes, labels are not legible at all.
+      Problem occurred with 2-column, 6-row layout.
+      * Section `"MGM Subset Hits by Genome Region"` has great plot sizes
+      for 2-column, 6-row layout.
+      * These sections probably also need a stacked bar, or bars-beside
+      format.
+      * Contrast names probably need line break between group names,
+      otherwise they are too wide.
+   
+   * Heatmap of Replicate Values
+   
+      * Needs to be wider per column/group
+      * column_split labels need to be rotated 90 degrees, or they overlap.
+      * Ideally exclude "Run" column when there is only one batch, no adjustment.
+      * Might want to capture heatmap row order in the output tables so
+      entries can be found in that table.
+      * Add to vignette how someone could interrogate the heatmap row order
+      as a drill-down to find which entries are being displayed.
+   
+   * Consider InteractiveComplexHeatmap?
+   
+      * Unclear if practical to embed a heatmap with 44k rows.
+      * Main goal would be to allow zooming in to see rownames,
+      gene assignment, genomic region, chromosome coordinates.
+   
+   * ATAC mode steps appeared to fail
+
 * `mergeSplitCountBed.sh`
 
-   * allow flexibly providing gz BED files at input, and with variable columns
+   * COMPLETE: allow flexibly providing gz BED files at input, 
+   and with variable columns, by using only the first 3 BED columns
    * allow to define output filename directly, otherwise use previous approach
+   * the featureCounts `DO_FC=1` and multiCovBed `DO_AUC=1` results are nearly
+   identical, only differing by small amounts that suggest they handle the
+   0-base/1-base BED entries differently; or they may handle unique/multimap
+   reads differently. The majority of entries are identical integer values.
+   
+      * multiCovBed takes about 90 minutes, compared to about 1 minute for
+      featureCounts - and produce mostly identical results. Not worth ever
+      running multiCovBed
+   
+   * Eventually test process using bedgraph coverages with Adam Burkholder
+   tool `make_heatmap` to see if true "area under the curve" might differ
+   and be more accurate than featureCounts. If using Genrich ATAC coverage
+   output (extend read ends to 100bp width) this coverage might be much more
+   appropriate for analysis.
 
 
 ## 31jan2022
