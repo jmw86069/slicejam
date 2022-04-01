@@ -487,6 +487,7 @@ if (length(iContrasts) > 0) {
 }
 contrast_txt_file <- file.path(OUTDIR,
    "contrasts.txt");
+kc <- NULL;
 if (file.exists(contrast_txt_file)) {
    contrastNames <- gsub("^[ \t\r\n]+|[ \t\r\n]+$",
       "",
@@ -503,11 +504,11 @@ if (file.exists(contrast_txt_file)) {
    if (length(iContrasts) > 0) {
       rownames(iContrasts) <- colnames(iDesign);
       conDesB@contrasts <- iContrasts;
-      print(kable_coloring(
+      kc <- kable_coloring(
          data.frame(Note=paste0("contrastNames were loaded from file: '",
             contrast_txt_file,
             "'")),
-         row.names=FALSE));
+         row.names=FALSE);
    } else {
       contrastNames <- NULL;
       iContrasts <- NULL;
@@ -516,17 +517,19 @@ if (file.exists(contrast_txt_file)) {
    if (length(contrastNames) > 0) {
       writeLines(text=contrastNames,
          con=contrast_txt_file);
-      print(kable_coloring(
+      kc <- kable_coloring(
          data.frame(Note=paste0("contrastNames were stored in file: '",
             contrast_txt_file,
             "'")),
-         row.names=FALSE));
+         row.names=FALSE);
    } else {
-      print(kable_coloring(
+      kc <- kable_coloring(
          data.frame(Note=paste0("There are no contrasts defined."),
-         row.names=FALSE)));
+         row.names=FALSE));
    }
 }
+kc;
+
 kable_coloring(
    data.frame(contrastNames=contrastNames),
    row.names=FALSE,
