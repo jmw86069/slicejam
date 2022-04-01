@@ -121,6 +121,7 @@ NORM <- sliceargs$NORM;
 NORMMIN <- sliceargs$NORMMIN;
 NORMSHORT <- sliceargs$NORMSHORT;
 GROUPCHECK <- sliceargs$GROUPCHECK;
+FACTOR_ORDER <- sliceargs$FACTOR_ORDER;
 SAVE_RDATA <- sliceargs$SAVE_RDATA;
 
 detectedTx <- sliceargs$DETECTED_TX;
@@ -475,6 +476,7 @@ data.table::fwrite(
 conDesB <- jamses::groups_to_sedesign(
    data.frame(check.names=FALSE,
       colData(fc_se[, iSamples])[, group_colname, drop=FALSE]),
+   factor_order=FACTOR_ORDER,
    max_depth=1);
 iDesign <- conDesB@design;
 iContrasts <- conDesB@contrasts;
@@ -1375,6 +1377,7 @@ if (any(ctGroup > 1)) {
    conDesB <- jamses::groups_to_sedesign(
       data.frame(check.names=FALSE,
          colData(fc_se[, iSamplesUse])[, group_colname, drop=FALSE]),
+      factor_order=FACTOR_ORDER,
       max_depth=1);
    iDesign <- conDesB@design;
    if (length(contrastNames) > 0) {

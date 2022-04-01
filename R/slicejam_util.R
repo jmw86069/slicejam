@@ -30,6 +30,7 @@
 #' * NORM - normalization method: quantile, median, mediangroup, none
 #' * NORMMIN - normalization minimum_mean used for median, mediangroup
 #' * GROUPCHECK - 1/0 whether to stop analysis after groups and contrasts
+#' * FACTOR_ORDER - NULL, or comma-delimited `integer` vector
 #' * SAVE_RDATA - 1/0 whether to save RData during processing
 #' * UPSTREAM_PROMOTER - default 2000
 #' * DOWNSTREAM_PROMOTER - default 200
@@ -171,6 +172,18 @@ get_slicejam_args <- function
       GROUPCHECK <- TRUE;
    } else {
       GROUPCHECK <- FALSE;
+   }
+
+   # FACTOR_ORDER optional comma-delimited integers
+   if ("FACTOR_ORDER" %in% names(inplist)) {
+      FACTOR_ORDER <- inplist$FACTOR_ORDER;
+   } else {
+      FACTOR_ORDER <- Sys.getenv("FACTOR_ORDER");
+   }
+   if (!jamba::igrepHas("^[ 0-9,]+$", FACTOR_ORDER)) {
+      FACTOR_ORDER <- NULL;
+   } else {
+      FACTOR_ORDER <- as.numeric(strsplit(gsub("[ ]+", "", FACTOR_ORDER), ",")[[1]])
    }
 
    # SAVE_RDATA
@@ -369,6 +382,7 @@ get_slicejam_args <- function
    sliceargs$NORMMIN <- NORMMIN;
    sliceargs$NORMSHORT <- NORMSHORT;
    sliceargs$GROUPCHECK <- GROUPCHECK;
+   sliceargs$FACTOR_ORDER <- FACTOR_ORDER;
    sliceargs$SAVE_RDATA <- SAVE_RDATA;
    
    sliceargs$UPSTREAM_PROMOTER <- upstream_promoter;

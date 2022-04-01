@@ -42,6 +42,7 @@ Recognized arguments:
 \item NORM - normalization method: quantile, median, mediangroup, none
 \item NORMMIN - normalization minimum_mean used for median, mediangroup
 \item GROUPCHECK - 1/0 whether to stop analysis after groups and contrasts
+\item FACTOR_ORDER - NULL, or comma-delimited \code{integer} vector
 \item SAVE_RDATA - 1/0 whether to save RData during processing
 \item UPSTREAM_PROMOTER - default 2000
 \item DOWNSTREAM_PROMOTER - default 200

@@ -1,7 +1,22 @@
 # slicejam 0.0.43.900
 
+## updates to existing R functions
+
+* `get_slicejam_args()` new argument `FACTOR_ORDER`:
+
+   * passed to `jamses::groups_to_sedesign()` to define the order,
+   or subset, of experiment factors to use when determining
+   statistical contrasts. Useful when subsetting to only one factor
+   for example.
+   * In principle the `contrasts.txt` file can be used to define
+   custom subset of contrasts, however it's cumbersome to run
+   `slicejam_analysis.Rmd` twice, once to generate the `contrasts.txt`
+   with `GROUPCHECK=1`, then edit the contrasts, then re-run
+   the analysis.
+
 ## updates to `slicejam_analysis.Rmd`
 
+* New argument `FACTOR_ORDER`.
 * Pie chart figure dimensions are properly set for All Hits.
 * Heatmaps:
 
