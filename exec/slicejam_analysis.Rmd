@@ -736,8 +736,8 @@ tryCatch({
 }, error=function(e){
    print(e);
 })
-ma_height <- fig.height=5 + sqrt(ma_nrow) * 3;
-ma_width <- fig.width=5 + sqrt(ma_ncol) * 3;
+ma_height <- 5 + sqrt(ma_nrow) * 3;
+ma_width <- 5 + sqrt(ma_ncol) * 3;
 ```
 
 
