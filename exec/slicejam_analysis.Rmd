@@ -1178,7 +1178,7 @@ A vertical dotted line is drawn to indicate the MGM threshold.
 
 #### Raw data
 
-```{r, peak_width_by_signal_raw, fig.height=ma_height, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
+```{r, peak_width_by_signal_raw, fig.height=ma_height*1.5, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
 total_n <- length(iSamples) + length(blank_pos);
 ma_nrow <- ceiling(total_n / ma_ncol);
 par(mfrow=c(ma_nrow, ma_ncol));
@@ -1235,7 +1235,7 @@ par(mfrow=c(1, 1));
 #### Normalized data
 
 
-```{r, peak_width_by_signal_norm, fig.height=ma_height, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
+```{r, peak_width_by_signal_norm, fig.height=ma_height*1.5, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
 total_n <- length(iSamples) + length(blank_pos);
 ma_nrow <- ceiling(total_n / ma_ncol);
 par(mfrow=c(ma_nrow, ma_ncol));
@@ -2366,10 +2366,10 @@ Statistical hits are tabulate by unique `"broad_peak"` values.
 
 There are two potential outcomes of this process:
 
-1. **Significant broad_peak hits is nearly identical to individual peak hits.**
+1. **Significant broad_peak hits are nearly identical to individual peak hits.**
 This result suggests most peaks are not sliced, or that
 significantly changing peaks are not regions broader than the slice width.
-2. **Significant broad_peak hits is much smaller than individual peak hits.**
+2. **Significant broad_peak hits are much smaller than individual peak hits.**
 This result suggests most peaks are sliced, or that
 significantly changing peaks tend to be regions broader than the slice width.
 
