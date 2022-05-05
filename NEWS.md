@@ -1,3 +1,17 @@
+# slicejam 0.0.44.900
+
+* Moved `volcano_plot()` into the `jamma` R package on Github `jmw86069/jamma`.
+* The following functions were deleted:
+
+   * `volcano_plot()`
+   * `logAxis()`
+   * `blockArrowMargin()`
+   * `find_colname()`
+   * `gradient_rect(0`
+
+* Bumped dependency on jamma to version >=0.0.22.900.
+
+
 # slicejam 0.0.43.900
 
 ## updates to existing R functions

@@ -1,5 +1,46 @@
 # TODO items for Slicejam
 
+## 25apr2022
+
+* Migrate RMarkdown sections to use newer `jamses` functions
+
+   * `design2colors()` to define colors by experiment grouping
+   * `sestats_to_df()` to print `data.frame` summary of stat hits
+   * `heatmap_se()`
+   * `contrast2comp()` to shorten length of the contrast labels
+
+* Reduce output filename length
+
+   * enable custom output filename/subdirectory
+
+* Improve clarity/consistency in section headings
+
+   * MA-plots
+   
+      * panel ratios should be closer to 2:3 height:width, not 1:5
+      * make labels shorter
+   
+   * Define clear "sestats types"
+   
+      * all peaks / adjP
+      * all peaks / P-value
+      * mgm peaks / adjP
+      * mgm peaks / P-value
+   
+   * Volcano plot sections should match "sestats types"
+   * Venn diagram sections should match "sestats types"
+   
+      * consider adding proportional Venn with `overlap_type="overlap"`
+   
+   * Pie charts of genomic regions
+   
+      * sections should match "sestats types"
+      * subtitle should include number of hits represented
+      * change "MGM-Filtered Peaks" to "All MGM Peaks"
+   
+   * Create bar chart format equivalent of pie chart data
+
+
 ## 31mar2022
 
 * slicejam Rmarkdown
