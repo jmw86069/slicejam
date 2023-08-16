@@ -275,7 +275,7 @@ get_slicejam_args <- function
    } else {
       ATAC <- Sys.getenv("ATAC");
    }
-   if (length(ATAC) == 0 || nchar(ATAC) == 0 || ATAC %in% c("0")) {
+   if (length(ATAC) == 0 || nchar(ATAC) == 0 || any(ATAC %in% c("0", NA, "NA"))) {
       ATAC <- 0;
    } else {
       ATAC <- 1;
@@ -327,9 +327,12 @@ get_slicejam_args <- function
    }
    
    # Define base filename used for output
-   fc_base <- gsub("[.]fc$|[.]fc[.]txt$", "",
+   # remove file extension
+   fc_base <- gsub("[.]fc(|[.]txt)$", "",
+      ignore.case=TRUE,
       fc_file);
    fc_filepath <- normalizePath(fc_file);
+   # full directory containing the fc file
    fc_dirname <- dirname(fc_filepath);
    
    ## add the max group mean threshold (mgm) _mgm4
@@ -346,6 +349,7 @@ get_slicejam_args <- function
    # knitr root path auto-generated or using OUTDIR directly
    # - either way it uses a fully described file path
    if (nchar(OUTDIR) == 0) {
+      # name: "analysis" or "eval"
       fc_basedir <- paste0(fc_base,  "_", name);
       knit_root_dir <- file.path(fc_dirname,
          fc_basedir);
@@ -360,9 +364,12 @@ get_slicejam_args <- function
       knit_root_dir <- OUTDIR;
    }
    
+   # 0.0.45.900 - change to "slicejam_analysis.html"
    # html output filename
    fc_html <- file.path(knit_root_dir,
-      paste0(basename(fc_base),  ".html"));
+      "slicejam_analysis.html");
+      # paste0(basename(fc_base),  ".html"));
+   
    # cache directory
    CACHEDIR <- file.path(knit_root_dir, "cache", "");
    

@@ -561,7 +561,7 @@ peakoverlap_heatmap <- function
    if (isFALSE(cell_fun)) {
       cell_fun <- NULL;
    } else if (show_label && length(cell_fun) == 0) {
-      cell_fun <- cell_fun_label(
+      cell_fun <- jamba::cell_fun_label(
          m=c(list(m=m), m2),
          prefix=prefix,
          suffix=suffix,
@@ -681,7 +681,7 @@ peakoverlap_heatmap <- function
 #' hm2
 #' 
 #' @export
-cell_fun_label <- function
+cell_fun_label_deprecated <- function
 (m,
    prefix="",
    suffix="",

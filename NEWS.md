@@ -1,3 +1,40 @@
+# slicejam 0.0.45.900
+
+## new functions
+
+* `setup_slicejam()`
+
+   * helper script to create a wrapper script that runs the `.R` file
+   which in turn initiates the `.Rmd` RMarkdown analysis.
+   * The script configures `RHOME` and `R_LIBS` to use the exact version
+   and `R` executable used to install the `slicejam` package, and
+   it defines `R_LIBS` to use the exact library path used in the current
+   R session.
+   * The resulting shell script should be usable by others on the same
+   linux system, without using that user's personal R session.
+
+## changes to existing functions
+
+* `get_slicejam_args()`
+
+   * changed default output HTML to `"slicejam_analysis.html"`
+
+* `genomic_regions_from_gtf()`
+
+   * Updated to support GFF3 input format in addition to GTF format.
+   * Added help text describing specific issues seen with human T2T v2.0
+   GFF3 gene annotations, which contain `Name` entries repeated
+   on gene and transcript rows, and therefore causes
+   `splicejam::makeTx2geneFromGtf()` to assign this identifier to
+   gene and transcript entries, instead of using `gene_id` and
+   `transcript_id`, respectively. That said, the T2T v2.0 GFF3 file is
+   otherwise fantastic, and we are very happy to have it available.
+
+* `slicejam_analysis.Rmd`
+
+  * steps were gradually transitioned to use more `jamses` functions
+  * `jamses::heatmap_se()` replaced the previous heatmap code.
+
 # slicejam 0.0.44.900
 
 * Moved `volcano_plot()` into the `jamma` R package on Github `jmw86069/jamma`.
@@ -7,7 +44,7 @@
    * `logAxis()`
    * `blockArrowMargin()`
    * `find_colname()`
-   * `gradient_rect(0`
+   * `gradient_rect()`
 
 * Bumped dependency on jamma to version >=0.0.22.900.
 

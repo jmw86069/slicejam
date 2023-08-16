@@ -1,6 +1,6 @@
 Package: slicejam
 Title: Jam Slice ChIP-seq/ATAC-seq peak slice analysis
-Version: 0.0.44.900
+Version: 0.0.45.900
 Authors@R: person(given="James M.", family="Ward",
    email="jmw86069@gmail.com", role=c("aut", "cre"))
 Description: Jam Slice ChIP-seq/ATAC-seq peak slice analysis.
@@ -8,16 +8,16 @@ Description: Jam Slice ChIP-seq/ATAC-seq peak slice analysis.
    group determination, differential peak analysis, Venn diagrams,
    volcano plots, heatmaps.
 biocViews:
-Depends: R (>= 3.6.0),
-   jamses (>= 0.0.4.900)
-Imports: jamba(>= 0.0.64.900),
-   jamma (>= 0.0.22.900),
-   colorjam (>= 0.0.21.900),
-   platjam (>= 0.0.42.900),
+Depends: R (>= 3.6.0)
+Imports: jamba(>= 0.0.96.900),
+   jamma (>= 0.0.33.900),
+   jamses (>= 0.0.46.900),
+   colorjam (>= 0.0.23.900),
+   platjam (>= 0.0.70.900),
    splicejam (>= 0.0.74.900),
    genejam,
    multienrichjam,
-   venndir,
+   venndir (>= 0.0.28.900),
    kableExtra,
    SummarizedExperiment,
    data.table,
@@ -50,4 +50,4 @@ URL: http://github.com/jmw86069/slicejam
 BugReports: http://github.com/jmw86069/slicejam/issues
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.3

@@ -1,5 +1,100 @@
 # TODO items for Slicejam
 
+## 15aug2023
+
+* create helper function that creates a bash shell script that calls
+the `run_slicejam.R` with proper environment.
+
+   * `RHOME` should be defined using the current R session
+   * `R_LIBS` should be defined using the current R user session
+   * The file calling `Rscript` should therefore use the proper R
+   executable, and the R packages installed for that user, hopefully
+   making this script "portable" for use by others on the same linux system.
+
+* enable custom output directory from `slicejam_analysis.Rmd`
+
+## 15mar2023
+
+* Goal: Include Epilogos summary functions in the package.
+Real goal: Allow use of chromatin state data.
+
+   * Could be generalized to chromatin state data.
+   * Consider R package that provides Epilogos summary data for re-use.
+   * See raw data for hg19: https://egg2.wustl.edu/roadmap/data/byFileType/chromhmmSegmentations/ChmmModels/epilogos/observed/
+   * See also: https://epigenomegateway.wustl.edu/browser/?genome=hg19&datahub=https://egg2.wustl.edu/roadmap/data/byFileType/chromhmmSegmentations/ChmmModels/epilogos/imputed/qcat.json
+   * Unclear where to obtain comparable data for hg38, mm39, other genomes,
+   some liftOver has been done but the qcat.gz files are not available
+   (or not found)
+   * Perhaps hg38 here: http://compbio.mit.edu/epimap/
+   * Annotate peaks using Epilogos data (only hg19 currently)
+
+* Consider log-linear and/or chi-squared stats
+
+   * enrichment, change in proportionality of peaks to feature_type_winner,
+   or to epilogos state/state_group
+
+## 09feb2023
+
+RMarkdown updates:
+
+0. Make output filenames and folders **smaller**. Please.
+
+   * Option to provide custom output folder name.
+   * Output HTML file should be:
+   `"long_long_output_folder_analysis/slicejam_analysis.html"`, and not
+   `"long_long_output_folder_analysis/long_long_output_folder.html"`
+
+1. Remove the pre-MGM-filtered analysis steps. Instead, apply MGM filtering
+to peaks before analysis, then run that analysis and follow-up.
+2. Overall presentation:
+
+   * consider some type of tab interface to present the different subsets
+   and stat thresholds, e.g. adjP0.05, P0.05, MGM6 subset, etc.
+   * add ability to specify which normalization to use:
+   `"limma_batch_adjust_quantile_counts"`, or
+   `"quantile_counts"` if batch adjustment should not be used.
+
+2. Improve Venn diagrams
+
+   * use `expand_fraction=0.2` so labels are visible.
+   * clean up contrast names using `contrast2comp()`
+   * remove prefix `"signal:"` and `"threshold:"` from figure titles.
+   * attempt to add proportional Venn diagrams, scale down the `font_cex`.
+
+3. Add option to pre-define group colors, so groups like
+UL3, dH1A, and dH1B have consistently colored figures.
+4. Bonus points for including epigenome regions as an alternative to
+the `"feature_type"` Pie charts and bar charts.
+5. Improve Pie charts:
+
+   * clean up contrast names using `contrast2comp()`
+   * split long contrast names across rows
+   * remove "All Peaks" - since we have already filtered input peaks by MGM
+   * assign colors to `"feature_type"` consistently across figures
+   * order `"feature_type"` consistently in color legend
+
+6. Improve "Annotate Broad Peaks"
+
+   * consider renaming "Sliced Region Summary"
+   * use `sestats_to_df()` format to report hit counts
+
+7. Improve heatmaps
+
+   
+
+## 29nov2022
+
+Functions to create command-line scripts with which to run the Rmarkown.
+
+Constraints:
+
+* Script must define RHOME based upon the active version of R and its path,
+so that `Rscript` will call the appropriate R executable.
+* Script must also define `.libPaths()` consistent with original user
+settings to ensure the Rscript will run with the exact R library paths,
+and with the exact version and executable of `R` itself.
+
+
 ## 25apr2022
 
 * Migrate RMarkdown sections to use newer `jamses` functions

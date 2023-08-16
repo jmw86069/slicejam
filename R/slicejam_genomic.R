@@ -42,6 +42,47 @@
 #' by default. If the GTF file uses different attributes, adjust
 #' `geneAttrNames` and `txAttrNames` to match the GTF file.
 #' 
+#' ### Comments on compatible files
+#' 
+#' The function itself is capable of reading GTF or GFF3 formatted files,
+#' by calling `GenomicFeatures::makeTxDbFromGFF()` to do that heavy work.
+#' However `splicejam::makeTx2geneFromGtf()` is required to import
+#' additional gene and transcript annotations.
+#' 
+#' We found it is helpful for column 9 of the GTF or GFF3 file to contain
+#' attributes:
+#' 
+#' * gene_id: a unique gene identifier
+#' * gene_name: a unique gene symbol associated with each gene_id
+#' * transcript_id: one or more transcript identifiers associated with
+#' a gene_id
+#' 
+#' ### Issues with 'Name'
+#' 
+#' We found it problematic when the GTF or GFF3 file contains `"Name"`,
+#' specifically in cases where the same value is associated with multiple
+#' rows in the file. For example, a row with type "gene", `Name=APOE;`, then
+#' on the next row for type "transcript", also assigns `Name=APOE;`.
+#' Apparently this input causes `GenomicFeatures::makeTxDbFromGFF()` to assign
+#' the Name value as the primary identifier for both the gene and the
+#' transcript, and therefore interferes with the `tx2gene` association
+#' of `gene_id` to `gene_name`, and `gene_id` to `transcript_id`.
+#' 
+#' This type of formatting is present in the human telomere-to-telomere
+#' (T2T) v2.0 GTF file (as of November 2022).
+#' 
+#' In this case, we found it successful to remove the `Name` entries
+#' from the GTF or GFF3 file, then call `genomic_regions_from_gtf()`,
+#' potentially with `force_refresh=TRUE` to ensure the file is re-processed.
+#' While inconvenient, in principle the GTF or GFF3 file is incorrect by
+#' using the same `Name` value for multiple features. We did not want
+#' to modify this function (yet) to accommodate an incorrect GTF or GFF3
+#' input file.
+#' 
+#' All that said, we are incredibly grateful and happy to use
+#' the human T2T v2.0 GTF gene annotations, which contain very high
+#' quality gene annotations.
+#' 
 #' @family slicejam genome regions
 #' 
 #' @return `GRanges` object
@@ -247,7 +288,10 @@ genomic_regions_from_gtf <- function
             "Creating txdb from gtf:",
             gtf);
       }
-      refgene_txdb <- GenomicFeatures::makeTxDbFromGFF(gtf);
+      refgene_txdb <- jamba::call_fn_ellipsis(
+         GenomicFeatures::makeTxDbFromGFF,
+         file=gtf,
+         ...);
       if (save_txdb) {
          tryCatch({
             AnnotationDbi::saveDb(refgene_txdb,
@@ -407,6 +451,12 @@ genomic_regions_from_gtf <- function
       }
       exonsByGene <- GenomicFeatures::exonsBy(refgene_txdb,
          by="gene");
+      # 28nov2022: find matching gene colname
+      for (geneAttrName in intersect(geneAttrNames, colnames(tx2geneDF))) {
+         if (all(names(exonsByGene) %in% tx2geneDF[[geneAttrName]])) {
+            gene_colname <- geneAttrName;
+         }
+      }
       exon_match <- match(names(exonsByGene),
          tx2geneDF[[gene_colname]]);
       ## define gene_name and gene_id to each exon GRanges
@@ -428,11 +478,25 @@ genomic_regions_from_gtf <- function
          "Creating txByGene.");
    }
    txByGene <- GenomicFeatures::transcriptsBy(refgene_txdb);
+   
+   # 28nov2022
+   # ensure tx_name values are unique...
+   GenomicRanges::values(txByGene@unlistData)[,"tx_name"] <- jamba::makeNames(
+      GenomicRanges::values(txByGene@unlistData)[,"tx_name"])
+   
    # rename colnames
    GenomicRanges::values(txByGene@unlistData) <- jamba::renameColumn(
       GenomicRanges::values(txByGene@unlistData),
       from=c("tx_id", "tx_name"),
       to=c("internal_tx_id", tx_colname));
+   if (verbose) {
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "head(txByGene):");
+      print(head(txByGene));
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "head(tx2geneDF):");
+      print(head(tx2geneDF));
+   }
    # subset for tx
    ikeep <- (GenomicRanges::values(txByGene@unlistData)[[tx_colname]] %in% tx2geneDF[[tx_colname]]);
    if (!all(ikeep)) {
@@ -633,11 +697,13 @@ genomic_regions_from_gtf <- function
       if (!file.exists(bed_file) || force_refresh) {
          attr_colnames <- c(
             head(
-               provigrep(c("gene.*name", "."),
+               jamba::provigrep(c("gene.*name", "."),
                   c(geneAttrNames, txAttrNames)), 
                1),
             "feature_type");
-         gr_id <- paste0(seqnames(genome_regions), ":", start(genome_regions), "-", end(genome_regions));
+         gr_id <- paste0(GenomicRanges::seqnames(genome_regions), ":",
+            GenomicRanges::start(genome_regions), "-",
+            GenomicRanges::end(genome_regions));
          genome_regions_names <- jamba::pasteByRow(GenomicRanges::values(
             genome_regions)[,attr_colnames],
             sep="|");
@@ -886,7 +952,7 @@ annotate_gr_by_genome_region <- function
          gene_name=GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[gene_name_colname]],
          feature_type=factor(
             GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[feature_type_colname]],
-            levels=provigrep(feature_grep_order,
+            levels=jamba::provigrep(feature_grep_order,
                unique(GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])[[feature_type_colname]]))),
          gene_feature_type=GenomicRanges::values(genome_regions_exp[S4Vectors::subjectHits(fco)])$gene_feature_type);
       if (FALSE) {
@@ -1332,7 +1398,7 @@ flatten_genome_regions <- function
    # adjust feature_type_winner
    GenomicRanges::values(genome_regions_ann)$feature_type_winner <- factor(
       GenomicRanges::values(genome_regions_ann)$feature_type_winner,
-      levels=provigrep(c("promoter", "tts", "exon", "intron", "extra", "."),
+      levels=jamba::provigrep(c("promoter", "tts", "exon", "intron", "extra", "."),
          unique(GenomicRanges::values(genome_regions_ann)$feature_type_winner)));
    
    return(genome_regions_ann);

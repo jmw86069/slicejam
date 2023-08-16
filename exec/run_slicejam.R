@@ -6,7 +6,7 @@
 ##
 ## Run like this:
 ##
-## GTF=genome.gtf ATAC=1 FC_FILE=071419_2124_38to100_NoY_NoM_NoProblems.fc.txt CURATION_YAML=curation.yaml DRYRUN=1 Rscript run_gokeyATAC.R
+## GTF=genome.gtf ATAC=1 FC_FILE=071419_2124_38to100_NoY_NoM_NoProblems.fc.txt CURATION_TXT=curation.txt DRYRUN=1 Rscript run_gokeyATAC.R
 ##
 ## GTF="genome.gtf" # the GTF file with gene-exon features
 ##
@@ -22,8 +22,10 @@
 ##
 ## FC_FILE=featureCounts_output.fc
 ##
-## CURATION_YAML=curation.yaml optional YAML file
-##    to define columns: Group, Sample, Run using the featureCounts colnames
+## CURATION_TXT=curation.txt optional tab-delimited text file
+##    with columns: Filename, Sample, Run, Group, Label (optional)
+##    where Filename should match some substring of the column headers
+##    in the featureCounts file
 ##
 ## It will remove the '.fc' or '.fc.txt' file extension, and
 ## create a file with extension '_analysis.html' with output
@@ -45,7 +47,7 @@ CURATION_TXT <- sliceargs$CURATION_TXT;
 GTF <- sliceargs$GTF;
 GTFNAME <- sliceargs$GTFNAME;
 OUTDIR <- sliceargs$OUTDIR;
-ATAC <- sliceargs$ATAC;
+MASK <- sliceargs$MASK;
 MGM <- sliceargs$MGM;
 NORM <- sliceargs$NORM;
 NORMMIN <- sliceargs$NORMMIN;

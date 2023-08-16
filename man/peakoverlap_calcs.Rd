@@ -6,8 +6,8 @@
 \usage{
 peakoverlap_calcs(
   grl,
-  metric = c("count", "percent", "maxpercent", "jaccard", "count_bases",
-    "percent_bases", "maxpercent_bases", "jaccard_bases"),
+  metric = c("count", "percent", "maxpercent", "jaccard", "count_bases", "percent_bases",
+    "maxpercent_bases", "jaccard_bases"),
   count_method = c("peak", "overlap"),
   min_score = NULL,
   ignore.strand = TRUE,

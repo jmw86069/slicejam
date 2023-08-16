@@ -366,8 +366,8 @@ gg_pie_by_feature_type <- function
             useGrey=7)
    } else {
       gg2 <- gg2 +
-         colorjam::scale_fill_manual(values=colorSub) +
-         colorjam::scale_color_manual(
+         ggplot2::scale_fill_manual(values=colorSub) +
+         ggplot2::scale_color_manual(
             values=jamba::setTextContrastColor(colorSub,
                useGrey=7))
    }

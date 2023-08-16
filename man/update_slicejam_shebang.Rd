@@ -22,4 +22,8 @@ process of updating an installed R package script with
 a shebang line should be a formal part of the build
 process, but this process is not well documented.
 }
+\seealso{
+Other slicejam commandline: 
+\code{\link{setup_slicejam}()}
+}
 \concept{slicejam commandline}

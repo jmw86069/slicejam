@@ -45,6 +45,8 @@ knitr::opts_chunk$set(cache=TRUE,
       pointsize=14
    ),
    fig.align="center",
+   fig.height=9,
+   fig.width=8,
    pdf.options(encoding="ISOLatin9.enc"),
    cache.path=Sys.getenv("CACHEDIR", "cache"),
    cache.extra=list(
@@ -390,7 +392,12 @@ if (length(normgroup_colname) == 0) {
    normgroup_colname <- "normgroup";
    sample_df[[normgroup_colname]] <- sample_df[[group_colname]];
 }
-   
+
+## Optional color assignment
+color_colname <- head(jamba::provigrep(
+   c("^Color$", "Color$"),
+   colnames(sample_df)), 1);
+
 ## Sort sample_df by group
 sample_df <- jamba::mixedSortDF(sample_df,
    byCol=c(group_colname,
@@ -446,16 +453,39 @@ Run <- nameVector(colData(fc_se)[[run_colname]],
    colnames(fc_se));
 iGroup <- nameVector(colData(fc_se)[[group_colname]],
    colnames(fc_se));
+```
 
+```{r define_colors}
 ## Define sample colors
-g_levels <- levels(colData(fc_se)[[group_colname]]);
-n_levels <- length(g_levels);
-group_colors <- jamba::nameVector(
-   head(colorjam::rainbowJam(n_levels), n_levels),
-   g_levels);
+color_sub <- NULL;
+if (length(color_colname) == 1) {
+   # assume group color assignment
+   colordf <- unique(data.frame(check.names=FALSE,
+      colData(fc_se)[,c(group_colname, color_colname), drop=FALSE]));
+   if (length(jamba::tcount(colordf[[group_colname]], 2)) == 0) {
+      # no duplicate groups, therefore these are group colors
+      color_sub <- jamba::nameVector(
+         colordf[,c(color_colname, group_colname)]);
+   } else {
+      # these must be sample colors
+      colordf <- data.frame(check.names=FALSE,
+         colData(fc_se)[,c(sample_colname, color_colname), drop=FALSE]);
+      color_sub <- jamba::nameVector(
+         colordf[,c(color_colname, sample_colname)]);
+   }
+}
+sample_color_list <- platjam::design2colors(
+   data.frame(check.names=FALSE,
+      colData(fc_se)),
+   group_colnames=group_colname,
+   lightness_colnames=run_colname,
+   color_sub=color_sub)
+
+group_colors <- sample_color_list[[group_colname]];
+run_colors <- sample_color_list[[run_colname]];
+
 color_sub1 <- nameVector(group_colors[colData(fc_se)[[group_colname]]],
    colData(fc_se)[[sample_colname]]);
-run_colors <- group2colors(unique(Run));
 
 run_colors1 <- nameVector(run_colors[colData(fc_se[,iSamples])[[run_colname]]],
    iSamples);
@@ -1199,8 +1229,19 @@ for (iCol in iSamples) {
       y=iy,
       xlab="log2(1 + x) raw counts",
       ylab="Peak width",
-      main=iCol,
+      main="",
+      # main=iCol,
       yaxt="n");
+   # place title atop the plot, using plot panel width
+   jamba::drawLabels(preset="top",
+      adjPreset="top",
+      txt=iCol,
+      panelWidth="minimum",
+      boxColor=color_sub1[iCol],
+      boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
+      labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
+      labelCex=1.3,
+      drawBox=TRUE);
    minorLogTicksAxis(2,
       logBase=2,
       offset=1,
@@ -1208,12 +1249,13 @@ for (iCol in iSamples) {
    abline(v=MGM,
       lty="dotted",
       col="#333333");
-   jamba::drawLabels(preset="bottomleft",
+   jamba::drawLabels(preset="topleft",
+      adjPreset="bottomright",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],
       boxBorderColor=jamba::makeColorDarker(run_colors1[iCol]),
       labelCol=jamba::setTextContrastColor(run_colors1[iCol]),
-      labelCex=1.3,
+      labelCex=1.0,
       drawBox=TRUE);
    total_points <- sum(!is.na(ix) & !is.na(iy));
    total_points_mgm <- sum(!is.na(ix) & !is.na(iy) & ix >= MGM);
@@ -1256,8 +1298,19 @@ for (iCol in iSamples) {
       y=iy,
       xlab="log2(1 + x) raw counts",
       ylab="Peak width",
-      main=iCol,
+      main="",
+      # main=iCol,
       yaxt="n");
+   # place title atop the plot, using plot panel width
+   jamba::drawLabels(preset="top",
+      adjPreset="top",
+      txt=iCol,
+      panelWidth="minimum",
+      boxColor=color_sub1[iCol],
+      boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
+      labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
+      labelCex=1.3,
+      drawBox=TRUE);
    minorLogTicksAxis(2,
       logBase=2,
       offset=1,
@@ -1265,12 +1318,13 @@ for (iCol in iSamples) {
    abline(v=MGM,
       lty="dotted",
       col="#333333");
-   jamba::drawLabels(preset="bottomleft",
+   jamba::drawLabels(preset="topleft",
+      adjPreset="bottomright",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],
       boxBorderColor=jamba::makeColorDarker(run_colors1[iCol]),
       labelCol=jamba::setTextContrastColor(run_colors1[iCol]),
-      labelCex=1.3,
+      labelCex=1.0,
       drawBox=TRUE);
    total_points <- sum(!is.na(ix) & !is.na(iy));
    total_points_mgm <- sum(!is.na(ix) & !is.na(iy) & ix >= MGM);
@@ -1292,7 +1346,7 @@ par(mfrow=c(1, 1));
 
 **Normal scale y-axis peak width:**
 
-```{r, peak_width_signal_norm2, fig.height=ma_height, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
+```{r, peak_width_signal_norm2, fig.height=ma_height*1.5, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
 total_n <- length(iSamples) + length(blank_pos);
 ma_nrow <- ceiling(total_n / ma_ncol);
 par(mfrow=c(ma_nrow, ma_ncol));
@@ -1313,16 +1367,27 @@ for (iCol in iSamples) {
       y=iy,
       xlab="log2(1 + x) raw counts",
       ylab="Peak width",
-      main=iCol);
+      main="");
+   # place title atop the plot, using plot panel width
+   jamba::drawLabels(preset="top",
+      adjPreset="top",
+      txt=iCol,
+      panelWidth="minimum",
+      boxColor=color_sub1[iCol],
+      boxBorderColor=jamba::makeColorDarker(color_sub1[iCol]),
+      labelCol=jamba::setTextContrastColor(color_sub1[iCol]),
+      labelCex=1.3,
+      drawBox=TRUE);
    abline(v=MGM,
       lty="dotted",
       col="#333333");
-   jamba::drawLabels(preset="bottomleft",
+   jamba::drawLabels(preset="topleft",
+      adjPreset="bottomright",
       txt=Run[iCol],
       boxColor=run_colors1[iCol],
       boxBorderColor=jamba::makeColorDarker(run_colors1[iCol]),
       labelCol=jamba::setTextContrastColor(run_colors1[iCol]),
-      labelCex=1.3,
+      labelCex=1.0,
       drawBox=TRUE);
    total_points <- sum(!is.na(ix) & !is.na(iy));
    total_points_mgm <- sum(!is.na(ix) & !is.na(iy) & ix >= MGM);
@@ -1506,8 +1571,12 @@ AtacStats <- tryCatch({
    NULL;
 });
 if (length(AtacStats) > 0) {
-   cat("Stats hits by contrast and hit criteria:\n");
-   print(aperm(AtacStats$hit_array, c(2, 1, 3)));
+   hitdf <- sestats_to_df(AtacStats);
+   colnames(hitdf)[1] <- "assay_name";
+   kable_coloring(
+      hitdf,
+      caption="Statistical hits per contrast, for each hit criteria.",
+      row.names=FALSE) 
 }
 ```
 
@@ -1607,10 +1676,13 @@ if (length(AtacStats) > 0) {
       });
    }
    if (length(AtacStatsMgm4) > 0) {
-      cat(paste0(
-         "Stats hits by contrast and hit criteria ",
-         "(MGM >= ", MGM, "):\n"));
-      print(aperm(AtacStatsMgm4$hit_array, c(2, 1, 3)));
+      hitdf <- sestats_to_df(AtacStatsMgm4);
+      colnames(hitdf)[1] <- "assay_name";
+      kable_coloring(
+         hitdf,
+         caption=paste0("Statistical hits per contrast, for each hit criteria ",
+            "(MGM >= ", MGM, ")"),
+         row.names=FALSE) 
    }
 }
 ```
@@ -1929,197 +2001,29 @@ fc_gr <- annotate_gr_by_genome_region(
    mask_regions=MASK,
    verbose=FALSE);
 
-```
-
-```{r, peak_genes}
-if (FALSE) {
-## Rules:
-## - first pass: annotate anything that overlaps the peak
-##    - gene_name, feature_type
-## - second pass: choose feature_type_winner, in order:
-##    - promoter
-##    - TTS
-##    - exon
-##    - intron
-##    - anything else is "extragenic"
-## - third pass: assign gene of "winner"
-## - fourth pass: distance to nearest gene body
-##    - gene_name of nearest gene body
-##
-
-## Annotate ATAC peaks
-fc_gr <- as(rowData(fc_se), "GRanges");
-values(fc_gr) <- renameColumn(values(fc_gr),
-   from="Geneid",
-   to="Gene");
-#write.table(file="fc_gr.txt", as.data.frame(head(fc_gr, 10)), sep="\t");
-
-## Expand comma-delimited genes from genome_regions
-gr_expl <- strsplit(values(genome_regions)$gene_name, ",");
-gr_expi <- rep(seq_along(genome_regions), lengths(gr_expl));
-genome_regions_exp <- unname(genome_regions)[gr_expi];
-values(genome_regions_exp)$gene_name <- unname(unlist(gr_expl));
-
-## Remove spaces and commas from feature_type column
-values(genome_regions_exp)$feature_type <- gsub("[, ]+",
-   "",
-   values(genome_regions_exp)$feature_type);
-
-##
-values(genome_regions_exp)[,"gene_feature_type"] <- pasteByRow(
-   values(genome_regions_exp)[,c("gene_name", "feature_type")],
-   sep=" ");
-
-# Annotate each peak by each genome_region overlapped
-## ~20 seconds, substantially faster than annotateGRfromGR()
-#printDebug("Annotating peaks by genome_regions");
-#system.time({
-   fco <- GenomicRanges::findOverlaps(fc_gr,
-      ignore.strand=TRUE,
-      genome_regions_exp);
-   grdt <- data.table::data.table(
-      fc=values(fc_gr[queryHits(fco)])$Gene,
-      gene_name=values(genome_regions_exp[subjectHits(fco)])$gene_name,
-      gene_id=values(genome_regions_exp[subjectHits(fco)])$gene_id,
-      feature_type=factor(
-         values(genome_regions_exp[subjectHits(fco)])$feature_type,
-         levels=provigrep(c("promoter", "tts", "exon", "intron", "extragenic", "."),
-            unique(values(genome_regions_exp[subjectHits(fco)])$feature_type))),
-      gene_feature_type=values(genome_regions_exp[subjectHits(fco)])$gene_feature_type);
-   ## Iterate each column, combine multi-row features into one row
-   ## then annotate using unique, sorted, comma-delimited values
-   grd_colnames <- c("gene_name", 
-      "gene_id", 
-      "feature_type", 
-      "gene_feature_type");
-   grd_vals <- lapply(nameVector(grd_colnames), function(i){
-      #printDebug(i);
-      icols <- c("fc", i);
-      idt <- grdt[, ..icols];
-      ## expand comma-delimited entries
-      grdt0ft <- unique(mixedSortDF(idt, byCols=1:2)[,c(1,2)]);
-      grv <- unstrsplit(CharacterList(split(as.character(grdt0ft[[2]]), grdt0ft[[1]])), sep=",");
-      #grv <- cPaste(CharacterList(split(as.character(grdt0ft[[2]]), grdt0ft[[1]])), verbose=TRUE);
-      grv;
-   });
-   ## Add each column to fc_gr
-   for (i in names(grd_vals)) {
-      printDebug(i);
-      imatch <- match(names(grd_vals[[i]]), values(fc_gr)$Gene);
-      if ("feature_type" == i) {
-         values(fc_gr)[,i] <- unname(c("extragenic", grd_vals[[i]][1])[1]);
-      } else {
-         values(fc_gr)[,i] <- unname(c(NA, grd_vals[[i]][1])[1]);
-      }
-      values(fc_gr)[imatch,i] <- grd_vals[[i]];
-   }
-#})
-
-## is_duplicate()
-is_duplicate <- function(x) {
-   duplicated(x) | duplicated(x,
-      fromLast=TRUE);
+# now propagate annotations into the fc_se and fc_se_b objects
+region_colnames <- provigrep(c(
+   "gene_(name|id|feature)|feature_type|nearest_gene",
+   "broad_peak|num_slices"),
+   colnames(values(fc_gr)))
+gr_match <- match(rownames(fc_se), values(fc_gr)$Gene);
+if (!any(is.na(gr_match))) {
+   rowData(fc_se)[,region_colnames] <- data.frame(check.names=FALSE,
+      values(fc_gr)[gr_match, region_colnames, drop=FALSE])
+}
+gr_match <- match(rownames(fc_se_b), values(fc_gr)$Gene);
+if (!any(is.na(gr_match))) {
+   rowData(fc_se_b)[,region_colnames] <- data.frame(check.names=FALSE,
+      values(fc_gr)[gr_match, region_colnames, drop=FALSE])
 }
 
-## sort for best feature_type
-#printDebug("Annotating peaks by best feature_type");
-#system.time({
-   grdt0 <- mixedSortDF(grdt,
-      byCols=c("fc","feature_type","gene_name","gene_id"));
-   ## find first row per peak
-   grdt0_peak <- grdt0[["fc"]];
-   grdt0_peaku <- unique(grdt0_peak);
-   whichu <- match(grdt0_peaku, grdt0_peak);
-   ## First row per peak
-   grdt0_pk <- grdt0[whichu,][["fc"]];
-   grdt0_bestft <- grdt0[whichu,][["feature_type"]];
-   names(grdt0_bestft) <- grdt0_pk;
-   
-   ## subset for peaks having the best feature_type
-   bestftcolnames <- c("fc", "feature_type", "gene_name", "gene_id");
-   grdt0_hasbestft <- unique(
-      subset(grdt0, 
-         feature_type == grdt0_bestft[grdt0_peak])[,..bestftcolnames]);
+feature_type_colors <- colorjam::group2colors(unique(
+   as.character(values(fc_se)$feature_type_winner)));
+sample_color_list$feature_type_winner <- feature_type_colors;
 
-   ## Comma-delimit values for each column
-   ## peak_089268
-   for (i in c("feature_type", "gene_name", "gene_id")) {
-      inewcolname <- paste0(i, "_winner");
-      #printDebug(i, ", ", inewcolname);
-      ikeepcolnames <- c("fc", i);
-      grdt0_hasbestft_sub <- unique(grdt0_hasbestft[, ..ikeepcolnames]);
-      if (anyDuplicated(grdt0_hasbestft_sub[["fc"]])) {
-         ## split only duplicate entries
-         fcdupes <- is_duplicate(grdt0_hasbestft_sub[["fc"]]);
-         #grdt0_bestvalue_dupe <- cPaste(split(grdt0_hasbestft_sub[[i]][fcdupes],
-         #   grdt0_hasbestft_sub[["fc"]][fcdupes]));
-         grdt0_bestvalue_dupe <- unstrsplit(
-            sep=",",
-            CharacterList(
-               split(grdt0_hasbestft_sub[[i]][fcdupes],
-                  grdt0_hasbestft_sub[["fc"]][fcdupes])));
-         grdt0_bestvalue_nondupe <- nameVector(as.character(grdt0_hasbestft_sub[[i]][!fcdupes]),
-            grdt0_hasbestft_sub[["fc"]][!fcdupes]);
-         grdt0_bestvalue <- c(grdt0_bestvalue_dupe,
-            grdt0_bestvalue_nondupe);
-      } else {
-         grdt0_bestvalue <- nameVector(as.character(grdt0_hasbestft_sub[[i]]),
-            grdt0_hasbestft_sub[["fc"]]);
-      }
-      imatch <- match(names(grdt0_bestvalue),
-         values(fc_gr)$Gene);
-      if ("feature_type" %in% i) {
-         values(fc_gr)[,inewcolname] <- "extragenic";
-      } else {
-         values(fc_gr)[,inewcolname] <- c(NA, "")[1];
-      }
-      if (length(imatch) > 0) {
-         values(fc_gr)[imatch,inewcolname] <- as.character(grdt0_bestvalue);
-      }
-   }
-#});
+# show the full set of colors
+# showColors(sample_color_list)
 
-## gene distance analysis
-fc_gr_genedist <- GenomicRanges::distanceToNearest(fc_gr,
-   ignore.strand=TRUE,
-   genome_regions,
-   select="all");
-fc_gr_genedist_df <- data.frame(
-   Gene=values(fc_gr[queryHits(fc_gr_genedist)])[["Gene"]],
-   nearest_gene_distance=values(fc_gr_genedist)$distance,
-   renameColumn(
-      as.data.frame(values(genome_regions[subjectHits(fc_gr_genedist)])[,c("gene_name", "gene_id")]),
-      from=c("gene_name", "gene_id"),
-      to=c("nearest_gene_name", "nearest_gene_id"))
-)
-for (i in c("nearest_gene_name", "nearest_gene_id", "nearest_gene_distance")) {
-   #printDebug(i);
-   fc_gr_genedist_df1 <- unique(fc_gr_genedist_df[,c("Gene", i)]);
-   if (igrepHas("_distance", i)) {
-      fc_gr_genedist_df1vals <- nameVector(fc_gr_genedist_df1[,c(i, "Gene")]);
-      values(fc_gr)[,i] <- c(NA, 0)[1];
-   } else {
-      #fc_gr_genedist_df1vals <- cPaste(split(fc_gr_genedist_df1[[i]], fc_gr_genedist_df1[["Gene"]]))
-      fc_gr_genedist_df1vals <- unstrsplit(sep=",",
-         CharacterList(
-            split(fc_gr_genedist_df1[[i]], fc_gr_genedist_df1[["Gene"]])
-         )
-      )
-      values(fc_gr)[,i] <- c(NA, "")[1];
-   }
-   imatch <- match(names(fc_gr_genedist_df1vals), values(fc_gr)$Gene);
-   if (length(imatch) > 0) {
-      if (igrepHas("_distance", i)) {
-         values(fc_gr)[imatch,i] <- fc_gr_genedist_df1vals;
-      } else {
-         values(fc_gr)[imatch,i] <- as.character(fc_gr_genedist_df1vals);
-      }
-   }
-}
-
-feature_type_winner <- values(fc_gr)$feature_type_winner;
-names(feature_type_winner) <- values(fc_gr)$Gene;
-}
 ```
 
 #### Incidence Matrix by feature_type
@@ -2182,11 +2086,13 @@ gg2_width <- 14;
 gg2_height <- 8;
 if (length(AtacStats) > 0 && max(lengths(AtacStats$hit_array)) > 0) {
    gg2 <- gg_pie_by_feature_type(hit_array=AtacStats$hit_array,
+      colorSub=sample_color_list$feature_type_winner,
       add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm4,
          `All Peaks`=iPeaks),
       do_pie=TRUE,
       feature_type_winner=feature_type_winner);
    jdf <- gg_pie_by_feature_type(hit_array=AtacStats$hit_array,
+      colorSub=sample_color_list$feature_type_winner,
       add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm4,
          `All Peaks`=iPeaks),
       do_pie=FALSE,
@@ -2204,41 +2110,16 @@ if (length(gg2) > 0) {
    print(gg2);
    
    # print table format
-   kable_coloring(jdf[,1:10],
+   kable_coloring(jdf[, 1:10, drop=FALSE],
       row.names=FALSE,
-      caption="Data used for the pie charts above:"
-      ) %>%
+      colorSub=sample_color_list$feature_type_winner,
+      full_width=TRUE,
+      caption="Data used for the pie charts above:") %>%
       kable_styling(bootstrap_options=c("striped","bordered")) %>%
+      kableExtra::column_spec(column=seq_len(10),
+         extra_css="white-space: nowrap;") %>%
       row_spec(0, background="#DDDDDD");
 
-}
-if (FALSE) {
-if (length(AtacStats) > 0) {
-   par("mfrow"=c(3, 2), "mar"=c(5, 7, 6, 10));
-   colorSub_pie <- nameVector(
-      rainbowJam(length(unique(feature_type_winner))),
-         unique(feature_type_winner));
-   j_df_s <- peak_pie_by_region(AtacStats$hit_array,
-      PeakSet="All Peaks Tested",
-      do_pie=TRUE,
-      colorSub=colorSub_pie,
-      feature_type_winner=feature_type_winner);
-   if (length(j_df_s) > 0) {
-      j_df_all <- peak_pie_by_region(iPeaks=rownames(fc_se),
-         do_pie=TRUE,
-         colorSub=colorSub_pie,
-         feature_type_winner=feature_type_winner);
-      j_df <- rbind(j_df_s, j_df_all);
-      
-      ## Print the text results
-      kable_coloring(j_df,
-         row.names=TRUE,
-         caption="Data used for the pie charts:"
-         ) %>%
-         kable_styling(bootstrap_options=c("striped","bordered")) %>%
-         row_spec(0, background="#DDDDDD");
-   }
-}
 }
 ```
 
@@ -2275,45 +2156,15 @@ if (length(gg2) > 0) {
    print(gg2);
    
    # print table format
-   kable_coloring(jdf[,1:10],
+   kable_coloring(jdf[, 1:10, drop=FALSE],
       row.names=FALSE,
-      caption="Data used for the pie charts above:"
-      ) %>%
+      colorSub=sample_color_list$feature_type_winner,
+      full_width=TRUE,
+      caption="Data used for the pie charts above:") %>%
       kable_styling(bootstrap_options=c("striped","bordered")) %>%
+      kableExtra::column_spec(column=seq_len(10),
+         extra_css="white-space: nowrap;") %>%
       row_spec(0, background="#DDDDDD");
-}
-
-if (FALSE) {
-if (length(AtacStatsMgm4) > 0) {
-   par("mfrow"=c(3,3), "mar"=c(5,5,6,8));
-   ggpie_mgm4_s <- peak_pie_by_region(AtacStatsMgm4$hit_array,
-      PeakSet=paste0("Subset Peaks Mgm", MGM),
-      colorSub=colorSub_pie,
-      do_pie=TRUE,
-      feature_type_winner=feature_type_winner);
-   if (length(j_df_mgm4_s) > 0) {
-      j_df_mgm4 <- peak_pie_by_region(iPeaks=iPeaksMgm4,
-         do_pie=TRUE,
-         colorSub=colorSub_pie,
-         main=paste0("Subset Peaks Mgm", MGM),
-         feature_type_winner=feature_type_winner)
-      j_df_all <- peak_pie_by_region(iPeaks=iPeaks,
-         do_pie=TRUE,
-         colorSub=colorSub_pie,
-         main="All Peaks",
-         feature_type_winner=feature_type_winner)
-      
-      ## Print the text results
-      j_df_mgm4_tall <- rbind(j_df_mgm4_s, j_df_mgm4);
-      ## Print the text results
-      kable_coloring(j_df_mgm4_tall,
-         row.names=TRUE,
-         caption="Data used for the pie charts:"
-         ) %>%
-         kable_styling(bootstrap_options=c("striped","bordered")) %>%
-         row_spec(0, background="#DDDDDD");
-   }
-}
 }
 ```
 
@@ -2412,181 +2263,398 @@ if (length(AtacStatsMgm4) > 0) {
 
 ### Heatmap of Peak Hits
 
-#### Heatmap of Replicate Values
+#### Replicates
 
-```{r, heatmap_hits, fig.height=14, fig.width=5 + sqrt(length(iSamplesUse))*1.5}
+A series of heatmaps is shown below, one heatmap for each of the
+different statistical comparisons and hit cutoff thresholds used.
+
+```{r, heatmap_hits_all, fig.height=14, fig.width=4 + sqrt(length(iSamplesUse)) * 1.5}
+#
 peak_hits_q <- NULL;
-peak_hits_mgm4_q <- NULL;
 if (length(AtacStats) > 0) {
-   stats_dim <- dim(AtacStats$hit_array);
-   dimnames1 <- dimnames(AtacStats$hit_array)[[1]];
-   dimnames2 <- dimnames(AtacStats$hit_array)[[2]];
-   peak_hits <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStats$hit_array[head(dimnames1, 1), i, 1][[1]])
-   })));
-   mgm_used <- tail(dimnames1, 1);
-   peak_hits_q <- unique(unlist(lapply(dimnames2, function(i){
-      names(AtacStats$hit_array[tail(dimnames1, 1), i, 1][[1]])
-   })));
+   hm_sestats <- AtacStats;
+   hm_cutoffs <- dimnames(hm_sestats$hit_array)$Cutoffs;
+   
+   for (hm_cutoff in hm_cutoffs) {
+      hm_hitlist <- hit_array_to_list(hm_sestats,
+         assay_names=assay_names,
+         cutoff_names=hm_cutoff)
+      hm_hits_use <- setdiff(unique(unlist(lapply(hm_hitlist, names))), NA)
+      if (all(length(hm_hits_use) == 0) ||
+            length(hm_hits_use) >= 20000) {
+         # no heatmap
+      } else {
+         hm_all <- tryCatch({
+            heatmap_se(fc_se_b[, iSamplesUse],
+               assay_name=assay_names,
+               sestats=hm_sestats,
+               row_type=paste0("hits at: ",
+                  gsub("^hit ", "", hm_cutoff)),
+               data_type="signal",
+               color_max=3,
+               controlSamples=iControlSamples,
+               control_label="versus control samples",
+               rowData_colnames=c("feature_type_winner"),
+               row_split="feature_type_winner",
+               show_row_names=FALSE,
+               top_colnames=c("Run", "Group"),
+               sample_color_list=sample_color_list,
+               column_cex=0.4,
+               column_split=c("Group"),
+               column_title_rot=90)
+         }, error=function(e){
+            NULL
+         });
+         if (length(hm_all) > 0) {
+            hm_all_d <- ComplexHeatmap::draw(hm_all,
+               column_title=attr(hm_all, "hm_title"),
+               merge_legends=TRUE)
+            peak_hits_q <- unlist(unname(heatmap_row_order(hm_all_d)));
+         }
+      }
+   }
 }
+
+```
+
+```{r, heatmap_hits_mgm, fig.height=14, fig.width=4 + sqrt(length(iSamplesUse)) * 1.5}
+#
+peak_hits_mgm4_q <- NULL;
 if (length(AtacStatsMgm4) > 0) {
-   mgm4_stats_dim <- dim(AtacStatsMgm4$hit_array);
-   mgm_dimnames1 <- dimnames(AtacStatsMgm4$hit_array)[[1]];
-   mgm_dimnames2 <- dimnames(AtacStatsMgm4$hit_array)[[2]];
-   peak_hits_mgm4 <- unique(unlist(lapply(mgm_dimnames2, function(i){
-      names(AtacStatsMgm4$hit_array[head(mgm_dimnames1, 1), i, 1][[1]])
-   })));
-   mgm_used <- tail(mgm_dimnames1, 1);
-   peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
-      names(AtacStatsMgm4$hit_array[tail(mgm_dimnames1, 1), i, 1][[1]])
-   })));
-   if (length(peak_hits_mgm4_q) < 2) {
-      mgm_used <- head(mgm_dimnames1, 1);
-      peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
-         names(AtacStatsMgm4$hit_array[mgm_used, i, 1][[1]])
+   hm_sestats <- AtacStatsMgm4;
+   hm_cutoffs <- dimnames(hm_sestats$hit_array)$Cutoffs;
+
+   for (hm_cutoff in hm_cutoffs) {
+      hm_hitlist <- hit_array_to_list(hm_sestats,
+         assay_names=assay_names,
+         cutoff_names=hm_cutoff)
+      hm_hits_use <- setdiff(unique(unlist(lapply(hm_hitlist, names))), NA)
+      if (all(length(hm_hits_use) == 0) ||
+            length(hm_hits_use) >= 20000) {
+         # no heatmap
+      } else {
+         hm_mgm <- tryCatch({
+            heatmap_se(fc_se_b[, iSamplesUse],
+               assay_name=assay_names,
+               sestats=hm_sestats,
+               row_type=paste0("hits from MGM sub-analysis at: ",
+                  gsub("^hit ", "", hm_cutoff)),
+               data_type="signal",
+               color_max=3,
+               controlSamples=iControlSamples,
+               control_label="versus control samples",
+               rowData_colnames=c("feature_type_winner"),
+               row_split="feature_type_winner",
+               show_row_names=FALSE,
+               top_colnames=c("Run", "Group"),
+               sample_color_list=sample_color_list,
+               column_cex=0.6,
+               column_split=c("Group"),
+               column_title_rot=90)
+         }, error=function(e){
+            NULL
+         });
+         if (length(hm_mgm) > 0) {
+            hm_mgm_d <- ComplexHeatmap::draw(hm_mgm,
+               column_title=attr(hm_mgm, "hm_title"),
+               merge_legends=TRUE)
+            peak_hits_mgm4_q <- unlist(unname(heatmap_row_order(hm_mgm_d)));
+         }
+      }
+   }
+}
+
+if (length(AtacStatsMgm4) > 0) {
+   use_sestats <- AtacStatsMgm4;
+}
+
+```
+
+
+```{r, heatmap_hits_v1, fig.height=14, fig.width=4 + sqrt(length(iSamplesUse)) * 1.5}
+if (FALSE) {
+   peak_hits_q <- NULL;
+   peak_hits_mgm4_q <- NULL;
+   if (length(AtacStats) > 0) {
+      stats_dim <- dim(AtacStats$hit_array);
+      dimnames1 <- dimnames(AtacStats$hit_array)[[1]];
+      dimnames2 <- dimnames(AtacStats$hit_array)[[2]];
+      peak_hits <- unique(unlist(lapply(dimnames2, function(i){
+         names(AtacStats$hit_array[head(dimnames1, 1), i, 1][[1]])
+      })));
+      mgm_used <- tail(dimnames1, 1);
+      peak_hits_q <- unique(unlist(lapply(dimnames2, function(i){
+         names(AtacStats$hit_array[tail(dimnames1, 1), i, 1][[1]])
       })));
    }
-
-
-   if (denovo_controls) {
-      iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
-   }
-}
-
-# separately create a heatmap with the best available hits
-if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
-   #
-   if (length(peak_hits_mgm4_q) > 1) {
-      peak_hits_hm <- peak_hits_mgm4_q;
-      heatmap_subtitle <- paste0(
-         jamba::formatInt(length(peak_hits_hm)),
-         " hits from MGM sub-analysis\n")
-   } else {
-      peak_hits_hm <- peak_hits_q;
-      heatmap_subtitle <- paste0(
-         jamba::formatInt(length(peak_hits_hm)),
-         " hits from full peak analysis\n")
-   }
-   iM <- iMatrixQBctr[peak_hits_hm, iSamplesUse, drop=FALSE];
+   if (length(AtacStatsMgm4) > 0) {
+      mgm4_stats_dim <- dim(AtacStatsMgm4$hit_array);
+      mgm_dimnames1 <- dimnames(AtacStatsMgm4$hit_array)[[1]];
+      mgm_dimnames2 <- dimnames(AtacStatsMgm4$hit_array)[[2]];
+      peak_hits_mgm4 <- unique(unlist(lapply(mgm_dimnames2, function(i){
+         names(AtacStatsMgm4$hit_array[head(mgm_dimnames1, 1), i, 1][[1]])
+      })));
+      mgm_used <- tail(mgm_dimnames1, 1);
+      peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
+         names(AtacStatsMgm4$hit_array[tail(mgm_dimnames1, 1), i, 1][[1]])
+      })));
+      if (length(peak_hits_mgm4_q) < 2) {
+         mgm_used <- head(mgm_dimnames1, 1);
+         peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
+            names(AtacStatsMgm4$hit_array[mgm_used, i, 1][[1]])
+         })));
+      }
    
-   ## optional row_split
-   row_split_hm <- 4;
-   left_annotation_hm <- NULL;
-   if (length(peak_hits_hm) > 10) {
-      feature_type_colors <- colorjam::group2colors(unique(as.character(values(fc_gr)$feature_type_winner)));
-      peak_hits_hm_ft <- nameVector(
-         values(fc_gr[peak_hits_hm])$feature_type_winner,
-         peak_hits_hm);
-      row_split_hm <- peak_hits_hm_ft;
-      left_annotation_hm <- ComplexHeatmap::rowAnnotation(
-         border=TRUE,
-         annotation_legend_param=list(
-            border=TRUE
-         ),
-         df=data.frame(check.names=FALSE,
-            feature_type=values(fc_gr[peak_hits_hm])$feature_type_winner),
-         col=list(feature_type=feature_type_colors)
-      );
+   
+      if (denovo_controls) {
+         iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
+      }
    }
    
-   ## ComplexHeatmap
-   iMq99 <- ceiling(quantile(abs(iM), c(0.99), na.rm=TRUE));
-   iMq99 <- 4;
-   hm_mgm4 <- ComplexHeatmap::Heatmap(iM,
-      border=TRUE,
-      name="centered\nlog2Fold",
-      column_split=iGroup[iSamplesUse],
-      show_row_names=FALSE,
-      show_row_dend=nrow(iM) < 2500,
-      cluster_column_slices=FALSE,
-      cluster_row_slices=FALSE,
-      clustering_method_rows="ward.D",
-      clustering_method_columns="ward.D",
-      row_split=row_split_hm,
-      row_title_rot=0,
-      column_title_rot=90,
-      left_annotation=left_annotation_hm,
-      col=colorjam::col_div_xf(iMq99,
-         lens=5),
-      heatmap_legend_param=list(
-         color_bar="discrete",
-         at=seq(from=-iMq99, to=iMq99),
-         border=TRUE),
-      top_annotation=ComplexHeatmap::HeatmapAnnotation(
+   # separately create a heatmap with the best available hits
+   if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
+      #
+      if (length(peak_hits_mgm4_q) > 1) {
+         peak_hits_hm <- peak_hits_mgm4_q;
+         heatmap_subtitle <- paste0(
+            jamba::formatInt(length(peak_hits_hm)),
+            " hits from MGM sub-analysis\n")
+      } else {
+         peak_hits_hm <- peak_hits_q;
+         heatmap_subtitle <- paste0(
+            jamba::formatInt(length(peak_hits_hm)),
+            " hits from full peak analysis\n")
+      }
+      iM <- iMatrixQBctr[peak_hits_hm, iSamplesUse, drop=FALSE];
+      
+      ## optional row_split
+      row_split_hm <- 4;
+      left_annotation_hm <- NULL;
+      if (length(peak_hits_hm) > 10) {
+         # feature_type_colors <- colorjam::group2colors(unique(as.character(values(fc_gr)$feature_type_winner)));
+         peak_hits_hm_ft <- nameVector(
+            values(fc_gr[peak_hits_hm])$feature_type_winner,
+            peak_hits_hm);
+         row_split_hm <- peak_hits_hm_ft;
+         left_annotation_hm <- ComplexHeatmap::rowAnnotation(
+            border=TRUE,
+            annotation_legend_param=list(
+               border=TRUE
+            ),
+            df=data.frame(check.names=FALSE,
+               feature_type=values(fc_gr[peak_hits_hm])$feature_type_winner),
+            col=list(feature_type=feature_type_colors)
+         );
+      }
+      
+      ## ComplexHeatmap
+      iMq99 <- ceiling(quantile(abs(iM), c(0.99), na.rm=TRUE));
+      iMq99 <- 4;
+      hm_mgm4 <- ComplexHeatmap::Heatmap(iM,
          border=TRUE,
-         annotation_legend_param=list(
+         name="centered\nlog2Fold",
+         column_split=iGroup[iSamplesUse],
+         show_row_names=FALSE,
+         show_row_dend=nrow(iM) < 2500,
+         cluster_column_slices=FALSE,
+         cluster_row_slices=FALSE,
+         clustering_method_rows="ward.D",
+         clustering_method_columns="ward.D",
+         row_split=row_split_hm,
+         row_title_rot=0,
+         column_title_rot=90,
+         left_annotation=left_annotation_hm,
+         col=colorjam::col_div_xf(iMq99,
+            lens=5),
+         heatmap_legend_param=list(
+            color_bar="discrete",
+            at=seq(from=-iMq99, to=iMq99),
             border=TRUE),
-         df=data.frame(
-            Run=Run[iSamplesUse],
-            Group=iGroup[iSamplesUse]),
-         col=list(Group=group_colors,
-            Run=run_colors))
-   );
-   ComplexHeatmap::draw(hm_mgm4,
-      column_title=paste0(
-         "Centered counts\n(", bnormname, ")\n",
-         heatmap_subtitle,
-         mgm_used, "\n",
-         jamba::formatInt(nrow(iM)),
-         " rows displayed"))
-
-
-   ## Subset only promoter peak hits
-   # peak_hits_mgm4_q_p <- subset(rowData(fc_se[peak_hits_mgm4_q,]), 
-   #    feature_type_winner %in% "promoter")$Geneid;
+         top_annotation=ComplexHeatmap::HeatmapAnnotation(
+            border=TRUE,
+            annotation_legend_param=list(
+               border=TRUE),
+            df=data.frame(
+               Run=Run[iSamplesUse],
+               Group=iGroup[iSamplesUse]),
+            col=list(Group=group_colors,
+               Run=run_colors))
+      );
+      ComplexHeatmap::draw(hm_mgm4,
+         merge_legends=TRUE,
+         column_title=paste0(
+            "Centered counts\n(", bnormname, ")\n",
+            heatmap_subtitle,
+            mgm_used, "\n",
+            jamba::formatInt(nrow(iM)),
+            " rows displayed"))
+   
+   
+      ## Subset only promoter peak hits
+      # peak_hits_mgm4_q_p <- subset(rowData(fc_se[peak_hits_mgm4_q,]), 
+      #    feature_type_winner %in% "promoter")$Geneid;
+   }
 }
 ```
 
-#### Heatmap of Group Mean Values
 
+#### Group Means
 
-```{r, heatmap_groupmeans, fig.height=14, fig.width=5 + length(unique(iGroup[iSamplesUse])) * 1}
-if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
-   #if (length(AtacStatsMgm4) > 0) {
-   if (denovo_controls) {
-      iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
-   }
-   iM_grp <- jamba::rowGroupMeans(iM[,iSamplesUse,drop=FALSE],
-      useMedian=FALSE,
-      groups=iGroup[iSamplesUse]);
+```{r, heatmap_groups_all, fig.height=14, fig.width=4 + sqrt(length(unique(iGroup[iSamplesUse]))) * 1.5}
+# prepare group mean SE
+fc_se_b_grp <- se_collapse_by_column(fc_se_b,
+   columns=iSamplesUse,
+   column_groups="Group",
+   assay_names=assay_names)
+
+# now repeat steps above
+if (length(AtacStats) > 0) {
+   hm_sestats <- AtacStats;
+   hm_cutoffs <- dimnames(hm_sestats$hit_array)$Cutoffs;
    
-   ## ComplexHeatmap
-   iMq99 <- ceiling(quantile(abs(iM_grp), c(0.99), na.rm=TRUE));
-   iMq99 <- 4;
-   hm_mgm4_grp <- ComplexHeatmap::Heatmap(iM_grp,
-      border=TRUE,
-      name="centered\nlog2Fold\ngroup mean",
-      show_row_names=FALSE,
-      show_row_dend=nrow(iM_grp) < 2500,
-      clustering_method_rows="ward.D",
-      cluster_row_slices=FALSE,
-      cluster_column_slices=FALSE,
-      cluster_columns=FALSE,
-      row_split=row_split_hm,
-      row_title_rot=0,
-      left_annotation=left_annotation_hm,
-      col=colorjam::col_div_xf(iMq99,
-         lens=5),
-      heatmap_legend_param=list(
-         color_bar="discrete",
-         at=seq(from=-iMq99, to=iMq99),
-         border=TRUE),
-      top_annotation=ComplexHeatmap::HeatmapAnnotation(
-         border=TRUE,
-         annotation_legend_param=list(
-            border=TRUE),
-         df=data.frame(
-            Group=colnames(iM_grp)),
-         col=list(Group=group_colors[colnames(iM_grp)]))
-   );
-   ComplexHeatmap::draw(hm_mgm4_grp,
-      column_title=paste0(
-         "Group mean centered counts\n(", bnormname, ")\n",
-         heatmap_subtitle,
-         mgm_used, "\n",
-         jamba::formatInt(nrow(iM_grp)),
-         " rows displayed"))
+   for (hm_cutoff in hm_cutoffs) {
+      hm_hitlist <- hit_array_to_list(hm_sestats,
+         assay_names=assay_names,
+         cutoff_names=hm_cutoff)
+      hm_hits_use <- setdiff(unique(unlist(lapply(hm_hitlist, names))), NA)
+      if (all(length(hm_hits_use) == 0) ||
+            length(hm_hits_use) >= 20000) {
+         # no heatmap
+      } else {
+         hm_all_grp <- tryCatch({
+            heatmap_se(fc_se_b_grp[, iSamplesUse],
+               assay_name=assay_names,
+               sestats=hm_sestats,
+               row_type=paste0("hits at: ",
+                  gsub("^hit ", "", hm_cutoff)),
+               data_type="signal",
+               color_max=3,
+               controlSamples=unique(colData(
+                  fc_se[,iControlSamples,drop=FALSE])[[group_colname]]),
+               control_label="versus control group",
+               rowData_colnames=c("feature_type_winner"),
+               row_split="feature_type_winner",
+               show_row_names=FALSE,
+               top_colnames=c("Group"),
+               sample_color_list=sample_color_list,
+               column_cex=0.4,
+               # column_split=c("Group"),
+               column_title_rot=90)
+         }, error=function(e){
+            NULL
+         });
+         if (length(hm_all_grp) > 0) {
+            hm_all_grp_d <- ComplexHeatmap::draw(hm_all_grp,
+               column_title=attr(hm_all_grp, "hm_title"),
+               merge_legends=TRUE)
+         }
+      }
+   }
+}
+```
 
+```{r, heatmap_groups_mgm, fig.height=14, fig.width=4 + sqrt(length(unique(iGroup[iSamplesUse]))) * 1.5}
+
+# now repeat steps above
+if (length(AtacStatsMgm4) > 0) {
+   hm_sestats <- AtacStatsMgm4;
+   hm_cutoffs <- dimnames(hm_sestats$hit_array)$Cutoffs;
+   
+   for (hm_cutoff in hm_cutoffs) {
+      hm_hitlist <- hit_array_to_list(hm_sestats,
+         assay_names=assay_names,
+         cutoff_names=hm_cutoff)
+      hm_hits_use <- setdiff(unique(unlist(lapply(hm_hitlist, names))), NA)
+      if (all(length(hm_hits_use) == 0) ||
+            length(hm_hits_use) >= 20000) {
+         # no heatmap
+      } else {
+         hm_all_grp <- tryCatch({
+            heatmap_se(fc_se_b_grp[, iSamplesUse],
+               assay_name=assay_names,
+               sestats=hm_sestats,
+               row_type=paste0("hits from MGM sub-analysis at: ",
+                  gsub("^hit ", "", hm_cutoff)),
+               data_type="signal",
+               color_max=3,
+               controlSamples=unique(colData(
+                  fc_se[,iControlSamples,drop=FALSE])[[group_colname]]),
+               control_label="versus control group",
+               rowData_colnames=c("feature_type_winner"),
+               row_split="feature_type_winner",
+               show_row_names=FALSE,
+               top_colnames=c("Group"),
+               sample_color_list=sample_color_list,
+               column_cex=0.4,
+               # column_split=c("Group"),
+               column_title_rot=90)
+         }, error=function(e){
+            NULL
+         });
+         if (length(hm_all_grp) > 0) {
+            hm_all_grp_d <- ComplexHeatmap::draw(hm_all_grp,
+               column_title=attr(hm_all_grp, "hm_title"),
+               merge_legends=TRUE)
+         }
+      }
+   }
+}
+```
+
+
+#### Group Means v1
+
+
+```{r, heatmap_groupmeans, fig.height=14, fig.width=4 + sqrt(length(unique(iGroup[iSamplesUse]))) * 1.5}
+if (FALSE) {
+   if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
+      #if (length(AtacStatsMgm4) > 0) {
+      if (denovo_controls) {
+         iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
+      }
+      iM_grp <- jamba::rowGroupMeans(iM[,iSamplesUse,drop=FALSE],
+         useMedian=FALSE,
+         groups=iGroup[iSamplesUse]);
+      
+      ## ComplexHeatmap
+      iMq99 <- ceiling(quantile(abs(iM_grp), c(0.99), na.rm=TRUE));
+      iMq99 <- 4;
+      hm_mgm4_grp <- ComplexHeatmap::Heatmap(iM_grp,
+         border=TRUE,
+         name="centered\nlog2Fold\ngroup mean",
+         show_row_names=FALSE,
+         show_row_dend=nrow(iM_grp) < 2500,
+         clustering_method_rows="ward.D",
+         cluster_row_slices=FALSE,
+         cluster_column_slices=FALSE,
+         cluster_columns=FALSE,
+         row_split=row_split_hm,
+         row_title_rot=0,
+         left_annotation=left_annotation_hm,
+         col=colorjam::col_div_xf(iMq99,
+            lens=5),
+         heatmap_legend_param=list(
+            color_bar="discrete",
+            at=seq(from=-iMq99, to=iMq99),
+            border=TRUE),
+         top_annotation=ComplexHeatmap::HeatmapAnnotation(
+            border=TRUE,
+            annotation_legend_param=list(
+               border=TRUE),
+            df=data.frame(
+               Group=colnames(iM_grp)),
+            col=list(Group=group_colors[colnames(iM_grp)]))
+      );
+      ComplexHeatmap::draw(hm_mgm4_grp,
+         merge_legends=TRUE,
+         column_title=paste0(
+            "Group mean centered counts\n(", bnormname, ")\n",
+            heatmap_subtitle,
+            mgm_used, "\n",
+            jamba::formatInt(nrow(iM_grp)),
+            " rows displayed"))
+   
+   }
 }
 ```
 

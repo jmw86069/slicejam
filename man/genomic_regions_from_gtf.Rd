@@ -150,6 +150,49 @@ In more detail: The arguments \code{geneAttrNames}, \code{txAttrNames}, and
 create a \code{data.frame} which relates \code{transcript_id} to each \code{gene_name}
 by default. If the GTF file uses different attributes, adjust
 \code{geneAttrNames} and \code{txAttrNames} to match the GTF file.
+\subsection{Comments on compatible files}{
+
+The function itself is capable of reading GTF or GFF3 formatted files,
+by calling \code{GenomicFeatures::makeTxDbFromGFF()} to do that heavy work.
+However \code{splicejam::makeTx2geneFromGtf()} is required to import
+additional gene and transcript annotations.
+
+We found it is helpful for column 9 of the GTF or GFF3 file to contain
+attributes:
+\itemize{
+\item gene_id: a unique gene identifier
+\item gene_name: a unique gene symbol associated with each gene_id
+\item transcript_id: one or more transcript identifiers associated with
+a gene_id
+}
+}
+
+\subsection{Issues with 'Name'}{
+
+We found it problematic when the GTF or GFF3 file contains \code{"Name"},
+specifically in cases where the same value is associated with multiple
+rows in the file. For example, a row with type "gene", \code{Name=APOE;}, then
+on the next row for type "transcript", also assigns \code{Name=APOE;}.
+Apparently this input causes \code{GenomicFeatures::makeTxDbFromGFF()} to assign
+the Name value as the primary identifier for both the gene and the
+transcript, and therefore interferes with the \code{tx2gene} association
+of \code{gene_id} to \code{gene_name}, and \code{gene_id} to \code{transcript_id}.
+
+This type of formatting is present in the human telomere-to-telomere
+(T2T) v2.0 GTF file (as of November 2022).
+
+In this case, we found it successful to remove the \code{Name} entries
+from the GTF or GFF3 file, then call \code{genomic_regions_from_gtf()},
+potentially with \code{force_refresh=TRUE} to ensure the file is re-processed.
+While inconvenient, in principle the GTF or GFF3 file is incorrect by
+using the same \code{Name} value for multiple features. We did not want
+to modify this function (yet) to accommodate an incorrect GTF or GFF3
+input file.
+
+All that said, we are incredibly grateful and happy to use
+the human T2T v2.0 GTF gene annotations, which contain very high
+quality gene annotations.
+}
 }
 \seealso{
 Other slicejam genome regions: 
