@@ -247,26 +247,6 @@ get_slicejam_args <- function
    upstream_tts <- as.numeric(UPSTREAM_TTS);
    downstream_tts <- as.numeric(DOWNSTREAM_TTS);
    
-   # OUTDIR directory for Rmarkdown output
-   if ("OUTDIR" %in% names(inplist)) {
-      OUTDIR <- inplist$OUTDIR;
-   } else {
-      OUTDIR <- Sys.getenv("OUTDIR");
-   }
-   
-   # CACHEDIR
-   if ("CACHEDIR" %in% names(inplist)) {
-      CACHEDIR <- inplist$CACHEDIR;
-   } else {
-      CACHEDIR <- Sys.getenv("CACHEDIR");
-   }
-   if (length(CACHEDIR) == 0 || nchar(CACHEDIR) == 0) {
-      CACHEDIR <- file.path(OUTDIR, "cache", "");
-   }
-   if (!grepl("/$", CACHEDIR)) {
-      CACHEDIR <- file.path(CACHEDIR, "");
-   }
-   
    # ATAC enables ATAC mode
    # - which requires genes to have an ATAC peak near the promoter
    #   during gene annotation of peaks
@@ -346,8 +326,16 @@ get_slicejam_args <- function
    # add the GTF stem to the base name
    fc_base <- paste0(fc_base, gtf_stem);
    
+   #############################################
+   # OUTDIR directory for Rmarkdown output
+   if ("OUTDIR" %in% names(inplist)) {
+      OUTDIR <- inplist$OUTDIR;
+   } else {
+      OUTDIR <- Sys.getenv("OUTDIR");
+   }
+
    # knitr root path auto-generated or using OUTDIR directly
-   # - either way it uses a fully described file path
+   # - either way it should use a fully described file path
    if (nchar(OUTDIR) == 0) {
       # name: "analysis" or "eval"
       fc_basedir <- paste0(fc_base,  "_", name);
@@ -364,6 +352,19 @@ get_slicejam_args <- function
       knit_root_dir <- OUTDIR;
    }
    
+   # CACHEDIR
+   if ("CACHEDIR" %in% names(inplist)) {
+      CACHEDIR <- inplist$CACHEDIR;
+   } else {
+      CACHEDIR <- Sys.getenv("CACHEDIR");
+   }
+   if (length(CACHEDIR) == 0 || nchar(CACHEDIR) == 0) {
+      CACHEDIR <- file.path(OUTDIR, "cache", "");
+   }
+   if (!grepl("/$", CACHEDIR)) {
+      CACHEDIR <- file.path(CACHEDIR, "");
+   }
+
    # 0.0.45.900 - change to "slicejam_analysis.html"
    # html output filename
    fc_html <- file.path(knit_root_dir,

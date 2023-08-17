@@ -1,5 +1,9 @@
 # slicejam 0.0.45.900
 
+## dependencies
+
+* added `pacman` to help manage R packages during RMarkdown rendering.
+
 ## new functions
 
 * `setup_slicejam()`
@@ -34,6 +38,14 @@
 
   * steps were gradually transitioned to use more `jamses` functions
   * `jamses::heatmap_se()` replaced the previous heatmap code.
+  * Refactored to use HTML tabs to help organize plots of the same type:
+  volcano plots, Venn diagrams, heatmaps.
+  * Hid a bunch of verbose text inside collapsible HTML chunks.
+  * `jammaplot()` output objects are no longer stored, only the attributes,
+  saving large amount of memory when processing large files (>700k rows).
+  * added RMarkdown option `cache.lazy=FALSE` to sidestep errors of
+  long vectors during lazy cache loading.
+  * renamed R objects from `_mgm4` to `_mgm`, and all `Mgm4` to `Mgm`.
 
 # slicejam 0.0.44.900
 

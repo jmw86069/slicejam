@@ -49,6 +49,7 @@ knitr::opts_chunk$set(cache=TRUE,
    fig.width=8,
    pdf.options(encoding="ISOLatin9.enc"),
    cache.path=Sys.getenv("CACHEDIR", "cache"),
+   cache.lazy=FALSE,
    cache.extra=list(
       packageVersion("jamba"),
       packageVersion("jamma"),
@@ -74,6 +75,9 @@ par("family"="Arial",
 ```
 
 #### SliceJam analysis parameters
+
+<p><a class="btn btn-primary" data-toggle="collapse" href="#collapseSlicejam1" role="button" aria-expanded="false" aria-controls="collapseSlicejam1">(Expand...)</a></p>
+<div class="collapse" id="collapseSlicejam1"><div class="card card-body">
 
 ```{r, slicejam_minimum_version}
 # check version of slicejam
@@ -141,11 +145,13 @@ knit_root_dir <- sliceargs$knit_root_dir;
 
 ```
 
+
 #### R package initialization
 
 
 ```{r, r_initialization, cache=FALSE}
-suppressPackageStartupMessages(library(jamba));
+library(pacman)
+suppressPackageStartupMessages(p_load_gh("jmw86069/jamba"));
 
 jamba::kable_coloring(
    data.frame(check.names=FALSE,
@@ -155,23 +161,30 @@ jamba::kable_coloring(
       "R library paths in use."));
 
 options("warn"=-1);
-suppressPackageStartupMessages(library(SummarizedExperiment));
-suppressPackageStartupMessages(library(colorjam));
-suppressPackageStartupMessages(library(jamma));
-suppressPackageStartupMessages(library(splicejam));
-suppressPackageStartupMessages(library(slicejam));
-suppressPackageStartupMessages(library(data.table));
-suppressPackageStartupMessages(library(matrixStats));
-suppressPackageStartupMessages(library(extrafont));
+suppressPackageStartupMessages(p_load_gh("jmw86069/colorjam"));
+suppressPackageStartupMessages(p_load_gh("jmw86069/slicejam"));
+suppressPackageStartupMessages(p_load_gh("jmw86069/jamses"));
+suppressPackageStartupMessages(p_load_gh("jmw86069/jamma"));
+suppressPackageStartupMessages(p_load_gh("jmw86069/splicejam"));
+suppressPackageStartupMessages(p_load_gh("jmw86069/multienrichjam"));
+
+suppressPackageStartupMessages(p_load("SummarizedExperiment"));
+suppressPackageStartupMessages(p_load("data.table"));
+suppressPackageStartupMessages(p_load("matrixStats"));
+suppressPackageStartupMessages(p_load("extrafont"));
 #suppressPackageStartupMessages(library(GenomicFeatures));
-suppressPackageStartupMessages(library(rtracklayer));
-suppressPackageStartupMessages(library(methods));
-suppressPackageStartupMessages(library(multienrichjam));
-suppressPackageStartupMessages(library(kableExtra));
+suppressPackageStartupMessages(p_load("rtracklayer"));
+suppressPackageStartupMessages(p_load(methods));
+suppressPackageStartupMessages(p_load("kableExtra"));
 
 ```
 
+</div></div>
+
 ## Description of workflow
+
+<p><a class="btn btn-primary" data-toggle="collapse" href="#collapseDescription1" role="button" aria-expanded="false" aria-controls="collapseDescription1">(Expand...)</a></p>
+<div class="collapse" id="collapseDescription1"><div class="card card-body">
 
 * Import the first `.fc` file found in the current working directory.
 
@@ -264,15 +277,16 @@ from featureCounts to populate rows, such as
 
 * Optionally save RData session
 
+</div></div>
+
+
 ## Analysis workflow
 
 
-### Import .fc file
+### Import featureCounts data
 
-Currently this workflow will use a `".fc"` file defined
-via the environmental variable `"FC_FILE"`, or if that
-variable is not defined, it searches for the first `".fc"`
-file in the current working directory.
+<p><a class="btn btn-primary" data-toggle="collapse" href="#collapseImport1" role="button" aria-expanded="false" aria-controls="collapseImport1">(Expand...)</a></p>
+<div class="collapse" id="collapseImport1"><div class="card card-body">
 
 ```{r, import_fc}
 ## Import
@@ -418,7 +432,11 @@ filenames <- jamba::nameVector(sample_df[[filename_colname]],
 fc_data <- fc_data[,c(fc_colnames, filenames),drop=FALSE];
 
 ## Print sample annotation table
+curation_color_list <- platjam::design2colors(
+   plot_type="none",
+   sample_df)
 kable_coloring(sample_df,
+   colorSub=curation_color_list,
    caption=paste0(
       "Sample Groups defined by curation_txt: '",
       basename(curation_txt),
@@ -455,7 +473,13 @@ iGroup <- nameVector(colData(fc_se)[[group_colname]],
    colnames(fc_se));
 ```
 
-```{r define_colors}
+</div></div>
+
+#### Assign colors
+
+Base filename: `define_colors`
+
+```{r define_colors, fig.width=16, fig.height=9}
 ## Define sample colors
 color_sub <- NULL;
 if (length(color_colname) == 1) {
@@ -491,9 +515,11 @@ run_colors1 <- nameVector(run_colors[colData(fc_se[,iSamples])[[run_colname]]],
    iSamples);
 ```
 
-#### Experiment Design and Contrasts
+#### Statistical Contrasts
 
-```{r, define_contrasts}
+Base filename: `define_contrasts`
+
+```{r, define_contrasts, fig.height=12, fig.width=12}
 sample_txt_file <- file.path(OUTDIR,
    "curated_samples.txt");
 data.table::fwrite(
@@ -503,13 +529,13 @@ data.table::fwrite(
    col.names=TRUE);
 
 ## define experimental design groups and contrasts
-conDesB <- jamses::groups_to_sedesign(
+sedesign <- jamses::groups_to_sedesign(
    data.frame(check.names=FALSE,
       colData(fc_se[, iSamples])[, group_colname, drop=FALSE]),
    factor_order=FACTOR_ORDER,
    max_depth=1);
-iDesign <- conDesB@design;
-iContrasts <- conDesB@contrasts;
+iDesign <- sedesign@design;
+iContrasts <- sedesign@contrasts;
 
 contrastNames <- NULL;
 if (length(iContrasts) > 0) {
@@ -533,11 +559,11 @@ if (file.exists(contrast_txt_file)) {
    })
    if (length(iContrasts) > 0) {
       rownames(iContrasts) <- colnames(iDesign);
-      conDesB@contrasts <- iContrasts;
+      sedesign@contrasts <- iContrasts;
       kc <- kable_coloring(
-         data.frame(Note=paste0("contrastNames were loaded from file: '",
-            contrast_txt_file,
-            "'")),
+         data.frame(
+            Note="contrastNames were loaded from file: ",
+            File=paste0("'", contrast_txt_file, "'")),
          row.names=FALSE);
    } else {
       contrastNames <- NULL;
@@ -548,9 +574,8 @@ if (file.exists(contrast_txt_file)) {
       writeLines(text=contrastNames,
          con=contrast_txt_file);
       kc <- kable_coloring(
-         data.frame(Note=paste0("contrastNames were stored in file: '",
-            contrast_txt_file,
-            "'")),
+         data.frame(Note="contrastNames were stored in file: ",
+            paste0("'", contrast_txt_file, "'")),
          row.names=FALSE);
    } else {
       kc <- kable_coloring(
@@ -561,11 +586,20 @@ if (file.exists(contrast_txt_file)) {
 kc;
 
 kable_coloring(
-   data.frame(contrastNames=contrastNames),
+   data.frame(
+      `Contrast Names`=contrastNames,
+      `Abbreviated Comp`=jamses::contrast2comp(contrastNames)),
    row.names=FALSE,
    caption=paste0(
       "Contrasts defined:"));
 
+# plot sedesign
+plot_sedesign(sedesign,
+   arrow_ex=0.7,
+   axis1=2,
+   axis2=1,
+   axis3=3,
+   axis4=4)
 
 ## Optional GROUPCHECK which exits here to allow reviewing the sample grouping
 if (GROUPCHECK) {
@@ -584,20 +618,46 @@ if (GROUPCHECK) {
 
 ```
 
-#### Distribution of Peak Sizes
+#### Peak Sizes {.tabset}
 
 If the featureCounts output included column name `"Length"`,
 the plots below will show the distribution of lengths.
+
+##### Size distribution
+
+Base filename: `peak_sizes`
 
 ```{r, peak_sizes, fig.height=6, fig.width=6}
 if ("Length" %in% colnames(rowData(fc_se))) {
    plotPolygonDensity(rowData(fc_se)$Length,
       main="Peak sizes",
-      xlab="Peak width",
+      xaxt="n",
+      yaxt="n",
       breaks=100);
-   
+   title(xlab="Peak width", line=4)
+   axis1at <- pretty(par("usr")[1:2])
+   axis(1,
+      las=2,
+      cex.axis=1.3,
+      at=axis1at,
+      labels=formatInt(axis1at))
+   axis2at <- pretty(par("usr")[3:4])
+   axis(2,
+      las=2,
+      cex.axis=1.3,
+      at=axis2at,
+      labels=formatInt(axis2at))
+}
+```
+
+##### Size distribution (log scale)
+
+Base filename: `peak_sizes_log`
+
+```{r, peak_sizes_log, fig.height=6, fig.width=6}
+if ("Length" %in% colnames(rowData(fc_se))) {
    plotPolygonDensity(rowData(fc_se)$Length,
-      main="Peak sizes (log-scales x-axis",
+      main="Peak sizes (log-scaled x-axis)",
       log="x",
       xlab="Peak width",
       breaks=100);
@@ -736,9 +796,8 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
 
 ```
 
-### MA-Plots
+### MA-Plots {.tabset}
 
-#### Un-normalized data, global-centered
 
 ```{r, ma_layout, dependson="apply_norm"}
 ## Determine blank plot positions to organize Group and Run
@@ -770,9 +829,12 @@ ma_height <- 5 + sqrt(ma_nrow) * 3;
 ma_width <- 5 + sqrt(ma_ncol) * 3;
 ```
 
+#### Un-normalized data {.tabset}
+
+##### global-centered
 
 ```{r, ma_raw_global, fig.height=ma_height, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
-jp_raw <- jammaplot(
+jp_raw_attr <- attributes(jammaplot(
    noiseFloor(iMatrix[,iSamples,drop=FALSE],
       minimum=1,
       newValue=NA),
@@ -787,38 +849,40 @@ jp_raw <- jammaplot(
    useMean=TRUE,
    ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
-)
+))
 ```
 
-#### Un-normalized data, centered by "Run"
+##### centered by Run
 
-```{r, ma_raw_run, fig.height=10, fig.width=14, dependson=c("import_fc", "ma_layout")}
+```{r, ma_raw_run, fig.height=ma_height, fig.width=ma_width, dependson=c("import_fc", "ma_layout")}
 # Only create when there are multiple Run values
 if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
-jp_raw_run <- jammaplot(
-   noiseFloor(iMatrix[,iSamples,drop=FALSE],
-      minimum=1,
-      newValue=NA),
-   ncol=ma_ncol,
-   blankPlotPos=blank_pos,
-   maintitle=c("data (counts)",
-      "centered by 'Run'"),
-   centerGroups=colData(fc_se[,iSamples])[[run_colname]],
-   groupSuffix="",
-   subtitlePreset="bottomleft",
-   subtitle=paste0("by ", Run[iSamples]),
-   subtitleBoxColor=run_colors1[iSamples],
-   useMean=TRUE,
-   ablineV=MGM,
-   titleBoxColor=color_sub1[iSamples]
-)
+   jp_raw_run_attr <- attributes(jammaplot(
+      noiseFloor(iMatrix[,iSamples,drop=FALSE],
+         minimum=1,
+         newValue=NA),
+      ncol=ma_ncol,
+      blankPlotPos=blank_pos,
+      maintitle=c("data (counts)",
+         "centered by 'Run'"),
+      centerGroups=colData(fc_se[,iSamples])[[run_colname]],
+      groupSuffix="",
+      subtitlePreset="bottomleft",
+      subtitle=paste0("by ", Run[iSamples]),
+      subtitleBoxColor=run_colors1[iSamples],
+      useMean=TRUE,
+      ablineV=MGM,
+      titleBoxColor=color_sub1[iSamples]
+   ))
 }
 ```
 
-#### Normalized data, global-centered
+#### Normalized data {.tabset}
+
+##### global-centered
 
 ```{r, ma_norm_global, fig.height=ma_height, fig.width=ma_width, dependson=c("apply_norm", "ma_layout")}
-jp_norm <- jammaplot(
+jp_norm_attr <- attributes(jammaplot(
    noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
       minimum=1,
       newValue=NA),
@@ -835,42 +899,37 @@ jp_norm <- jammaplot(
    outlierMAD=2,
    ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
-)
+))
 ```
 
-#### Normalized data, centered by "Run"
+##### centered by Run
 
 ```{r, ma_norm_run, fig.height=ma_height, fig.width=ma_width, dependson=c("apply_norm", "ma_layout")}
 # Only create when there are multiple Run values
 if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
-jp_norm_run <- jammaplot(
-   noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
-      minimum=1,
-      newValue=NA),
-   ncol=ma_ncol,
-   blankPlotPos=blank_pos,
-   maintitle=c(paste0("data (", normname, ")"),
-      "centered by 'Run'"),
-   centerGroups=colData(fc_se[,iSamples])[[run_colname]],
-   groupSuffix="",
-   subtitlePreset="bottomleft",
-   subtitle=paste0("by ", Run[iSamples]),
-   subtitleBoxColor=run_colors1[iSamples],
-   useMean=TRUE,
-   displayMAD=TRUE,
-   outlierMAD=2,
-   ablineV=MGM,
-   titleBoxColor=color_sub1[iSamples]
-)
+   jp_norm_run_attr <- attributes(jammaplot(
+      noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
+         minimum=1,
+         newValue=NA),
+      ncol=ma_ncol,
+      blankPlotPos=blank_pos,
+      maintitle=c(paste0("data (", normname, ")"),
+         "centered by 'Run'"),
+      centerGroups=colData(fc_se[,iSamples])[[run_colname]],
+      groupSuffix="",
+      subtitlePreset="bottomleft",
+      subtitle=paste0("by ", Run[iSamples]),
+      subtitleBoxColor=run_colors1[iSamples],
+      useMean=TRUE,
+      displayMAD=TRUE,
+      outlierMAD=2,
+      ablineV=MGM,
+      titleBoxColor=color_sub1[iSamples]
+   ))
 }
 ```
 
-#### Normalized data, centered by "Group", "Run"
-
-This MA-plot visualization is intended to show variability across
-biological replicates within the same batch `"Run"`. If there
-is only one biological replicate in the same batch, the sample
-will be shown as a horizontal line at y=0.
+##### centered by Group, Run
 
 ```{r, ma_norm_group_run, fig.height=ma_height, fig.width=ma_width, dependson=c("apply_norm", "ma_layout")}
 grouprun_ct <- tcount(pasteByRow(colData(fc_se[,iSamples])[,c(group_colname, run_colname)]));
@@ -879,7 +938,7 @@ if (any(grouprun_ct > 1)) {
       t(cbind(color_sub1[iSamples], run_colors1[iSamples]))));
    subtitle_colors <- colorjam::blend_colors(subtitle_color_set);
    
-   jp_norm_group_run <- jammaplot(
+   jp_norm_group_run_attr <- attributes(jammaplot(
       noiseFloor(iMatrixQ[,iSamples,drop=FALSE],
          minimum=1,
          newValue=NA),
@@ -899,25 +958,21 @@ if (any(grouprun_ct > 1)) {
       outlierMAD=2,
       ablineV=MGM,
       titleBoxColor=color_sub1[iSamples]
-   )
+   ))
 }
 ```
 
-#### Normalized data, global-centered, batch-adjusted by "Run"
+This MA-plot visualization is intended to show variability across
+biological replicates within the same batch `"Run"`. If there
+is only one biological replicate in the same batch, the sample
+will be shown as a horizontal line at y=0.
 
-This set of MA-plots represents the data used for statistical comparisons
-(where applicable).
+#### Normalize, batch-adjusted {.tabset}
 
-Note that panels display the MAD factor, which is a multiple of
-variability of each sample to the median variability across all samples.
-The threshold "2x MAD" is defined as one replicate having at least
-twice the median variability across all samples.
-
-> **At this point, outlier samples are not removed from
-downstream statistical comparisons.**
+##### global-centered, batch-adjusted by "Run"
 
 ```{r, ma_norm_b_run, fig.height=ma_height, fig.width=ma_width, dependson=c("batch_adjust_run", "ma_layout")}
-jp_norm_b_run <- jammaplot(
+jp_norm_b_run_attr <- attributes(jammaplot(
    noiseFloor(iMatrixQB[,iSamples,drop=FALSE],
       minimum=1,
       newValue=NA),
@@ -936,10 +991,21 @@ jp_norm_b_run <- jammaplot(
    outlierMAD=2,
    ablineV=MGM,
    titleBoxColor=color_sub1[iSamples]
-)
+))
 ```
 
-#### Optional subset of sample outliers
+> **Note: At this point, outlier samples are not removed from
+downstream statistical comparisons.**
+
+This set of MA-plots represents the data used for statistical comparisons
+(where applicable).
+
+Note that panels display the MAD factor, which is a multiple of
+variability of each sample to the median variability across all samples.
+The threshold "2x MAD" is defined as one replicate having at least
+twice the median variability across all samples.
+
+#### Sample outliers
 
 Initially, all samples are used, but this section is a placeholder
 for outlier detection and removal.
@@ -947,21 +1013,36 @@ for outlier detection and removal.
 ```{r, sample_outliers}
 ## Optional subset of samples (e.g. MA-plot outliers)
 iSamplesUse <- iSamples;
-printDebug("Using samples:", iSamplesUse);
+iSamplesUseList <- split(iSamplesUse, SummarizedExperiment::colData(fc_se[, iSamplesUse])$Group)
+maxlen <- max(lengths(iSamplesUseList), na.rm=TRUE);
+iSamplesUseList <- lapply(iSamplesUseList, function(i){
+   c(i, rep("", length.out=maxlen - length(i)))
+})
+iSamplesUse_df <- as.data.frame(iSamplesUseList)
+
+kable_coloring(
+   caption="Samples used for downstream analysis, organized by group.",
+   iSamplesUse_df,
+   row.names=FALSE,
+   colorSub=sample_color_list)
 ```
 
-### Sample Correlation Heatmaps
+### Sample Correlation {.tabset}
 
-#### Normalized data, centered by Group control
+#### Normalized data {.tabset}
 
-```{r, cor_hm, fig.height=12, fig.width=12, dependson=c("apply_norm", "sample_outliers")}
+##### centered by Group control
+
+Base filename: `correlation_hm`
+
+```{r, correlation_hm, fig.height=12, fig.width=12, dependson=c("apply_norm", "sample_outliers")}
 ## Define centering control samples
 iControl <- head(levels(iGroup), 1);
 iControlSamples <- intersect(
    subset(colData(fc_se), colData(fc_se)[[group_colname]] %in% iControl)[[sample_colname]],
    iSamplesUse);
-printDebug("Using control: ", iControl);
-printDebug("Control Samples: ", iControlSamples);
+# printDebug("Using control: ", iControl);
+# printDebug("Control Samples: ", iControlSamples);
 
 ## Center iMatrixQ
 ## center all samples, but only relative to control samples in iSamplesUse
@@ -983,6 +1064,29 @@ iCorM <- cor(use="pairwise.complete.obs",
 # });
 
 ## ComplexHeatmap
+hm_cor_u_se <- heatmap_se(
+   assays(fc_se[,iSamples]),
+   assay_name=normname,
+   correlation=TRUE,
+   top_colnames=c("Run", "Group"),
+   # row_type=paste0("hits at: ",
+   #    gsub("^hit ", "", hm_cutoff)),
+   data_type="signal",
+   color_max=1,
+   controlSamples=iControlSamples,
+   control_label="versus control samples",
+   rowData_colnames=c("feature_type_winner"),
+   show_row_names=FALSE,
+   sample_color_list=sample_color_list,
+   column_cex=0.4,
+   column_split=c("Group"),
+   row_split=c("Group"),
+   column_title_rot=90)
+ComplexHeatmap::draw(hm_cor_u_se,
+   column_title=attr(hm_cor_u_se, "hm_title"),
+   merge_legends=TRUE)
+
+# old heatmap (to be removed)
 hm_cor_u <- ComplexHeatmap::Heatmap(
    iCorM[iSamplesUse, iSamplesUse, drop=FALSE],
    name="correlation",
@@ -1005,42 +1109,13 @@ hm_cor_u <- ComplexHeatmap::Heatmap(
          Run=run_colors))
 )
 ComplexHeatmap::draw(hm_cor_u,
+   merge_legends=TRUE,
    column_title=paste0("Counts (", normname, ")"))
 
-## ComplexHeatmap
-# tryCatch({
-# hm_cor <- ComplexHeatmap::Heatmap(
-#    iCorM[iSamplesUse, iSamplesUse, drop=FALSE],
-#    name="correlation",
-#    border=TRUE,
-#    col=colorjam::col_div_xf(1, lens=5),
-#    #cluster_rows=iCorM_hc,
-#    #cluster_columns=iCorM_hc,
-#    clustering_method_rows="ward.D",
-#    clustering_method_columns="ward.D",
-#    heatmap_legend_param=list(
-#       color_bar="discrete",
-#       at=seq(from=-1, to=1, by=0.25),
-#       border=TRUE),
-#    top_annotation=ComplexHeatmap::HeatmapAnnotation(
-#       border=TRUE,
-#       annotation_legend_param=list(
-#          border=TRUE),
-#       df=data.frame(
-#          Run=Run[iSamplesUse],
-#          Group=iGroup[iSamplesUse]),
-#       col=list(Group=group_colors,
-#          Run=run_colors))
-# )
-# ComplexHeatmap::draw(hm_cor,
-#    column_title=paste0("Counts (", normname, ")\nhierarchical clustered"))
-# }, error=function(e){
-#    printDebug("Hierarchical clustering was skipped for this section.");
-# })
 ```
 
 
-#### Normalized data, batch-adjusted, global-centered
+##### batch-adjusted, global-centered
 
 ```{r, cor_hm_b, fig.height=12, fig.width=12, dependson=c("batch_adjust_run", "sample_outliers")}
 ## Center iMatrixQB
@@ -1084,42 +1159,13 @@ hm_corbg_u <- ComplexHeatmap::Heatmap(
          Run=run_colors))
 )
 ComplexHeatmap::draw(hm_corbg_u,
+   merge_legends=TRUE,
    column_title=paste0("Counts (", bnormname, ")"))
 
-## ComplexHeatmap
-# tryCatch({
-# hm_corbg <- ComplexHeatmap::Heatmap(
-#    iCorMBglobal[iSamplesUse, iSamplesUse, drop=FALSE],
-#    name="correlation",
-#    border=TRUE,
-#    col=colorjam::col_div_xf(1, lens=5),
-#    #cluster_rows=iCorMBglobal_hc,
-#    #cluster_columns=iCorMBglobal_hc,
-#    clustering_method_rows="ward.D",
-#    clustering_method_columns="ward.D",
-#    heatmap_legend_param=list(
-#       color_bar="discrete",
-#       at=seq(from=-1, to=1, by=0.25),
-#       border=TRUE),
-#    top_annotation=ComplexHeatmap::HeatmapAnnotation(
-#       border=TRUE,
-#       annotation_legend_param=list(
-#          border=TRUE),
-#       df=data.frame(
-#          Run=Run[iSamplesUse],
-#          Group=iGroup[iSamplesUse]),
-#       col=list(Group=group_colors,
-#          Run=run_colors))
-# )
-# ComplexHeatmap::draw(hm_corbg,
-#    column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
-# }, error=function(e){
-#    printDebug("Hierarchical clustering was skipped for this section.");
-# })
 
 ```
 
-#### Normalized data, batch-adjusted, centered by Group control
+##### batch-adjusted, centered by Group control
 
 ```{r, cor_hm_bg, fig.height=12, fig.width=12, dependson=c("batch_adjust_run", "sample_outliers")}
 ## Center iMatrixQB
@@ -1166,40 +1212,9 @@ hm_corb_u <- ComplexHeatmap::Heatmap(
 ComplexHeatmap::draw(hm_corb_u,
    column_title=paste0("Counts (", bnormname, ")"))
 
-## ComplexHeatmap
-# tryCatch({
-# hm_corb <- ComplexHeatmap::Heatmap(
-#    iCorMB[iSamplesUse, iSamplesUse, drop=FALSE],
-#    name="correlation",
-#    border=TRUE,
-#    col=colorjam::col_div_xf(1, lens=5),
-#    #cluster_rows=iCorMB_hc,
-#    #cluster_columns=iCorMB_hc,
-#    clustering_method_rows="ward.D",
-#    clustering_method_columns="ward.D",
-#    heatmap_legend_param=list(
-#       color_bar="discrete",
-#       at=seq(from=-1, to=1, by=0.25),
-#       border=TRUE),
-#    top_annotation=ComplexHeatmap::HeatmapAnnotation(
-#       border=TRUE,
-#       annotation_legend_param=list(
-#          border=TRUE),
-#       df=data.frame(
-#          Run=Run[iSamplesUse],
-#          Group=iGroup[iSamplesUse]),
-#       col=list(Group=group_colors,
-#          Run=run_colors))
-# )
-# ComplexHeatmap::draw(hm_corb,
-#    column_title=paste0("Counts (", bnormname, ")\nhierarchical clustered"))
-# }, error=function(e){
-#    printDebug("Hierarchical clustering was skipped for this section.");
-# })
-
 ```
 
-### Peak Width by Peak Signal
+### Peak Width by Peak Signal {.tabset}
 
 This section is intended to help evaluate peak width, and peak slice width
 when using `mergeSplitCountBed`.
@@ -1408,7 +1423,7 @@ par(mfrow=c(1, 1));
 
 ### Statistical Comparisons
 
-#### Confirm Biological Replicates
+#### Confirm Replicates
 
 If there is only one replicate per sample group, then
 the collection of samples are used to estimate
@@ -1442,12 +1457,12 @@ if (any(ctGroup > 1)) {
    iSamplesUse <- colnames(fc_se_b);
    
    ## update design and contrasts
-   conDesB <- jamses::groups_to_sedesign(
+   sedesign <- jamses::groups_to_sedesign(
       data.frame(check.names=FALSE,
          colData(fc_se[, iSamplesUse])[, group_colname, drop=FALSE]),
       factor_order=FACTOR_ORDER,
       max_depth=1);
-   iDesign <- conDesB@design;
+   iDesign <- sedesign@design;
    if (length(contrastNames) > 0) {
       iContrasts <- tryCatch({limma::makeContrasts(
             contrasts=contrastNames,
@@ -1456,10 +1471,10 @@ if (any(ctGroup > 1)) {
          jamba::printDebug("Error during limma::makeContrasts() from contrasts file: ",
             contrast_txt_file);
          print(e);
-         conDesB@contrasts;
+         sedesign@contrasts;
       })
    } else {
-      iContrasts <- conDesB@contrasts;
+      iContrasts <- sedesign@contrasts;
    }
 }
 kable_coloring(
@@ -1468,18 +1483,18 @@ kable_coloring(
    caption="Samples were evaluated for presence of biological replicates.")
 ```
 
-#### Design and Contrast Matrices
+#### Design Matrices
 
 ```{r, stats_design, dependson=c("batch_adjust_run", "sample_outliers", "check_reps")}
 ###############################################
 # Statistical comparisons
 
 ## subset by iSamplesUse
-conDesB <- jamses::validate_sedesign(conDesB,
+sedesign <- jamses::validate_sedesign(sedesign,
    min_reps=1,
    samples=iSamplesUse,
    verbose=FALSE);
-iDesign <- conDesB@design;
+iDesign <- sedesign@design;
 if (length(contrastNames) > 0) {
    iContrasts <- tryCatch({limma::makeContrasts(
          contrasts=contrastNames,
@@ -1488,11 +1503,11 @@ if (length(contrastNames) > 0) {
       jamba::printDebug("Error during limma::makeContrasts() from contrasts file: ",
          contrast_txt_file);
       print(e);
-      conDesB@contrasts;
+      sedesign@contrasts;
    });
-   conDesB@contrasts <- iContrasts;
+   sedesign@contrasts <- iContrasts;
 } else {
-   iContrasts <- conDesB@contrasts;
+   iContrasts <- sedesign@contrasts;
 }
 
 ## Optionally remove denovo controls from contrasts if needed
@@ -1500,7 +1515,7 @@ if (denovo_controls) {
    iRemove <- igrep("DenovoControl-|-DenovoControl", colnames(iContrasts));
    if (length(iRemove) > 0) {
       iContrasts <- iContrasts[, -iRemove, drop=FALSE];
-      conDesB@contrasts <- iContrasts;
+      sedesign@contrasts <- iContrasts;
    }
 }
 
@@ -1525,7 +1540,7 @@ kable_coloring(
       border_left="1px solid #DDDDDD")
 ```
 
-#### Limma Stats for All Peaks
+#### All Peaks
 
 Limma uses a "moderated t-test" for statistics, and the method
 below enables "limma-voom" which is intended for
@@ -1580,7 +1595,7 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### Limma Stats for MGM Subset Peaks
+#### MGM Peaks
 
 The method below is identical to that used above, except that
 peaks are filtered by minimum signal first, since we also apply
@@ -1598,7 +1613,7 @@ value is also **4**.
 
 The max group mean threshold: **`r MGM`**
 
-```{r, run_limma_mgm4, dependson=c("stats_design","run_limma","mgm_arg")}
+```{r, run_limma_mgm, dependson=c("stats_design","run_limma","mgm_arg")}
 ## Use the lmFit1 coefficients directly, which ensures
 ## we apply the threshold to exactly the same data 
 ## used in the limma test
@@ -1612,34 +1627,34 @@ if (length(AtacStats) > 0) {
       if (length(rownames(mgm_m)) == 0) {
          rownames(mgm_m) <- AtacStats$stats_df[[1]][,1];
       }
-      mgm_values <- rowMaxs(mgm_m);
+      mgm_values <- apply(mgm_m, 1, max, na.rm=TRUE);
       names(mgm_values) <- rownames(mgm_m);
       rm(mgm_m);
-      iPeaksMgm4 <- names(mgm_values)[mgm_values >= head(MGM, 1)];
+      iPeaksMgm <- names(mgm_values)[mgm_values >= head(MGM, 1)];
    } else {
-      iPeaksMgm4 <- iPeaks;
+      iPeaksMgm <- iPeaks;
       printDebug("Note that iPeaks are being re-used for some reason. Check upstream data.");
    }
    
-   if (length(AtacStats) == 0 || length(iPeaksMgm4) == 0) {
-      AtacStatsMgm4 <- NULL;
+   if (length(AtacStats) == 0 || length(iPeaksMgm) == 0) {
+      AtacStatsMgm <- NULL;
    } else {
       mgm_n <- length(mgm_values);
       # jamba::printDebug(sep="",
       #    c("Filtered from: ",
       #    format(mgm_n, big.mark=","),
       #    " total peaks to ",
-      #    format(length(iPeaksMgm4), big.mark=","),
-      #    " (", format(length(iPeaksMgm4)*100/mgm_n, digits=1),
+      #    format(length(iPeaksMgm), big.mark=","),
+      #    " (", format(length(iPeaksMgm)*100/mgm_n, digits=1),
       #    "%) with log2(1+x) max group mean >= ",
       #    MGM,
       #    " in signal ",
       #    head(names(AtacStats$stats_df), 1)));
       filtered_df <- data.frame(check.names=FALSE,
          `Total peaks:`=format(mgm_n, big.mark=","),
-         `Filtered to:`=format(length(iPeaksMgm4), big.mark=","),
+         `Filtered to:`=format(length(iPeaksMgm), big.mark=","),
          `Filtered pct:`=paste0(
-            format(length(iPeaksMgm4)*100/mgm_n, digits=1), "%"));
+            format(length(iPeaksMgm)*100/mgm_n, digits=1), "%"));
       kable_coloring(
          filtered_df,
          row.names=FALSE,
@@ -1655,8 +1670,8 @@ if (length(AtacStats) > 0) {
       fold_cutoff <- c(1.5, 1.5);
       adjp_cutoff <- c(1, 0.05);
       p_cutoff <- c(0.05, 0.05);
-      AtacStatsMgm4 <- tryCatch({
-         se_contrast_stats(se=fc_se_b[iPeaksMgm4, iSamplesUse],
+      AtacStatsMgm <- tryCatch({
+         se_contrast_stats(se=fc_se_b[iPeaksMgm, iSamplesUse],
             handle_na="none",
             assay_names=assay_names,
             p_cutoff=p_cutoff,
@@ -1664,7 +1679,7 @@ if (length(AtacStats) > 0) {
             fold_cutoff=fold_cutoff,
             mgm_cutoff=c(MGM),
             use_voom=TRUE,
-            igenes=iPeaksMgm4,
+            igenes=iPeaksMgm,
             isamples=iSamplesUse,
             idesign=iDesign[iSamplesUse, , drop=FALSE],
             icontrasts=iContrasts,
@@ -1675,8 +1690,8 @@ if (length(AtacStats) > 0) {
          NULL;
       });
    }
-   if (length(AtacStatsMgm4) > 0) {
-      hitdf <- sestats_to_df(AtacStatsMgm4);
+   if (length(AtacStatsMgm) > 0) {
+      hitdf <- sestats_to_df(AtacStatsMgm);
       colnames(hitdf)[1] <- "assay_name";
       kable_coloring(
          hitdf,
@@ -1687,18 +1702,26 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-### Volcano Plots
+### Volcano Plots {.tabset}
 
-#### Volcano for All Peaks (adj.P.Val)
+#### All Peaks {.tabset}
 
-```{r, volcano_plots, fig.height=12, fig.width=12, dependson=c("run_limma")}
+##### using adj.P.Val
+
+```{r, volcano_plots, fig.height=12, fig.width=12, dependson=c("run_limma"), results='asis'}
 options("warn"=-1);
 if (length(AtacStats) > 0) {
-   for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
-      for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
+   iSigs <- dimnames(AtacStats$hit_array)[[3]];
+   iHits <- dimnames(AtacStats$hit_array)[[1]];
+   iCons <- dimnames(AtacStats$hit_array)[[2]];
+   for (iSig in iSigs) {
+      cat(paste0("\n##### ", iSig, " {.tabset}\n\n"));
+      for (iCon in iCons) {
+         cat(paste0("\n###### ", iCon, "\n\n"));
          iDF <- AtacStats$stats_dfs[[iSig]][[iCon]];
          par("mar"=c(7, 7, 4, 3));
          vp1adjp <- volcano_plot(iDF,
+            verbose=FALSE,
             sig_cutoff=0.05,
             fold_cutoff=1.5,
             expr_cutoff=MGM,
@@ -1711,16 +1734,22 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### Volcano for All Peaks (raw P-Value)
+##### using raw P-Value
 
-```{r, volcano_plots_raw, fig.height=12, fig.width=12, dependson=c("run_limma")}
+```{r, volcano_plots_raw, fig.height=12, fig.width=12, dependson=c("run_limma"), results='asis'}
 options("warn"=-1);
 if (length(AtacStats) > 0) {
-   for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
-      for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
+   iSigs <- dimnames(AtacStats$hit_array)[[3]];
+   iHits <- dimnames(AtacStats$hit_array)[[1]];
+   iCons <- dimnames(AtacStats$hit_array)[[2]];
+   for (iSig in iSigs) {
+      cat(paste0("\n##### ", iSig, " {.tabset}\n\n"));
+      for (iCon in iCons) {
+         cat(paste0("\n###### ", iCon, "\n\n"));
          iDF <- AtacStats$stats_dfs[[iSig]][[iCon]];
          par("mar"=c(7, 7, 4, 3));
          vp1p <- volcano_plot(iDF,
+            verbose=FALSE,
             sig_cutoff=0.05,
             fold_cutoff=1.5,
             expr_cutoff=MGM,
@@ -1733,16 +1762,98 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### MGM Distribution for Statistical Hits
+
+#### MGM Peaks {.tabset}
+
+##### using adj.P.Val
+
+Volcano plots below were created using the limma results
+after subsetting peaks for max group mean >= 
+**`r MGM`**.
+
+```{r, volcano_plots_mgm, fig.height=12, fig.width=12, dependson=c("run_limma_mgm"), results='asis'}
+options("warn"=-1);
+if (length(AtacStatsMgm) > 0) {
+   iSigs <- dimnames(AtacStatsMgm$hit_array)[[3]];
+   iHits <- dimnames(AtacStatsMgm$hit_array)[[1]];
+   iCons <- dimnames(AtacStatsMgm$hit_array)[[2]];
+   for (iSig in iSigs) {
+      cat(paste0("\n##### ", iSig, " {.tabset}\n\n"));
+      for (iCon in iCons) {
+         cat(paste0("\n###### ", iCon, "\n\n"));
+         iDF <- AtacStatsMgm$stats_dfs[[iSig]][[iCon]];
+         par("mar"=c(7, 7, 4, 3))
+         tryCatch({
+            vp2adjp <- volcano_plot(iDF,
+               verbose=FALSE,
+               sig_cutoff=0.05,
+               fold_cutoff=1.5,
+               expr_cutoff=MGM,
+               main=iCon,
+               submain=paste0("Subset peaks mgm >= ", MGM, " (adj.P.Val)"),
+               sig_colname="adj.P.Val");
+         }, error=function(e){
+            jamba::printDebug("Error during volcano_plot(), skipping.");
+            jamba::printDebug("iSig:", iSig);
+            jamba::printDebug("iCon:", iCon);
+            print(e);
+         });
+         par("mar"=c(5, 4, 4, 2) + 0.1);
+      }
+   }
+}
+```
+
+##### using raw P-Value
+
+```{r, volcano_plots_mgm_raw, fig.height=12, fig.width=12, dependson=c("run_limma_mgm"), results='asis'}
+options("warn"=-1);
+if (length(AtacStatsMgm) > 0) {
+   iSigs <- dimnames(AtacStatsMgm$hit_array)[[3]];
+   iHits <- dimnames(AtacStatsMgm$hit_array)[[1]];
+   iCons <- dimnames(AtacStatsMgm$hit_array)[[2]];
+   for (iSig in iSigs) {
+      cat(paste0("\n##### ", iSig, " {.tabset}\n\n"));
+      for (iCon in iCons) {
+         cat(paste0("\n###### ", iCon, "\n\n"));
+         iDF <- AtacStatsMgm$stats_dfs[[iSig]][[iCon]];
+         par("mar"=c(7, 7, 4, 3))
+         tryCatch({
+            vp2p <- volcano_plot(iDF,
+               verbose=FALSE,
+               sig_cutoff=0.05,
+               fold_cutoff=1.5,
+               expr_cutoff=MGM,
+               main=iCon,
+               submain=paste0("Subset peaks mgm >= ", MGM, " (P-Value)"),
+               sig_colname="P.Value");
+         }, error=function(e){
+            jamba::printDebug("Error during volcano_plot(), skipping.");
+            jamba::printDebug("iSig:", iSig);
+            jamba::printDebug("iCon:", iCon);
+            print(e);
+         });
+         par("mar"=c(5, 4, 4, 2) + 0.1);
+      }
+   }
+}
+```
+
+### MGM Distribution
 
 These plots represent the distribution of max group mean values (MGM)
 among those peaks which are considered statistical hits using
 the adjust P-value and fold change criteria.
 
-```{r, distr_mgm, fig.height=10, fig.width=10, dependson=c("run_limma")}
+```{r, distr_mgm, fig.height=10, fig.width=10, dependson=c("run_limma"), results='asis'}
 if (length(AtacStats) > 0) {
-   for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
-      for (iCon in dimnames(AtacStats$hit_array)[[2]]) {
+   iSigs <- dimnames(AtacStats$hit_array)[[3]];
+   iHits <- dimnames(AtacStats$hit_array)[[1]];
+   iCons <- dimnames(AtacStats$hit_array)[[2]];
+   for (iSig in iSigs) {
+      cat(paste0("\n##### ", iSig, " {.tabset}\n\n"));
+      for (iCon in iCons) {
+         cat(paste0("\n###### ", iCon, "\n\n"));
          iDF <- AtacStats$stats_dfs[[iSig]][[iCon]];
          mgmcol <- vigrep("^mgm ", colnames(iDF));
          sigcol <- vigrep("^P.Value ", colnames(iDF));
@@ -1800,86 +1911,30 @@ if (length(AtacStats) > 0) {
 }
 ```
 
-#### Volcano for MGM Subset Peaks (adj.P.Val)
-
-Volcano plots below were created using the limma results
-after subsetting peaks for max group mean >= 
-**`r MGM`**.
-
-```{r, volcano_plots_mgm4, fig.height=12, fig.width=12, dependson=c("run_limma_mgm4")}
-options("warn"=-1);
-if (length(AtacStatsMgm4) > 0) {
-   for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
-      for (iCon in dimnames(AtacStatsMgm4$hit_array)[[2]]) {
-         iDF <- AtacStatsMgm4$stats_dfs[[iSig]][[iCon]];
-         par("mar"=c(7, 7, 4, 3))
-         tryCatch({
-            vp2adjp <- volcano_plot(iDF,
-               sig_cutoff=0.05,
-               fold_cutoff=1.5,
-               expr_cutoff=MGM,
-               main=iCon,
-               submain=paste0("Subset peaks mgm >= ", MGM, " (adj.P.Val)"),
-               sig_colname="adj.P.Val");
-         }, error=function(e){
-            jamba::printDebug("Error during volcano_plot(), skipping.");
-            jamba::printDebug("iSig:", iSig);
-            jamba::printDebug("iCon:", iCon);
-            print(e);
-         });
-         par("mar"=c(5, 4, 4, 2) + 0.1);
-      }
-   }
-}
-```
-
-#### Volcano for MGM Subset Peaks (raw P-Value)
-
-```{r, volcano_plots_mgm4_raw, fig.height=12, fig.width=12, dependson=c("run_limma_mgm4")}
-options("warn"=-1);
-if (length(AtacStatsMgm4) > 0) {
-   for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
-      for (iCon in dimnames(AtacStatsMgm4$hit_array)[[2]]) {
-         iDF <- AtacStatsMgm4$stats_dfs[[iSig]][[iCon]];
-         par("mar"=c(7, 7, 4, 3))
-         tryCatch({
-            vp2p <- volcano_plot(iDF,
-               sig_cutoff=0.05,
-               fold_cutoff=1.5,
-               expr_cutoff=MGM,
-               main=iCon,
-               submain=paste0("Subset peaks mgm >= ", MGM, " (P-Value)"),
-               sig_colname="P.Value");
-         }, error=function(e){
-            jamba::printDebug("Error during volcano_plot(), skipping.");
-            jamba::printDebug("iSig:", iSig);
-            jamba::printDebug("iCon:", iCon);
-            print(e);
-         });
-         par("mar"=c(5, 4, 4, 2) + 0.1);
-      }
-   }
-}
-```
 
 
-### Venn diagrams
+### Venn diagrams {.tabset}
 
-#### Venn for All Peaks
+#### All Peaks
 
 `r if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {("Venn diagrams are created for all pairs of results, and indicate the direction of shared hits.")} else {("Venn diagrams are skipped since there are not two or more comparisons.")}`
 
 
-```{r, venn_pairs, fig.height=10, fig.width=10, dependson=c("run_limma")}
+```{r, venn_pairs, fig.height=10, fig.width=10, dependson=c("run_limma"), results='asis'}
 if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
    pair_l <- unlist(recursive=FALSE,
       apply(combn(dimnames(AtacStats$hit_array)[[2]], 2), 2, list));
    contrast_colors <- group2colors(dimnames(AtacStats$hit_array)[[2]]);
    
    par("mar"=c(5, 4, 4, 2) + 0.1);
-   for (iSig in dimnames(AtacStats$hit_array)[[3]]) {
-      for (iHit in dimnames(AtacStats$hit_array)[[1]]) {
+   iSigs <- dimnames(AtacStats$hit_array)[[3]];
+   iHits <- dimnames(AtacStats$hit_array)[[1]];
+   for (iSig in iSigs) {
+      cat(paste0("\n##### ", iSig, " {.tabset}\n\n"));
+      for (iHit in iHits) {
+         cat(paste0("\n###### ", iHit, " {.tabset}\n\n"));
          for (iCon in pair_l) {
+            cat(paste0("\n####### ", iCon, "\n\n"));
             tryCatch({
                setlist <- AtacStats$hit_array[iHit, iCon, iSig];
                names(setlist) <- gsub("-", "-<br>\n", names(setlist));
@@ -1893,6 +1948,7 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
                      "\nthreshold:", iHit));
             }, error=function(e){
                jamba::printDebug("venndir::venndir() ",
+                  comment=FALSE,
                   "skipping plot for iSig:", iSig,
                   ", iHit:", iHit,
                   ", iCon:", iCon);
@@ -1903,22 +1959,27 @@ if (length(AtacStats) > 0 && length(dimnames(AtacStats$hit_array)[[2]]) > 1) {
 }
 ```
 
-#### Venn for MGM Subset Peaks
+#### MGM Peaks
 
-`r if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped since there are not two or more comparisons.")}`
+`r if (length(AtacStatsMgm) > 0 && length(dimnames(AtacStatsMgm$hit_array)[[2]]) > 1) {("")} else {("Venn diagrams for subset peaks are skipped since there are not two or more comparisons.")}`
 
-```{r, venn_pairs_mgm4, fig.height=10, fig.width=10, dependson=c("run_limma_mgm4")}
-if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) > 1) {
-   pair_l_mgm4 <- unlist(recursive=FALSE,
-      apply(combn(dimnames(AtacStatsMgm4$hit_array)[[2]], 2), 2, list));
-   contrast_colors <- group2colors(dimnames(AtacStatsMgm4$hit_array)[[2]]);
+```{r, venn_pairs_mgm, fig.height=10, fig.width=10, dependson=c("run_limma_mgm"), results='asis'}
+if (length(AtacStatsMgm) > 0 && length(dimnames(AtacStatsMgm$hit_array)[[2]]) > 1) {
+   pair_l_mgm <- unlist(recursive=FALSE,
+      apply(combn(dimnames(AtacStatsMgm$hit_array)[[2]], 2), 2, list));
+   contrast_colors <- group2colors(dimnames(AtacStatsMgm$hit_array)[[2]]);
    
    par("mar"=c(5, 4, 4, 2) + 0.1);
-   for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
-      for (iHit in dimnames(AtacStatsMgm4$hit_array)[[1]]) {
-         for (iCon in pair_l_mgm4) {
+   iSigs <- dimnames(AtacStats$hit_array)[[3]];
+   iHits <- dimnames(AtacStats$hit_array)[[1]];
+   for (iSig in iSigs) {
+      cat(paste0("\n##### ", iSig, " {.tabset}\n\n"));
+      for (iHit in iHits) {
+         cat(paste0("\n###### ", iHit, " {.tabset}\n\n"));
+         for (iCon in pair_l) {
+            cat(paste0("\n####### ", iCon, "\n\n"));
             tryCatch({
-               setlist <- AtacStatsMgm4$hit_array[iHit, iCon, iSig];
+               setlist <- AtacStatsMgm$hit_array[iHit, iCon, iSig];
                names(setlist) <- gsub("-", "-<br>\n", names(setlist));
                venndir::venndir(setlist,
                   overlap_type="each",
@@ -1930,6 +1991,7 @@ if (length(AtacStatsMgm4) > 0 && length(dimnames(AtacStatsMgm4$hit_array)[[2]]) 
                      "\nthreshold:", iHit));
             }, error=function(e){
                jamba::printDebug("venndir::venndir() ",
+                  comment=FALSE,
                   "skipping subset peaks plot for iSig:", iSig,
                   ", iHit:", iHit,
                   ", iCon:", iCon);
@@ -1963,7 +2025,7 @@ This section converts the given GTF file to a set of genome regions.
 
 The GTF input file:
 
-`r jamba::printDebug(unlist(strsplit(GTF, "/")), collapse="/", sep="")`
+`r jamba::printDebug(unlist(strsplit(GTF, "/")), collapse="/", sep="", comment=FALSE)`
 
 
 A cached RData file is stored for future re-use, using this file extension:
@@ -2051,8 +2113,14 @@ fc_typem <- as.data.frame(lapply(nameVector(ftcols), function(i){
 }));
 m1 <- as.matrix(fc_typem);
 m1_counts <- (t(m1) %*% (m1));
+m1_df <- as.data.frame(m1_counts);
+for (i1 in colnames(m1_df)) {
+   m1_df[,i1] <- formatInt(m1_df[,i1])
+}
+m1_values <- sort(unique(as.vector(m1_counts)));
+names(m1_values) <- formatInt(m1_values)
 color_sub_imct <- colorjam::vals2colorLevels(
-   nameVector(sort(unique(as.vector(m1_counts)))),
+   m1_values,
    lens=10);
 kable_coloring(as.data.frame(m1_counts),
    colorSub=color_sub_imct,
@@ -2066,9 +2134,9 @@ kable_coloring(as.data.frame(m1_counts),
 
 ```
 
-### Pie Charts
+### Pie Charts by Region {.tabset}
 
-#### Statistical Hits by Genome Region
+#### Hits, All Peaks
 
 A pie chart is created for each statistical comparison, showing
 the number of peaks overlapping each genome region. A peak
@@ -2076,6 +2144,8 @@ is only assigned one genome region, with preference in order:
 promoter, TTS, exon, intron, extragenic.
 
 For comparison, the pie chart using all peaks is also shown.
+
+Base filename: `peak_pies_all`
 
 ```{r, peak_pies_all, fig.height=15, fig.width=15}
 feature_type_winner <- values(fc_gr)$feature_type_winner;
@@ -2087,13 +2157,13 @@ gg2_height <- 8;
 if (length(AtacStats) > 0 && max(lengths(AtacStats$hit_array)) > 0) {
    gg2 <- gg_pie_by_feature_type(hit_array=AtacStats$hit_array,
       colorSub=sample_color_list$feature_type_winner,
-      add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm4,
+      add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm,
          `All Peaks`=iPeaks),
       do_pie=TRUE,
       feature_type_winner=feature_type_winner);
    jdf <- gg_pie_by_feature_type(hit_array=AtacStats$hit_array,
       colorSub=sample_color_list$feature_type_winner,
-      add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm4,
+      add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm,
          `All Peaks`=iPeaks),
       do_pie=FALSE,
       feature_type_winner=feature_type_winner);
@@ -2104,6 +2174,8 @@ if (length(AtacStats) > 0 && max(lengths(AtacStats$hit_array)) > 0) {
 }
 ```
 
+<p><a class="btn btn-primary" data-toggle="collapse" href="#collapsePie1" role="button" aria-expanded="false" aria-controls="collapsePie1">(Table summary...)</a></p>
+<div class="collapse" id="collapsePie1"><div class="card card-body">
 
 ```{r, peak_pies_gg_all, fig.height=gg2_height, fig.width=gg2_width}
 if (length(gg2) > 0) {
@@ -2123,24 +2195,28 @@ if (length(gg2) > 0) {
 }
 ```
 
-#### MGM Subset Hits by Genome Region
+</div></div>
+
+#### Hits, MGM Peaks
 
 The pie charts below reflect the peaks after filtering
 for the max group mean threshold: **`r MGM`**
 
-```{r, peak_pies_mgm4, fig.height=15, fig.width=15}
+Base filename: `peak_pies_mgm`
+
+```{r, peak_pies_mgm, fig.height=15, fig.width=15}
 gg2 <- NULL;
 gg2_width <- 14;
 gg2_height <- 8;
-if (length(AtacStatsMgm4) > 0 && max(lengths(AtacStatsMgm4$hit_array)) > 0) {
-   gg2 <- gg_pie_by_feature_type(hit_array=AtacStatsMgm4$hit_array,
-      add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm4,
+if (length(AtacStatsMgm) > 0 && max(lengths(AtacStatsMgm$hit_array)) > 0) {
+   gg2 <- gg_pie_by_feature_type(hit_array=AtacStatsMgm$hit_array,
+      add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm,
          `All Peaks`=iPeaks),
       do_pie=TRUE,
       feature_type_winner=feature_type_winner);
       #PeakSet=paste0("Subset Peaks Mgm", MGM),
-   jdf <- gg_pie_by_feature_type(hit_array=AtacStatsMgm4$hit_array,
-      add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm4,
+   jdf <- gg_pie_by_feature_type(hit_array=AtacStatsMgm$hit_array,
+      add_peak_list=list(`MGM-Filtered Peaks`=iPeaksMgm,
          `All Peaks`=iPeaks),
       do_pie=FALSE,
       feature_type_winner=feature_type_winner);
@@ -2150,8 +2226,10 @@ if (length(AtacStatsMgm4) > 0 && max(lengths(AtacStatsMgm4$hit_array)) > 0) {
 }
 ```
 
+<p><a class="btn btn-primary" data-toggle="collapse" href="#collapsePie2" role="button" aria-expanded="false" aria-controls="collapsePie2">(Table summary...)</a></p>
+<div class="collapse" id="collapsePie2"><div class="card card-body">
 
-```{r, peak_pies_gg_mgm4, fig.height=gg2_height, fig.width=gg2_width}
+```{r, peak_pies_gg_mgm, fig.height=gg2_height, fig.width=gg2_width}
 if (length(gg2) > 0) {
    print(gg2);
    
@@ -2168,8 +2246,9 @@ if (length(gg2) > 0) {
 }
 ```
 
+</div></div>
 
-### Annotate Broad Peaks
+### Broad Peaks
 
 Peaks are re-numbered so that contiguous peaks are numbered
 in column `"broak_peak"` to indicate when one broad peak
@@ -2218,11 +2297,15 @@ Statistical hits are tabulate by unique `"broad_peak"` values.
 There are two potential outcomes of this process:
 
 1. **Significant broad_peak hits are nearly identical to individual peak hits.**
-This result suggests most peaks are not sliced, or that
-significantly changing peaks are not regions broader than the slice width.
+
+   * This result suggests most peaks are not sliced, or that
+   significantly changing peaks are not regions broader than the slice width.
+
 2. **Significant broad_peak hits are much smaller than individual peak hits.**
-This result suggests most peaks are sliced, or that
-significantly changing peaks tend to be regions broader than the slice width.
+
+   * This result suggests most peaks are sliced, or that
+   significantly changing peaks tend to be regions broader than
+   the slice width.
 
 
 ```{r, broad_hit_counts}
@@ -2240,10 +2323,10 @@ if (length(AtacStats) > 0) {
    broad_hit_counts;
 }
    
-if (length(AtacStatsMgm4) > 0) {
-   broad_hit_counts_mgm4 <- lapply(nameVector(dimnames(AtacStatsMgm4$hit_array)[[1]]), function(p){
-      sapply(nameVector(dimnames(AtacStatsMgm4$hit_array)[[2]]), function(i){
-         k <- AtacStatsMgm4$hit_array[p,i,1][[1]];
+if (length(AtacStatsMgm) > 0) {
+   broad_hit_counts_mgm <- lapply(nameVector(dimnames(AtacStatsMgm$hit_array)[[1]]), function(p){
+      sapply(nameVector(dimnames(AtacStatsMgm$hit_array)[[2]]), function(i){
+         k <- AtacStatsMgm$hit_array[p,i,1][[1]];
          k_bp <- values(fc_gr[names(k)])$broad_peak;
          c(peak_hits=length(k_bp),
             broad_peak_hits=length(table(k_bp)));
@@ -2252,31 +2335,34 @@ if (length(AtacStatsMgm4) > 0) {
    jamba::printDebug("broad_hit_counts ",
       c("(", "MGM", ">=", MGM, ")"),
       ":", sep="");
-   broad_hit_counts_mgm4;
+   broad_hit_counts_mgm;
 
 }
-## Briefly compare All peak hits to Mgm4 peak hits
-## signedVennPlotSets(list(mgm4=AtacStatsMgm4$hit_array[1,2,1][[1]]
+## Briefly compare All peak hits to Mgm peak hits
+## signedVennPlotSets(list(mgm4=AtacStatsMgm$hit_array[1,2,1][[1]]
 ## all=AtacStats$hit_array[1,2,1][[1]]))
 
 ```
 
-### Heatmap of Peak Hits
+### Heatmap of Hits {.tabset}
 
-#### Replicates
+#### Replicates {.tabset}
 
 A series of heatmaps is shown below, one heatmap for each of the
 different statistical comparisons and hit cutoff thresholds used.
+
+##### All Peaks
+
+Base filename: `heatmap_hits_all`
 
 ```{r, heatmap_hits_all, fig.height=14, fig.width=4 + sqrt(length(iSamplesUse)) * 1.5}
 #
 peak_hits_q <- NULL;
 if (length(AtacStats) > 0) {
-   hm_sestats <- AtacStats;
-   hm_cutoffs <- dimnames(hm_sestats$hit_array)$Cutoffs;
+   hm_cutoffs <- dimnames(AtacStats$hit_array)$Cutoffs;
    
    for (hm_cutoff in hm_cutoffs) {
-      hm_hitlist <- hit_array_to_list(hm_sestats,
+      hm_hitlist <- hit_array_to_list(AtacStats,
          assay_names=assay_names,
          cutoff_names=hm_cutoff)
       hm_hits_use <- setdiff(unique(unlist(lapply(hm_hitlist, names))), NA)
@@ -2287,7 +2373,7 @@ if (length(AtacStats) > 0) {
          hm_all <- tryCatch({
             heatmap_se(fc_se_b[, iSamplesUse],
                assay_name=assay_names,
-               sestats=hm_sestats,
+               sestats=AtacStats,
                row_type=paste0("hits at: ",
                   gsub("^hit ", "", hm_cutoff)),
                data_type="signal",
@@ -2317,15 +2403,18 @@ if (length(AtacStats) > 0) {
 
 ```
 
+##### MGM Peaks
+
+Base filename: `heatmap_hits_mgm`
+
 ```{r, heatmap_hits_mgm, fig.height=14, fig.width=4 + sqrt(length(iSamplesUse)) * 1.5}
 #
-peak_hits_mgm4_q <- NULL;
-if (length(AtacStatsMgm4) > 0) {
-   hm_sestats <- AtacStatsMgm4;
-   hm_cutoffs <- dimnames(hm_sestats$hit_array)$Cutoffs;
+peak_hits_mgm_q <- NULL;
+if (length(AtacStatsMgm) > 0) {
+   hm_cutoffs <- dimnames(AtacStatsMgm$hit_array)$Cutoffs;
 
    for (hm_cutoff in hm_cutoffs) {
-      hm_hitlist <- hit_array_to_list(hm_sestats,
+      hm_hitlist <- hit_array_to_list(AtacStatsMgm,
          assay_names=assay_names,
          cutoff_names=hm_cutoff)
       hm_hits_use <- setdiff(unique(unlist(lapply(hm_hitlist, names))), NA)
@@ -2336,9 +2425,8 @@ if (length(AtacStatsMgm4) > 0) {
          hm_mgm <- tryCatch({
             heatmap_se(fc_se_b[, iSamplesUse],
                assay_name=assay_names,
-               sestats=hm_sestats,
-               row_type=paste0("hits from MGM sub-analysis at: ",
-                  gsub("^hit ", "", hm_cutoff)),
+               sestats=AtacStatsMgm,
+               row_type=paste0AtacStatsMgm,
                data_type="signal",
                color_max=3,
                controlSamples=iControlSamples,
@@ -2358,147 +2446,24 @@ if (length(AtacStatsMgm4) > 0) {
             hm_mgm_d <- ComplexHeatmap::draw(hm_mgm,
                column_title=attr(hm_mgm, "hm_title"),
                merge_legends=TRUE)
-            peak_hits_mgm4_q <- unlist(unname(heatmap_row_order(hm_mgm_d)));
+            peak_hits_mgm_q <- unlist(unname(heatmap_row_order(hm_mgm_d)));
          }
       }
    }
 }
 
-if (length(AtacStatsMgm4) > 0) {
-   use_sestats <- AtacStatsMgm4;
+if (length(AtacStatsMgm) > 0) {
+   use_sestats <- AtacStatsMgm;
 }
 
 ```
 
 
-```{r, heatmap_hits_v1, fig.height=14, fig.width=4 + sqrt(length(iSamplesUse)) * 1.5}
-if (FALSE) {
-   peak_hits_q <- NULL;
-   peak_hits_mgm4_q <- NULL;
-   if (length(AtacStats) > 0) {
-      stats_dim <- dim(AtacStats$hit_array);
-      dimnames1 <- dimnames(AtacStats$hit_array)[[1]];
-      dimnames2 <- dimnames(AtacStats$hit_array)[[2]];
-      peak_hits <- unique(unlist(lapply(dimnames2, function(i){
-         names(AtacStats$hit_array[head(dimnames1, 1), i, 1][[1]])
-      })));
-      mgm_used <- tail(dimnames1, 1);
-      peak_hits_q <- unique(unlist(lapply(dimnames2, function(i){
-         names(AtacStats$hit_array[tail(dimnames1, 1), i, 1][[1]])
-      })));
-   }
-   if (length(AtacStatsMgm4) > 0) {
-      mgm4_stats_dim <- dim(AtacStatsMgm4$hit_array);
-      mgm_dimnames1 <- dimnames(AtacStatsMgm4$hit_array)[[1]];
-      mgm_dimnames2 <- dimnames(AtacStatsMgm4$hit_array)[[2]];
-      peak_hits_mgm4 <- unique(unlist(lapply(mgm_dimnames2, function(i){
-         names(AtacStatsMgm4$hit_array[head(mgm_dimnames1, 1), i, 1][[1]])
-      })));
-      mgm_used <- tail(mgm_dimnames1, 1);
-      peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
-         names(AtacStatsMgm4$hit_array[tail(mgm_dimnames1, 1), i, 1][[1]])
-      })));
-      if (length(peak_hits_mgm4_q) < 2) {
-         mgm_used <- head(mgm_dimnames1, 1);
-         peak_hits_mgm4_q <- unique(unlist(lapply(mgm_dimnames2, function(i){
-            names(AtacStatsMgm4$hit_array[mgm_used, i, 1][[1]])
-         })));
-      }
-   
-   
-      if (denovo_controls) {
-         iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
-      }
-   }
-   
-   # separately create a heatmap with the best available hits
-   if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
-      #
-      if (length(peak_hits_mgm4_q) > 1) {
-         peak_hits_hm <- peak_hits_mgm4_q;
-         heatmap_subtitle <- paste0(
-            jamba::formatInt(length(peak_hits_hm)),
-            " hits from MGM sub-analysis\n")
-      } else {
-         peak_hits_hm <- peak_hits_q;
-         heatmap_subtitle <- paste0(
-            jamba::formatInt(length(peak_hits_hm)),
-            " hits from full peak analysis\n")
-      }
-      iM <- iMatrixQBctr[peak_hits_hm, iSamplesUse, drop=FALSE];
-      
-      ## optional row_split
-      row_split_hm <- 4;
-      left_annotation_hm <- NULL;
-      if (length(peak_hits_hm) > 10) {
-         # feature_type_colors <- colorjam::group2colors(unique(as.character(values(fc_gr)$feature_type_winner)));
-         peak_hits_hm_ft <- nameVector(
-            values(fc_gr[peak_hits_hm])$feature_type_winner,
-            peak_hits_hm);
-         row_split_hm <- peak_hits_hm_ft;
-         left_annotation_hm <- ComplexHeatmap::rowAnnotation(
-            border=TRUE,
-            annotation_legend_param=list(
-               border=TRUE
-            ),
-            df=data.frame(check.names=FALSE,
-               feature_type=values(fc_gr[peak_hits_hm])$feature_type_winner),
-            col=list(feature_type=feature_type_colors)
-         );
-      }
-      
-      ## ComplexHeatmap
-      iMq99 <- ceiling(quantile(abs(iM), c(0.99), na.rm=TRUE));
-      iMq99 <- 4;
-      hm_mgm4 <- ComplexHeatmap::Heatmap(iM,
-         border=TRUE,
-         name="centered\nlog2Fold",
-         column_split=iGroup[iSamplesUse],
-         show_row_names=FALSE,
-         show_row_dend=nrow(iM) < 2500,
-         cluster_column_slices=FALSE,
-         cluster_row_slices=FALSE,
-         clustering_method_rows="ward.D",
-         clustering_method_columns="ward.D",
-         row_split=row_split_hm,
-         row_title_rot=0,
-         column_title_rot=90,
-         left_annotation=left_annotation_hm,
-         col=colorjam::col_div_xf(iMq99,
-            lens=5),
-         heatmap_legend_param=list(
-            color_bar="discrete",
-            at=seq(from=-iMq99, to=iMq99),
-            border=TRUE),
-         top_annotation=ComplexHeatmap::HeatmapAnnotation(
-            border=TRUE,
-            annotation_legend_param=list(
-               border=TRUE),
-            df=data.frame(
-               Run=Run[iSamplesUse],
-               Group=iGroup[iSamplesUse]),
-            col=list(Group=group_colors,
-               Run=run_colors))
-      );
-      ComplexHeatmap::draw(hm_mgm4,
-         merge_legends=TRUE,
-         column_title=paste0(
-            "Centered counts\n(", bnormname, ")\n",
-            heatmap_subtitle,
-            mgm_used, "\n",
-            jamba::formatInt(nrow(iM)),
-            " rows displayed"))
-   
-   
-      ## Subset only promoter peak hits
-      # peak_hits_mgm4_q_p <- subset(rowData(fc_se[peak_hits_mgm4_q,]), 
-      #    feature_type_winner %in% "promoter")$Geneid;
-   }
-}
-```
+#### Group Means {.tabset}
 
+##### All Peaks
 
-#### Group Means
+Base filename: `heatmap_groups_all`
 
 ```{r, heatmap_groups_all, fig.height=14, fig.width=4 + sqrt(length(unique(iGroup[iSamplesUse]))) * 1.5}
 # prepare group mean SE
@@ -2509,11 +2474,10 @@ fc_se_b_grp <- se_collapse_by_column(fc_se_b,
 
 # now repeat steps above
 if (length(AtacStats) > 0) {
-   hm_sestats <- AtacStats;
-   hm_cutoffs <- dimnames(hm_sestats$hit_array)$Cutoffs;
+   hm_cutoffs <- dimnames(AtacStats$hit_array)$Cutoffs;
    
    for (hm_cutoff in hm_cutoffs) {
-      hm_hitlist <- hit_array_to_list(hm_sestats,
+      hm_hitlist <- hit_array_to_list(AtacStats,
          assay_names=assay_names,
          cutoff_names=hm_cutoff)
       hm_hits_use <- setdiff(unique(unlist(lapply(hm_hitlist, names))), NA)
@@ -2524,7 +2488,7 @@ if (length(AtacStats) > 0) {
          hm_all_grp <- tryCatch({
             heatmap_se(fc_se_b_grp[, iSamplesUse],
                assay_name=assay_names,
-               sestats=hm_sestats,
+               sestats=AtacStats,
                row_type=paste0("hits at: ",
                   gsub("^hit ", "", hm_cutoff)),
                data_type="signal",
@@ -2553,15 +2517,18 @@ if (length(AtacStats) > 0) {
 }
 ```
 
+##### MGM Peaks
+
+Base filename: `heatmap_groups_mgm`
+
 ```{r, heatmap_groups_mgm, fig.height=14, fig.width=4 + sqrt(length(unique(iGroup[iSamplesUse]))) * 1.5}
 
 # now repeat steps above
-if (length(AtacStatsMgm4) > 0) {
-   hm_sestats <- AtacStatsMgm4;
-   hm_cutoffs <- dimnames(hm_sestats$hit_array)$Cutoffs;
+if (length(AtacStatsMgm) > 0) {
+   hm_cutoffs <- dimnames(AtacStatsMgm$hit_array)$Cutoffs;
    
    for (hm_cutoff in hm_cutoffs) {
-      hm_hitlist <- hit_array_to_list(hm_sestats,
+      hm_hitlist <- hit_array_to_list(AtacStatsMgm,
          assay_names=assay_names,
          cutoff_names=hm_cutoff)
       hm_hits_use <- setdiff(unique(unlist(lapply(hm_hitlist, names))), NA)
@@ -2572,7 +2539,7 @@ if (length(AtacStatsMgm4) > 0) {
          hm_all_grp <- tryCatch({
             heatmap_se(fc_se_b_grp[, iSamplesUse],
                assay_name=assay_names,
-               sestats=hm_sestats,
+               sestats=AtacStatsMgm,
                row_type=paste0("hits from MGM sub-analysis at: ",
                   gsub("^hit ", "", hm_cutoff)),
                data_type="signal",
@@ -2602,67 +2569,13 @@ if (length(AtacStatsMgm4) > 0) {
 ```
 
 
-#### Group Means v1
-
-
-```{r, heatmap_groupmeans, fig.height=14, fig.width=4 + sqrt(length(unique(iGroup[iSamplesUse]))) * 1.5}
-if (FALSE) {
-   if (length(peak_hits_q) > 0 || length(peak_hits_mgm4_q) > 0) {
-      #if (length(AtacStatsMgm4) > 0) {
-      if (denovo_controls) {
-         iSamplesUse <- unvigrep("^Control_v", iSamplesUse);
-      }
-      iM_grp <- jamba::rowGroupMeans(iM[,iSamplesUse,drop=FALSE],
-         useMedian=FALSE,
-         groups=iGroup[iSamplesUse]);
-      
-      ## ComplexHeatmap
-      iMq99 <- ceiling(quantile(abs(iM_grp), c(0.99), na.rm=TRUE));
-      iMq99 <- 4;
-      hm_mgm4_grp <- ComplexHeatmap::Heatmap(iM_grp,
-         border=TRUE,
-         name="centered\nlog2Fold\ngroup mean",
-         show_row_names=FALSE,
-         show_row_dend=nrow(iM_grp) < 2500,
-         clustering_method_rows="ward.D",
-         cluster_row_slices=FALSE,
-         cluster_column_slices=FALSE,
-         cluster_columns=FALSE,
-         row_split=row_split_hm,
-         row_title_rot=0,
-         left_annotation=left_annotation_hm,
-         col=colorjam::col_div_xf(iMq99,
-            lens=5),
-         heatmap_legend_param=list(
-            color_bar="discrete",
-            at=seq(from=-iMq99, to=iMq99),
-            border=TRUE),
-         top_annotation=ComplexHeatmap::HeatmapAnnotation(
-            border=TRUE,
-            annotation_legend_param=list(
-               border=TRUE),
-            df=data.frame(
-               Group=colnames(iM_grp)),
-            col=list(Group=group_colors[colnames(iM_grp)]))
-      );
-      ComplexHeatmap::draw(hm_mgm4_grp,
-         merge_legends=TRUE,
-         column_title=paste0(
-            "Group mean centered counts\n(", bnormname, ")\n",
-            heatmap_subtitle,
-            mgm_used, "\n",
-            jamba::formatInt(nrow(iM_grp)),
-            " rows displayed"))
-   
-   }
-}
-```
-
-
 
 ### ATAC Mode Annotation (Optional)
 
-**`r if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {("ATAC-mode is enabled.")} else {("ATAC-mode is disabled.")}`**
+**`r if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm") && length(iPeaksMgm) > 0) {("ATAC-mode is enabled.")} else {("ATAC-mode is disabled.")}`**
+
+<p><a class="btn btn-primary" data-toggle="collapse" href="#collapseAtac1" role="button" aria-expanded="false" aria-controls="collapseAtac1">(Expand...)</a></p>
+<div class="collapse" id="collapseAtac1"><div class="card card-body">
 
 This workflow is enabled only when environment variable `ATAC=1`,
 and when stats have been performed, and when the max group mean
@@ -2687,13 +2600,14 @@ seen by ATAC-seq across most or all conditions of an experiment.
 Peaks are annotated to the nearese MGM-filtered gene TSS, as
 defined by the promoter regions, along with the distance to that region.
 
+</div></div>
 
 ```{r, peak_promoters}
 mgmpg <- NULL;
 mgmpd <- NULL;
-if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) > 0) {
+if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm") && length(iPeaksMgm) > 0) {
    
-   ## iPeaksMgm4 that are promoters
+   ## iPeaksMgm that are promoters
    ## - call these active promoters
    ##
    ## annotate all peaks by nearest active promoter
@@ -2712,7 +2626,7 @@ if (ATAC && length(AtacStats) > 0 && exists("iPeaksMgm4") && length(iPeaksMgm4) 
    
    tryCatch({
       mgm_promoter_gr <- IRanges::subsetByOverlaps(promoters_gr,
-         fc_gr[iPeaksMgm4],
+         fc_gr[iPeaksMgm],
          ignore.strand=TRUE);
       mgm_tss_gr <- promoter_to_tss(mgm_promoter_gr[,c("gene_name", "gene_id")],
          upstream=upstream,
@@ -2879,10 +2793,13 @@ if (length(AtacStats) > 0) {
          ifelse(ATAC, "_atac1", ""),
          ".", iSig, ".txt");
       txt_file <- file.path(OUTDIR,
-         gsub("[.]fc$|[.]fc[.]txt$",
-            ignore.case=TRUE,
-            txt_ext,
-            basename(fc_file)));
+         paste0("slicejam_stats",
+            txt_ext))
+      # txt_file <- file.path(OUTDIR,
+      #    gsub("[.]fc$|[.]fc[.]txt$",
+      #       ignore.case=TRUE,
+      #       txt_ext,
+      #       basename(fc_file)));
 
       data.table::fwrite(
          x=iDF_all2,
@@ -2906,10 +2823,13 @@ if (length(AtacStats) > 0) {
          ifelse(ATAC, "_atac1", ""),
          ".", iSig, ".bed");
       bed_file <- file.path(OUTDIR,
-         gsub("[.]fc$|[.]fc[.]txt$",
-            ignore.case=TRUE,
-            bed_ext,
-            basename(fc_file)));
+         paste0("slicejam_stats",
+            bed_ext))
+      # bed_file <- file.path(OUTDIR,
+      #    gsub("[.]fc$|[.]fc[.]txt$",
+      #       ignore.case=TRUE,
+      #       bed_ext,
+      #       basename(fc_file)));
       ## Add track header line
       trackname <- paste0(
          format(Sys.time(), "%Y%m%d%H%M"),
@@ -2947,11 +2867,11 @@ Look in the folder defined by OUTDIR: **`r OUTDIR`**.
 
 A BED file is also saved during this step.
 
-```{r, stats_df_mgm4, dependson=c("run_limma_mgm4")}
-if (length(AtacStatsMgm4) > 0) {
+```{r, stats_df_mgm, dependson=c("run_limma_mgm")}
+if (length(AtacStatsMgm) > 0) {
    ## Subset statsDF for rows with at least one hit
-   for (iSig in dimnames(AtacStatsMgm4$hit_array)[[3]]) {
-      iDF_all <- AtacStatsMgm4$stats_df[[iSig]];
+   for (iSig in dimnames(AtacStatsMgm$hit_array)[[3]]) {
+      iDF_all <- AtacStatsMgm$stats_df[[iSig]];
       if (nrow(iDF_all) == 0) {
          next;
       }
@@ -2994,10 +2914,13 @@ if (length(AtacStatsMgm4) > 0) {
          ifelse(ATAC, "_atac1", ""),
          ".", iSig, ".txt");
       txt_file <- file.path(OUTDIR,
-         gsub("[.]fc$|[.]fc[.]txt$",
-            ignore.case=TRUE,
-            txt_ext,
-            basename(fc_file)));
+         paste0("slicejam_stats",
+            txt_ext))
+      # txt_file <- file.path(OUTDIR,
+      #    gsub("[.]fc$|[.]fc[.]txt$",
+      #       ignore.case=TRUE,
+      #       txt_ext,
+      #       basename(fc_file)));
       
       cat(file="debug_log.txt", txt_file, "\n");
       data.table::fwrite(
@@ -3024,10 +2947,13 @@ if (length(AtacStatsMgm4) > 0) {
             ifelse(ATAC, "_atac1", ""),
             ".", iSig, ".bed");
          bed_file <- file.path(OUTDIR,
-            gsub("[.]fc$|[.]fc[.]txt$",
-               ignore.case=TRUE,
-               bed_ext,
-               basename(fc_file)));
+            paste0("slicejam_stats",
+               bed_ext))
+         # bed_file <- file.path(OUTDIR,
+         #    gsub("[.]fc$|[.]fc[.]txt$",
+         #       ignore.case=TRUE,
+         #       bed_ext,
+         #       basename(fc_file)));
          ## Add track header line
          trackname <- paste0(
             format(Sys.time(), "%Y%m%d%H%M"),
@@ -3065,10 +2991,13 @@ if (length(AtacStatsMgm4) > 0) {
             ifelse(ATAC, "_atac1", ""),
             ".", iSig, ".bed");
          bed_file <- file.path(OUTDIR,
-            gsub("[.]fc$|[.]fc[.]txt$",
-               ignore.case=TRUE,
-               bed_ext,
-               basename(fc_file)));
+            paste0("slicejam_stats",
+               bed_ext))
+         # bed_file <- file.path(OUTDIR,
+         #    gsub("[.]fc$|[.]fc[.]txt$",
+         #       ignore.case=TRUE,
+         #       bed_ext,
+         #       basename(fc_file)));
          ## Add track header line
          trackname <- paste0(
             format(Sys.time(), "%Y%m%d%H%M"),
@@ -3107,14 +3036,11 @@ if (length(AtacStatsMgm4) > 0) {
 **`r if (SAVE_RDATA) {("RData was saved.")} else {("RData was not saved.")}`**
 
 
-```{r, export_rdata, dependson=c("check_reps", "run_limma", "run_limma_mgm4")}
+```{r, export_rdata, dependson=c("check_reps", "run_limma", "run_limma_mgm")}
 if (SAVE_RDATA) {
    rdata_ext <- ".RData";
    fc_dat_file <- file.path(OUTDIR,
-      gsub("[.]fc$|[.]fc[.]txt$",
-         rdata_ext,
-         ignore.case=TRUE,
-         basename(fc_file)));
+      "slicejam_analysis.RData")
 
    if (!igrepHas("RData", fc_dat_file)) {
       fc_dat_file <- paste0(fc_dat_file, ".RData");
@@ -3132,3 +3058,13 @@ if (SAVE_RDATA) {
 }
 ```
 
+## R Session Info
+
+<p><a class="btn btn-primary" data-toggle="collapse" href="#collapseSessionInfo1" role="button" aria-expanded="false" aria-controls="collapseSessionInfo1">(R Session Information)</a></p>
+<div class="collapse" id="collapseSessionInfo1"><div class="card card-body">
+
+```{r r_session_info, cache=FALSE}
+sessioninfo::session_info()
+```
+
+</div></div>

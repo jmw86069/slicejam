@@ -30,7 +30,8 @@ Imports: jamba(>= 0.0.96.900),
    amap,
    kableExtra,
    knitr,
-   ggrepel
+   ggrepel,
+   pacman
 Suggests:
    farrisdata
 License: GPL-2
