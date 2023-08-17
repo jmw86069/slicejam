@@ -344,8 +344,20 @@ get_slicejam_args <- function
       # knitr root directory
       OUTDIR <- knit_root_dir;
    } else {
-      OUTDIR <- normalizePath(OUTDIR,
-         mustWork=FALSE);
+      # absolute path is assumed to be valid
+      if (any(grepl("^/|^[a-zA-Z]+[:]/", OUTDIR))) {
+         OUTDIR <- normalizePath(OUTDIR,
+            mustWork=FALSE);
+      } else {
+         # all other paths are relative to current working directory
+         if (dir.exists(OUTDIR)) {
+            OUTDIR <- normalizePath(OUTDIR);
+         } else {
+            OUTDIR <- file.path(
+               normalizePath("."),
+               OUTDIR)
+         }
+      }
       fc_base <- OUTDIR;
       fc_basedir <- OUTDIR;
       # knitr root directory

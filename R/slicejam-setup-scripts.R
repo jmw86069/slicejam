@@ -208,20 +208,22 @@ function usage {
    echo "   ${b}UPSTREAM_TTS,DOWNSTREAM_TTS${r}: ${u}numeric${r}";
    echo "      range relative to the TTS, default ${u}1000,1000${r}";
    echo "${h}Output options${r}:";
+   echo "   ${b}OUTDIR${r}: ${u}path${r} (optional) custom name for the";
+   echo "   output directory.";
    echo "   ${b}SAVE_RDATA${r}: ${u}0/1${r} whether to save .RData file for re-use.";
    echo "      default ${u}0${r} since cache is already saved.";
    echo "";
    echo "${h}Example dry-run${r}:
    ${u}DRYRUN=1 GROUPCHECK=1 FC_FILE=some_counts_file.fc GTF=gencode_v32.gtf \\\\
-   CURATION_TXT=curation.txt ./run_slicejam.sh${r}";
+   CURATION_TXT=curation.txt OUTDIR=slicejam_output ./run_slicejam.sh${r}";
    echo "";
    echo "${h}Analysis that stops at sample grouping${r}:
    ${u}DRYRUN=0 GROUPCHECK=1 FC_FILE=some_counts_file.fc GTF=gencode_v32.gtf \\\\
-   CURATION_TXT=curation.txt ./run_slicejam.sh${r}";
+   CURATION_TXT=curation.txt OUTDIR=slicejam_output ./run_slicejam.sh${r}";
    echo "";
    echo "${h}Full analysis${r}:
    ${u}DRYRUN=0 GROUPCHECK=0 FC_FILE=some_counts_file.fc GTF=gencode_v32.gtf \\\\
-   CURATION_TXT=curation.txt ./run_slicejam.sh${r}";
+   CURATION_TXT=curation.txt OUTDIR=slicejam_output ./run_slicejam.sh${r}";
    exit;
 }
 
@@ -238,6 +240,7 @@ DRYRUN="${DRYRUN}" \\
    GTF="${GTF}" \\
    FC_FILE="${FC_FILE}" \\
    CURATION_TXT="${CURATION_TXT}" \\
+   OUTDIR="${OUTDIR}" \\
    Rscript ',
       run_slicejam_path, '
 ');
