@@ -1,3 +1,14 @@
+# slicejam 0.0.47.900
+
+## new functions
+
+* `fc_to_curation()`
+
+   * Helper function that takes featureCounts file (or the column headers)
+   and produces a reasonable estimate of a `curation.txt` file for
+   the column headers observed. The output should be edited then
+   saved for use by `"slicejam_analysis.Rmd"`.
+
 # slicejam 0.0.46.900
 
 ## changes to existing functions and RMarkdown
