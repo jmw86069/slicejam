@@ -1,8 +1,90 @@
 # TODO items for Slicejam
 
+## 17aug2023
+
+* slicejam_analysis.Rmd
+
+   * Make each step "robust" to error, with `tryCatch()` blocks,
+   and displaying error messages, but continuing the workflow.
+   * Consider whether MASK regions should be excluded prior to
+   statistical testing. Supporting case is that these regions may
+   affect estimate of variance, and FDR adjustment (to minor degree imo).
+   * DONE. Convert Sample Correlation heatmaps to `heatmap_se()`
+   * DONE. Change all downstream sections to use iterate through
+   multiple MGM thresholds (if present). I think this may make it much
+   easier to test multiple MGM thresholds side-by-side, enabling us
+   to test them in a more rigorous and systematic way.
+   * limma contrasts now only include the "most appropriate" normalization,
+   which starts with normalized data with blocking factor if present, then
+   normalized data without blocking factor. To avoid batch-adjustment,
+   imported data should not include column "Run".
+   * PARTIAL. Debug extremely slow `limma contrasts` when using large number
+   of rows, and with multiple MGM thresholds. Ultimately it is caused by
+   using the `block` argument, instead of using batch-adjusted data.
+   (Using batch-adjusted data is nearly equivalent except the model
+   uses fewer degrees of freedom.)
+   
+      * It was caused by supplying `block` without `correlation`, and with
+      too many rows. Internally `limma::lmFit()` calls
+      `limma::duplicateCorrelation()` which scales "quadratically" (poorly)
+      with increasing number of rows.
+      * New argument `max_correlation_rows=10000` limits 10000 rows,
+      which in testing produced the same `correlation` value.
+      * Given `block` and `correlation` the `lmFit()` step took seconds,
+      instead of 8-10 minutes.
+      * Further, the `limma::voom()` step also called `lmFit()`, however
+      it did not include `block` in the initial calculation of `weights`,
+      as recommended by authors.
+      * However authors now recommend a two-step approach:
+      
+         1a. call `voom()` without `block` to produce `weights`.
+         1b. call `duplicateCorrelation()` with `weights` to produce
+         `correlation` (using up to 10,000 rows).
+         2a. call `voom()` with `block` and `correlation` to improve `weights`.
+         2b. call `duplicateCorrelation()` with improved `weights` to improve
+         `correlation` (using up to 10,000 rows).
+      * Then given `block` and `correlation` the call to `lmFit()` should
+      proceed as usual, but without the extreme delay caused by
+      `duplicateCorrelation()`.
+
+   * ACTIVE. Convert all sections to iterate consistently, so each type
+   of plot has the same organization of tabs:
+   
+      1. MGM thresholds, which define the set of Peaks analyzed.
+      2. Signal names (`assay_name`) when multiple normalizations are used.
+      3. (optional) Contrast names, where individual contrasts are shown.
+      4. (optional) Data centering, particularly for MA-plots and heatmaps.
+   
+   * DONE. Convert batch-adjusted contrasts to use non-batch-adjusted data,
+   with batch as a blocking factor in `limma` with argument `block`.
+   
+      * Data must be stored making this change clear. It must therefore change
+      `limma_batch_adjust_quantile_counts` to use `quantile_counts`,
+      and add `blocking_values="Run"`.
+      * New `"signal_label"` with `"quantile_counts (blocking by Run)"`.
+      * All downstream steps must also display `signal_label`, while
+      using `signal_name`.
+      * Note heatmaps using `signal_name` should "ideally" use
+      `centerby_colnames="Run"` or `"limma_batch_adjust_"` prefix,
+      in order to visualize data consistent with the contrasts.
+   
+   * PARTIAL. Reduce data volume for `sestats` output. Some changes point
+   upstream to `jamses::se_contrast_stats()`.
+   * Enable or skip certain analysis steps:
+   
+      * Option to conduct contrasts using only normalized, or batch-adjusted data,
+      saving time and data volume.
+      * Consider option to skip peak annotation, which would also skip
+      the peaks by region pie charts.
+      * Consider option to save the `fc_se` object as RData for faster re-use.
+
+   * Consider adding stacked bar graphs as an alternative to pie charts
+   for "peaks by region". Pros and cons.
+   
+
 ## 15aug2023
 
-* create helper function that creates a bash shell script that calls
+* PARTIAL. create helper function that creates a bash shell script that calls
 the `run_slicejam.R` with proper environment.
 
    * `RHOME` should be defined using the current R session
@@ -10,8 +92,9 @@ the `run_slicejam.R` with proper environment.
    * The file calling `Rscript` should therefore use the proper R
    executable, and the R packages installed for that user, hopefully
    making this script "portable" for use by others on the same linux system.
+   * Need MS Windows shell script template equivalent.
 
-* enable custom output directory from `slicejam_analysis.Rmd`
+* DONE. enable custom output directory from `slicejam_analysis.Rmd`
 
 ## 15mar2023
 

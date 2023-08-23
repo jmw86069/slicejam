@@ -235,6 +235,13 @@ if [[ ( "" == "${FC_FILE}" || ! -f "${FC_FILE}" ) ]]; then
    usage;
 fi;
 
+# print R_LIBS
+echo "${h}R_LIBS${r}: ${u}${R_LIBS}${r}";
+
+# print RHOME
+echo "${h}RHOME${r}: ${u}${RHOME}${r}";
+
+
 DRYRUN="${DRYRUN}" \\
    GROUPCHECK="${GROUPCHECK}" \\
    GTF="${GTF}" \\

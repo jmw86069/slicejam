@@ -1,3 +1,39 @@
+# slicejam 0.0.46.900
+
+## changes to existing functions and RMarkdown
+
+* `slicejam_analysis.Rmd`
+
+   * **Major change**: By default "All Peaks" will **not** be tested,
+   instead only the subset of peaks that meet each MGM threshold
+   will be tested. Note `MGM="0"` can be used to test all peaks,
+   however it is no longer the default (nor is it recommended).
+   * Workflow refactored to enable multiple `MGM` thresholds.
+   Relevant steps now iterate MGM thresholds, using tabs to organize output.
+   Including multiple MGM thresholds should make it more feasible to
+   compare output at each step, to support the threshold chosen.
+   * New section "Detected Rows" which occurs before most analyses,
+   in order to support the MGM threshold argument.
+   * All steps also iterate a more consistent set of options, using tabs
+   to organize equivalent output by each option, making comparisons "easier",
+   and reducing HTML length.
+   Each section is now contained in one RMarkdown chunk instead of being
+   repeated across multiple chunks to represent each combination of options.
+   
+      1. MGM threshold (where applicable)
+      2. Signal (raw, normalized, batch-adjusted)
+      3. Data centering in MA-plots and heatmaps (global; Group; Group,Run)
+      4. Contrast name (where relevant).
+
+   * `sestats` data volume is reduced 50% by removing `stats_df` and
+   all `rownames()` from each `stats_dfs` entry.
+
+* `setup_slicejam()`
+
+   * The bash script now prints the `R_LIBS` and `RHOME` values as
+   visual confirmation.
+
+
 # slicejam 0.0.45.900
 
 ## dependencies
