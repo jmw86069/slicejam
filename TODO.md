@@ -6,6 +6,8 @@
 
    * Make each step "robust" to error, with `tryCatch()` blocks,
    and displaying error messages, but continuing the workflow.
+   * Enable custom statistical thresholds: MGM (already),
+   `fold_cutoff`, `adjp_cutoff`.
    * Consider whether MASK regions should be excluded prior to
    statistical testing. Supporting case is that these regions may
    affect estimate of variance, and FDR adjustment (to minor degree imo).

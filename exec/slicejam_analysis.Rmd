@@ -620,6 +620,8 @@ if (GROUPCHECK) {
 
 ```
 
+### Annotate Peaks 
+
 #### Peak Sizes {.tabset}
 
 If the featureCounts output included column name `"Length"`,
@@ -806,12 +808,12 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
 ```
 
 
-#### Detected Rows
+#### Detected Peaks
 
-This section defines "detected rows" for downstream analysis,
+This section defines "detected peaks" for downstream analysis,
 which requires the max group mean in any one group should be
-at least `MGM` as described above. This step should be performed
-using normalized data if possible.
+at least `MGM` at each threshold defined.
+This step should be performed using normalized data if possible.
 
 ```{r detected_rows}
 # calculate row group means
@@ -1077,6 +1079,7 @@ signal_names <- unique(c("counts", normname, bnormname));
 
 for (ipeaks_name in names(ipeaks_names)) {
    ipeaks_use <- ipeaks_names[[ipeaks_name]];
+   mgm_cutoff <- mgm_list[[ipeaks_name]];
    cat(paste0("\n\n#### ", ipeaks_name, " {.tabset}\n\n"));
    for (signal_name in signal_names) {
       cat(paste0("\n\n##### Signal: ", signal_name, "\n\n"));
@@ -1118,9 +1121,9 @@ for (ipeaks_name in names(ipeaks_names)) {
             logBase=2,
             offset=1,
             displayBase=10);
-         # abline(v=MGM,
-         #    lty="dotted",
-         #    col="#333333");
+         abline(v=mgm_cutoff,
+            lty="dotted",
+            col="#333333");
          jamba::drawLabels(preset="topleft",
             adjPreset="bottomright",
             txt=Run[iCol],
