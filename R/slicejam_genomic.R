@@ -1465,7 +1465,7 @@ promoter_to_tss <- function
    
    
    # Process entries with at least the minimum width, on "+" or "-" strand
-   gr2pos <- (GenomicRanges::strand(gr) %in% positive);
+   gr2pos <- (as.character(GenomicRanges::strand(gr)) %in% positive);
    newstart <- ifelse(gr2pos[to_process],
       GenomicRanges::start(gr[to_process]) + upstream,
       GenomicRanges::start(gr[to_process]) + downstream - 1);

@@ -1,3 +1,19 @@
+# slicejam 0.0.48.900
+
+## changes
+
+* `slicejam_analysis.Rmd`
+
+   * Added `"All Peaks"` using mgm=0, to include with signal distributions.
+   * Hide the heatmap row dendrogram when more than 5000 rows.
+   * Fixed bug in ATAC mode processing.
+
+* `promoter_to_tss()`
+
+   * Fixed bug in comparison of `Rle` to vector, which appears not to work
+   as previously. Now explicitly converts `Rle` to `character` vector
+   before comparison.
+
 # slicejam 0.0.47.900
 
 ## new functions

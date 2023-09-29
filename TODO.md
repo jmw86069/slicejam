@@ -1,5 +1,22 @@
 # TODO items for Slicejam
 
+## 27sep2023
+
+* `slicejam_analysis.Rmd`
+
+   * improve MA-plot layout dimensions, fit panels onto one page
+   * MA-plots, consider wider y-axis range
+   * consider assigning categorical colors to `"Run"`
+   * DONE. consider not using `"Run"`, as color `lightness_colnames`
+   * consider sorting samples by group, run, rep
+   * consider adding a header row above contrast matrix, using comp labels
+   * consider adding blocking factor column to design matrix output
+   * consider allowing two-way contrasts
+   * consider changing Pie charts to use comp instead of contrast
+   * fix missing summary data for broad peaks
+   * silence warnings when loading `venndir`
+   * add "Group Means" option to Stats Heatmaps
+
 ## 17aug2023
 
 * slicejam_analysis.Rmd
