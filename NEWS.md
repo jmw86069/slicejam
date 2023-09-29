@@ -7,6 +7,7 @@
    * Added `"All Peaks"` using mgm=0, to include with signal distributions.
    * Hide the heatmap row dendrogram when more than 5000 rows.
    * Fixed bug in ATAC mode processing.
+   * Fixed bug in gene name logic when all `gene_id` values were `NA`.
 
 * `promoter_to_tss()`
 

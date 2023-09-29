@@ -2244,8 +2244,15 @@ retrieve the Entrez gene description, using the R package
 ```{r, add_gene_names, results='asis'}
 if (suppressPackageStartupMessages(require(genejam))) {
    if (igrepHas("gene_id", colnames(values(fc_gr)))) {
-      genecols <- head(rev(vigrep("gene_id", colnames(values(fc_gr)))), 1);
+      # use the first (gene_id) and last entry (mgmX_gene_id)
+      genecols <- unique(c(
+         head(vigrep("gene_id", colnames(values(fc_gr))), 1),
+         head(rev(vigrep("gene_id", colnames(values(fc_gr)))), 1)
+      ));
       for (genecol in genecols) {
+         if (all(is.na(values(fc_gr)[[genecol]]))) {
+            next;
+         }
          genenamecol <- gsub("gene_id", "gene_name", genecol);
          genedescol <- gsub("gene_id", "gene_description", genecol);
          # jamba::printDebug(c("Converting from '", genecol,
@@ -2272,6 +2279,9 @@ if (suppressPackageStartupMessages(require(genejam))) {
    } else if (igrepHas("gene_name", colnames(values(fc_gr)))) {
       genecols <- head(rev(vigrep("gene_name", colnames(values(fc_gr)))), 1);
       for (genecol in genecols) {
+         if (all(is.na(values(fc_gr)[[genecol]]))) {
+            next;
+         }
          genedescol <- gsub("gene_name", "gene_description", genecol);
          # jamba::printDebug(c("Converting from '", genecol,
          #    "' to '", genedescol, "'"), sep="",
