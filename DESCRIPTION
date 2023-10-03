@@ -11,7 +11,7 @@ biocViews:
 Depends: R (>= 3.6.0)
 Imports: jamba(>= 0.0.96.900),
    jamma (>= 0.0.33.900),
-   jamses (>= 0.0.46.900),
+   jamses (>= 0.0.51.900),
    colorjam (>= 0.0.23.900),
    platjam (>= 0.0.70.900),
    splicejam (>= 0.0.74.900),

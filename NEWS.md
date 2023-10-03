@@ -2,8 +2,19 @@
 
 ## changes
 
+* Bumped jamses dependency to 0.0.51.900 for `filter_contrast_names()`,
+and `contrasts_to_venn_setlists()`
 * `slicejam_analysis.Rmd`
 
+   * Updated contrasts, curated sample file handling.
+   * Added contrast filtering step when >30 contrasts are defined,
+   and GROUPCHECK is not enabled
+   
+      * uses `jamses::filter_contrast_names()`
+      * when GROUPCHECK=1 all contrasts are written to a file, so they
+      can be manually subsetted before analysis.
+   
+   * Separated GROUPCHECK to its own non-cached Rmd chunk.
    * Added `"All Peaks"` using mgm=0, to include with signal distributions.
    * Hide the heatmap row dendrogram when more than 5000 rows.
    * Fixed bug in ATAC mode processing.

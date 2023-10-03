@@ -1,20 +1,37 @@
 # TODO items for Slicejam
 
+## 02oct2023
+
+* `slicejam_analysis.Rmd`
+
+   * consider removing `peak_width_plots` which are large image files,
+   and have not been useful in evaluating the analysis results.
+   * Fix bug where Venn diagram labels are not shown.
+   * Fix missing summary data for broad peaks.
+   * Consider how to scale the analysis when there are many (100) contrasts
+   
+      * use GROUPCHECK=1 to allow scientists to edit `contrasts.txt`
+      * consider `all vs control` instead of `all vs all` strategy
+      * close alternative: keep comparisons only to the first control
+      factor level per factor. For example:
+      Genotype: WT, KO; Treatment: Veh, Dex
+      It would keep comparisons involving "WT" and "Veh"
+      * the number of Venn diagrams gets *huge*: 17,000+ for 100+ contrasts
+
 ## 27sep2023
 
 * `slicejam_analysis.Rmd`
 
-   * improve MA-plot layout dimensions, fit panels onto one page
+   * Done. improve MA-plot layout dimensions, fit panels onto one page
    * MA-plots, consider wider y-axis range
    * consider assigning categorical colors to `"Run"`
-   * DONE. consider not using `"Run"`, as color `lightness_colnames`
-   * consider sorting samples by group, run, rep
+   * Done. consider not using `"Run"`, as color `lightness_colnames`
+   * Done. consider sorting samples by group, run, rep
    * consider adding a header row above contrast matrix, using comp labels
    * consider adding blocking factor column to design matrix output
-   * consider allowing two-way contrasts
+   * Done. consider allowing two-way contrasts
    * consider changing Pie charts to use comp instead of contrast
-   * fix missing summary data for broad peaks
-   * silence warnings when loading `venndir`
+   * Done. silence `sp` deprecation warnings when loading `venndir`
    * add "Group Means" option to Stats Heatmaps
 
 ## 17aug2023

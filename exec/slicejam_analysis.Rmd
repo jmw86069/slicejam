@@ -172,6 +172,7 @@ suppressPackageStartupMessages(p_load_gh("jmw86069/jamses"));
 suppressPackageStartupMessages(p_load_gh("jmw86069/jamma"));
 suppressPackageStartupMessages(p_load_gh("jmw86069/splicejam"));
 suppressPackageStartupMessages(p_load_gh("jmw86069/multienrichjam"));
+suppressPackageStartupMessages(p_load_gh("jmw86069/venndir"));
 
 suppressPackageStartupMessages(p_load("SummarizedExperiment"));
 suppressPackageStartupMessages(p_load("data.table"));
@@ -536,6 +537,8 @@ data.table::fwrite(
    file=sample_txt_file,
    sep="\t",
    col.names=TRUE);
+cli::cli_alert_success(
+   "Saved sample annotations to: '{.field {sample_txt_file}}'.")
 
 ## define experimental design groups and contrasts
 sedesign <- jamses::groups_to_sedesign(
@@ -543,85 +546,87 @@ sedesign <- jamses::groups_to_sedesign(
       colData(fc_se[, iSamples])[, group_colname, drop=FALSE]),
    factor_order=FACTOR_ORDER,
    max_depth=2);
-iDesign <- sedesign@design;
-iContrasts <- sedesign@contrasts;
 
-contrastNames <- NULL;
-if (length(iContrasts) > 0) {
-   contrastNames <- colnames(iContrasts);
-}
+# server stored file
 contrast_txt_file <- file.path(OUTDIR,
    "contrasts.txt");
-kc <- NULL;
+all_contrast_txt_file <- file.path(OUTDIR,
+   "all_contrasts.txt");
+contrastNames <- contrast_names(sedesign);
+# if contrasts were previously saved, use those contrasts
 if (file.exists(contrast_txt_file)) {
-   contrastNames <- gsub("^[ \t\r\n]+|[ \t\r\n]+$",
-      "",
-      readLines(contrast_txt_file));
-   iContrasts <- tryCatch({limma::makeContrasts(
-         contrasts=contrastNames,
-         levels=iDesign);
-   }, error=function(e){
-      jamba::printDebug("Error during limma::makeContrasts() from contrasts file: ",
-         contrast_txt_file);
-      print(e);
-      NULL;
-   })
-   if (length(iContrasts) > 0) {
-      rownames(iContrasts) <- colnames(iDesign);
-      sedesign@contrasts <- iContrasts;
-      kc <- kable_coloring(
-         data.frame(check.names=FALSE,
-            Note="contrastNames were loaded from file: ",
-            File=paste0("'", contrast_txt_file, "'")),
-         row.names=FALSE);
-   } else {
-      contrastNames <- NULL;
-      iContrasts <- NULL;
-   }
+   contrastNames <- readLines(contrast_txt_file);
+   # clean up whitespace in contrast names
+   contrastNames <- gsub("^[ \t]+|[ \t]+$", "",
+      contrastNames)
+   cli::cli_alert_success(
+      "Loaded contrasts from: '{.field {contrast_txt_file}}'.")
+   contrast_names(sedesign) <- contrastNames;
 } else {
-   if (length(contrastNames) > 0) {
+   if (length(contrastNames) > 30) {
+      # optionally subset contrasts
+      # only when >30 contrasts
+      # and GROUPCHECK is not enabled
+      writeLines(text=contrastNames,
+         con=all_contrast_txt_file);
+      cli::cli_alert_success(
+         "Saved all contrasts to: '{.field {all_contrast_txt_file}}'.")
+      cli::cli_alert_info(
+         "Filtered contrasts to first control per factor.")
+      contrastNames <- filter_contrast_names(contrastNames)
+      if (!GROUPCHECK) {
+         contrast_names(sedesign) <- contrastNames;
+      }
       writeLines(text=contrastNames,
          con=contrast_txt_file);
-      kc <- kable_coloring(
-         data.frame(check.names=FALSE,
-            Note="contrastNames were stored in file: ",
-            File=paste0("'", contrast_txt_file, "'")),
-         row.names=FALSE);
+      cli::cli_alert_success(
+         "Saved filtered contrasts to: '{.field {contrast_txt_file}}'.")
+   } else if (length(contrastNames) > 0) {
+      writeLines(text=contrastNames,
+         con=contrast_txt_file);
+      cli::cli_alert_success(
+         "Saved contrasts to: '{.field {contrast_txt_file}}'.")
    } else {
-      kc <- kable_coloring(
-         data.frame(Note=paste0("There are no contrasts defined."),
-         row.names=FALSE));
+      cli::cli_alert_info(
+         "No contrasts were defined.")
    }
 }
-kc;
 
+
+# design matrix
+iDesign <- sedesign@design;
+# contrasts matrix
+iContrasts <- sedesign@contrasts;
+
+comps_df <- jamses::contrasts_to_factors(contrastNames, rowname="comp")
 kable_coloring(
    data.frame(
-      `Contrast Names`=contrastNames,
-      `Abbreviated Comp`=jamses::contrast2comp(contrastNames)),
+      `Contrasts`=contrastNames,
+      `Comps`=rownames(comps_df),
+      comps_df),
    row.names=FALSE,
    caption=paste0(
       "Contrasts defined:"));
 
 # plot sedesign
-plot_sedesign(sedesign,
-   arrow_ex=0.7,
+jamses::plot_sedesign(sedesign,
+   arrow_ex=0.3,
+   contrast_style="none",
+   twoway_lwd=3,
    axis1=2,
    axis2=1,
    axis3=3,
    axis4=4)
+```
 
+```{r check_groupcheck, cache=FALSE}
 ## Optional GROUPCHECK which exits here to allow reviewing the sample grouping
 if (GROUPCHECK) {
-   #txt_ext <- paste0(".curated_samples.txt");
-   #sample_txt_file <- file.path(OUTDIR,
-   #   gsub("[.]fc$|[.]fc[.]txt$",
-   #      txt_ext,
-   #      basename(fc_file)));
-   printDebug("Curated sample data: '",
-      sample_txt_file, "'");
-   printDebug("Contrast names: '",
-      contrast_txt_file, "'");
+   cli::cli_alert_success(
+      "Curated sample data: '{.field {sample_txt_file}}'.")
+   cli::cli_alert_success(
+      "Stored contrasts: '{.field {contrast_txt_file}}'.")
+
    knitr::knit_exit(fully=TRUE);
 }
 
@@ -1568,7 +1573,6 @@ for (sestats_name in names(sestats_list)) {
 Base filename: `venn_diagrams`
 
 ```{r, venn_diagrams, fig.height=10, fig.width=10, results='asis'}
-suppressMessages(require(venndir));
 # iterate each sestats
 for (sestats_name in names(sestats_list)) {
    isignal_labels <- names(sestats_list[[sestats_name]]);
@@ -1594,14 +1598,14 @@ for (sestats_name in names(sestats_list)) {
          cat(paste0("\n\n##### ", isignal_label, " {.tabset}\n\n"));
          # For now: use all non-empty pairs of contrasts
          # TODO: determine appropriate Venn diagrams
-         pair_l <- unlist(recursive=FALSE,
-            apply(combn(icontrast_names, 2), 2, list));
+         # pair_l <- unlist(recursive=FALSE,
+         #    apply(combn(icontrast_names, 2), 2, list));
+         pair_l <- contrasts_to_venn_setlists(icontrast_names)
          
          # iterate Venn pairs
-         for (venn_contrasts in pair_l) {
-            venn_comps <- jamses::contrast2comp(venn_contrasts);
-            venn_label <- jamba::cPaste(venn_comps, sep=", ")
-            cat(paste0("\n\n###### ", venn_label, "\n\n"));
+         for (venn_name in names(pair_l)) {
+            venn_contrasts <- pair_l[[venn_name]];
+            cat(paste0("\n\n###### ", venn_name, "\n\n"));
             tryCatch({
                setlist <- set_lists[venn_contrasts];
                names(setlist) <- gsub(":",
