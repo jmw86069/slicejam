@@ -2013,7 +2013,7 @@ for (sestats_name in names(sestats_list)) {
 
 ### Stats Heatmaps {.tabset}
 
-```{r stat_heatmaps, fig.height=14, fig.width=4 + sqrt(length(iSamplesUse)) * 1.5, results='asis'}
+```{r stat_heatmaps, fig.height=14, fig.width=4 + sqrt(length(contrastNames)) + sqrt(length(iSamplesUse)) * 1.5, results='asis'}
 
 # centering and controls
 centerby_list <- list(
