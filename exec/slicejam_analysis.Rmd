@@ -537,8 +537,9 @@ data.table::fwrite(
    file=sample_txt_file,
    sep="\t",
    col.names=TRUE);
-cli::cli_alert_success(
-   "Saved sample annotations to: '{.field {sample_txt_file}}'.")
+jamba::printDebug("Saved sample annotations to: '", sample_txt_file, "'.",
+   htmlOut=TRUE,
+   comment=FALSE)
 
 ## define experimental design groups and contrasts
 sedesign <- jamses::groups_to_sedesign(
@@ -559,8 +560,9 @@ if (file.exists(contrast_txt_file)) {
    # clean up whitespace in contrast names
    contrastNames <- gsub("^[ \t]+|[ \t]+$", "",
       contrastNames)
-   cli::cli_alert_success(
-      "Loaded contrasts from: '{.field {contrast_txt_file}}'.")
+   jamba::printDebug("Loaded contrasts from: '", contrast_txt_file, "'.",
+      htmlOut=TRUE,
+      comment=FALSE)
    contrast_names(sedesign) <- contrastNames;
 } else {
    if (length(contrastNames) > 30) {
@@ -569,26 +571,34 @@ if (file.exists(contrast_txt_file)) {
       # and GROUPCHECK is not enabled
       writeLines(text=contrastNames,
          con=all_contrast_txt_file);
-      cli::cli_alert_success(
-         "Saved all contrasts to: '{.field {all_contrast_txt_file}}'.")
-      cli::cli_alert_info(
-         "Filtered contrasts to first control per factor.")
+      jamba::printDebug("Saved all contrasts to: '",
+         all_contrast_txt_file, "'.",
+         htmlOut=TRUE,
+         comment=FALSE)
+      jamba::printDebug("Filtered contrasts to first control per factor.",
+         htmlOut=TRUE,
+         comment=FALSE)
       contrastNames <- filter_contrast_names(contrastNames)
       if (!GROUPCHECK) {
          contrast_names(sedesign) <- contrastNames;
       }
       writeLines(text=contrastNames,
          con=contrast_txt_file);
-      cli::cli_alert_success(
-         "Saved filtered contrasts to: '{.field {contrast_txt_file}}'.")
+      jamba::printDebug("Saved filtered contrasts to: '",
+         contrast_txt_file, "'.",
+         htmlOut=TRUE,
+         comment=FALSE)
    } else if (length(contrastNames) > 0) {
       writeLines(text=contrastNames,
          con=contrast_txt_file);
-      cli::cli_alert_success(
-         "Saved contrasts to: '{.field {contrast_txt_file}}'.")
+      jamba::printDebug("Saved contrasts to: '",
+         contrast_txt_file, "'.",
+         htmlOut=TRUE,
+         comment=FALSE)
    } else {
-      cli::cli_alert_info(
-         "No contrasts were defined.")
+      jamba::printDebug("No contrasts were defined.",
+         htmlOut=TRUE,
+         comment=FALSE)
    }
 }
 
