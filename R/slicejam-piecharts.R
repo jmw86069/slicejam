@@ -259,7 +259,11 @@ gg_pie_by_feature_type <- function
       );
       j_df$Offset <- sum(j_df$Count) -(cumsum(j_df$Count) - j_df$Count / 2);
       j_df$Scaled_Offset <- 100 * j_df$Offset / sum(j_df$Count, na.rm=TRUE);
-      j_df$Set <- iCon;
+      
+      # change to use comp, an abbreviated format
+      # j_df$Set <- iCon;
+      j_df$Set <- jamses::contrast2comp(iCon);
+      
       j_df$Hit <- iHit;
       j_df$Signal <- iSig;
       j_df$Label <- paste0(

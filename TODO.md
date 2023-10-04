@@ -1,22 +1,34 @@
 # TODO items for Slicejam
 
+## 04oct2023
+
+* hide output tabs based upon `"Run"` (batch) when there is only one value
+* Consider allowing multiple normalization types, to compare methods directly.
+* Consider allowing multiple stat thresholds
+
+   * at risk of ballooning the stats, it could be useful to apply `FOLD=1.5,2`
+
+* Consider stat heatmaps using Venn setlists
+
+   * especially for large number of contrasts, it could help reduce content
+
 ## 02oct2023
 
 * `slicejam_analysis.Rmd`
 
-   * consider removing `peak_width_plots` which are large image files,
+   * DONE. consider removing `peak_width_plots` which are large image files,
    and have not been useful in evaluating the analysis results.
-   * Fix bug where Venn diagram labels are not shown.
+   * DONE. Fix bug where Venn diagram labels are not shown.
    * Fix missing summary data for broad peaks.
-   * Consider how to scale the analysis when there are many (100) contrasts
+   * PARTIAL. Consider how to scale the analysis with too many contrasts
    
       * use GROUPCHECK=1 to allow scientists to edit `contrasts.txt`
-      * consider `all vs control` instead of `all vs all` strategy
-      * close alternative: keep comparisons only to the first control
+      * No. consider `all vs control` instead of `all vs all` strategy
+      * Done. close alternative: keep comparisons only to the first control
       factor level per factor. For example:
       Genotype: WT, KO; Treatment: Veh, Dex
       It would keep comparisons involving "WT" and "Veh"
-      * the number of Venn diagrams gets *huge*: 17,000+ for 100+ contrasts
+      * Done.the number of Venn diagrams gets *huge*: 17,000+ for 100+ contrasts
 
 ## 27sep2023
 

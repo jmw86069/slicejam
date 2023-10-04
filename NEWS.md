@@ -4,8 +4,20 @@
 
 * Bumped jamses dependency to 0.0.51.900 for `filter_contrast_names()`,
 and `contrasts_to_venn_setlists()`
+* `gg_pie_by_feature_type()`
+
+   * abbreviated the contrast labels using `jamses::contrast2comp()`
+
 * `slicejam_analysis.Rmd`
 
+   * Cleaned up some code in generating contrasts.
+   * Updated `venndir` section with workaround when LOCALE is "C":
+   `"C"` is changed to `"en_US.UTF-8"` to prevent errors from `gridtext`.
+   * Switched `venndir` to use `plot_style="gg"` output to fix blank labels
+   * Changed `venndir` to use `overlap_type="concordance"` to reduce labels.
+   * Added venndir legend.
+   * Remove `"Peak Width by Signal"` section altogether, as it was not
+   useful, and created numerous output figures.
    * Updated contrasts, curated sample file handling.
    * Added contrast filtering step when >30 contrasts are defined,
    and GROUPCHECK is not enabled
