@@ -1444,8 +1444,10 @@ for (sestats_name in names(sestats_list)) {
          cat(paste0("\n\n##### ", isignal_label, " {.tabset}\n\n"));
          # Use function that determines reasonably intuitive comparisons
          pair_l <- jamses::contrasts_to_venn_setlists(icontrast_names,
+            include_multifactor=FALSE,
             factor_names=factor_names)
-         names(pair_l) <- gsub("[.]1$", "", names(pair_l));
+         names(pair_l) <- makeNames(
+            gsub("[.0-9]+$", "", names(pair_l)));
 
          # iterate Venn pairs
          for (venn_name in names(pair_l)) {
