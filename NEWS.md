@@ -10,6 +10,8 @@ and `contrasts_to_venn_setlists()`
 
 * `slicejam_analysis.Rmd`
 
+   * Added `curation_mtime` and `contrasts_mtime` to RMarkdown cache logic
+   so updating either file will invalidate the cache and force reprocessing.
    * Cleaned up some code in generating contrasts.
    * Updated `venndir` section with workaround when LOCALE is "C":
    `"C"` is changed to `"en_US.UTF-8"` to prevent errors from `gridtext`.

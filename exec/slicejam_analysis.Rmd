@@ -37,6 +37,16 @@ into memory.
 
 ## Define the cache so it is dependent upon:
 ## - the versions of a few R packages,
+contrast_txt_file <- file.path(OUTDIR,
+   "contrasts.txt");
+contrast_mtime <- NULL;
+if (file.exists(contrast_txt_file_time)) {
+   contrast_mtime <- file.info(contrast_txt_file)$mtime
+}
+curation_mtime <- NULL;
+if (file.exists(Sys.getenv("CURATION_TXT"))) {
+   curation_mtime <- file.info(Sys.getenv("CURATION_TXT"))$mtime
+}
 ## - the environmental variable FC_FILE
 knitr::opts_chunk$set(cache=TRUE,
    autodep=TRUE,
@@ -56,6 +66,8 @@ knitr::opts_chunk$set(cache=TRUE,
       packageVersion("platjam"),
       packageVersion("slicejam"),
       packageVersion("jamses"),
+      contrast_mtime,
+      curation_mtime,
       paste0("CURATION_TXT:", Sys.getenv("CURATION_TXT"))
    )
 );
