@@ -40,7 +40,7 @@ into memory.
 contrast_txt_file <- file.path(OUTDIR,
    "contrasts.txt");
 contrast_mtime <- NULL;
-if (file.exists(contrast_txt_file_time)) {
+if (file.exists(contrast_txt_file)) {
    contrast_mtime <- file.info(contrast_txt_file)$mtime
 }
 curation_mtime <- NULL;
