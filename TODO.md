@@ -1,5 +1,25 @@
 # TODO items for Slicejam
 
+## 13oct2023
+
+* `slicejam_analysis.Rmd`
+
+   * Add `plot_sedesign()` after stat analysis to show number of hits
+   for each contrast. Show only the oneway contrasts, then when applicable
+   show twoway contrasts as a separate figure.
+
+## 05oct2023
+
+* scalability
+
+   * Stat Heatmaps currently do not scale with larger number of contrasts.
+   Some strategies to help make it scale:
+   
+      * DONE. Sort `contrastNames` by default.
+      * Make annotation stripes half their current width
+      * Remove "Run" from `top_colnames` when it is not relevant
+      * Produce "All hits" heatmap, then use Venn subsets with `max_venn_size=100`
+
 ## 04oct2023
 
 * hide output tabs based upon `"Run"` (batch) when there is only one value

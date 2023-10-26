@@ -928,8 +928,10 @@ tryCatch({
 }, error=function(e){
    print(e);
 })
-ma_height <- 5 + sqrt(ma_nrow) * 4;
-ma_width <- 5 + sqrt(ma_ncol) * 4.5;
+# 2 inches padding top/bottom, 1 inch height per row
+ma_height <- 2 + (ma_nrow + 1/ma_nrow);
+# 0.5 inch padding left/right, 1 inch height per row
+ma_width <- 0.5 + (ma_ncol + 1/ma_ncol) * 1.3;
 ```
 
 Base filename: `ma_plots`
@@ -950,6 +952,7 @@ centerby_list <- list(
    # `centered by first group`=NULL,
    `global-centered`=NULL,
    `centered by Run`="Run")
+
 # control samples in the first group
 iControl <- head(levels(iGroup), 1);
 iControlSamples <- iSamples[
@@ -958,6 +961,13 @@ centering_controls <- list(
    # `centered by first group`=iControlSamples,
    `global-centered`=iSamples,
    `centered by Run`=iSamples)
+
+# hide `centered by Run` when not relevant
+if (length(unique(colData(fc_se[, iSamples])$Run)) == 1) {
+   centerby_list <- head(centerby_list, -1);
+   centering_controls <- head(centering_controls, -1);
+   # centering_control_labels <- head(centering_control_labels, 2);
+}
 
 
 for (ipeaks_name in names(ipeaks_names)) {

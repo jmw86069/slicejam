@@ -1,3 +1,25 @@
+# slicejam 0.0.49.900
+
+## changes
+
+* upped dependency on platjam to version 0.0.75.900 to use
+`rmd_tab_iterator()`
+* `slicejam_analysis.Rmd`
+
+   * MA-plots
+
+      * Adjusted MA-plot figure height calculations, more consistently scalable
+      * Removed "Centered by Run" when not relevant
+
+## new functions
+
+* `sort_contrast_names()`
+
+   * Utility function to help organize contrasts displayed in the RMarkdown,
+   sorting by factor comparisons with oneway contrasts, then twoway.
+
+
+
 # slicejam 0.0.48.900
 
 ## changes
