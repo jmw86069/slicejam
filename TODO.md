@@ -1,5 +1,23 @@
 # TODO items for Slicejam
 
+## 27nov2023
+
+* `slicejam_analysis.Rmd`
+
+   * Stat Hits Heatmaps: When there are two or more factors, show:
+   
+      1. All stat hits (as is done currently).
+      2. Hits for each factor comparison. For example
+      
+         * Factor one: "B-A:D", "B-A:E", centered using `controlSamples` "A"
+         * Factor two "A:E-D", "B:E-D", centered using `controlSamples` "D"
+         * Data should be centered using the first factor level
+         * For now, do not use `centerby_colnames` to center within each
+         factor level of the other factors.
+
+   * convert to `rmd_tab_iterator()` for volcano plots
+   * convert to `rmd_tab_iterator()` for heatmaps
+
 ## 13oct2023
 
 * `slicejam_analysis.Rmd`

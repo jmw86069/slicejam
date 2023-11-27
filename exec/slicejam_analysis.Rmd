@@ -1333,42 +1333,65 @@ Base filename: `volcano_plots`
 
 ```{r, volcano_plots, fig.height=12, fig.width=12, dependson=c("run_limma"), results='asis'}
 options("warn"=-1);
-# iterate each sestats
-for (sestats_name in names(sestats_list)) {
-   cat(paste0("\n\n#### ", sestats_name, " {.tabset}\n\n"));
+
+# set up rmd tabs
+sestats_names <- names(sestats_list);
+isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
+   names(sestats_list[[sestats_name]])
+})))
+icontrast_names <- contrast_names(sedesign);
+icomp_names <- jamses::contrast2comp(icontrast_names)
+fold_cutoff <- 1.5;
+adjp_cutoff <- 0.05;
+
+# volcano plot function
+volcano_fn <- function(...){
+   # variables iterated:
+   # sestats_name
+   # isignal_label
+   # icomp_names (we must derive icontrast_name)
    mgm_cutoff <- mgm_list[[sestats_name]];
-   isignal_labels <- names(sestats_list[[sestats_name]]);
-   for (isignal_label in isignal_labels) {
-      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
-         isignal_label]]$hit_array);
-      isignal_name <- sestats_dimnames[[3]];
-      icutoff_names <- sestats_dimnames[[1]];
-      icontrast_names <- sestats_dimnames[[2]];
-      cat(paste0("\n\n##### ", isignal_label, " {.tabset}\n\n"));
-      for (icontrast_name in icontrast_names) {
-         icomp_name <- jamses::contrast2comp(icontrast_name)
-         cat(paste0("\n\n###### ", icomp_name, "\n\n"));
-         # make volcano plot
-         # iDF <- sestats_list[[sestats_name]]$stats_dfs[[iSig]][[iCon]];
-         par("mar"=c(7, 7, 4, 3));
-         submain <- paste0(sestats_name, ", ", isignal_label);
-         idf <- sestats_list[[sestats_name]][[isignal_label]][["stats_dfs"]][[
-               isignal_name]][[icontrast_name]];
-         # print(kable_coloring(head(idf, 10)));
-         vp1adjp <- volcano_plot(
-            x=sestats_list[[sestats_name]][[isignal_label]][["stats_dfs"]][[
-               isignal_name]][[icontrast_name]],
-            verbose=FALSE,
-            sig_cutoff=0.05,
-            fold_cutoff=1.5,
-            expr_cutoff=mgm_cutoff,
-            main=icomp_name,
-            submain=submain,
-            sig_colname="adj.P.Val");
-         par("mar"=c(5, 4, 4, 2) + 0.1);
-      }
-   }
+   
+   sestats_dimnames <- dimnames(
+      sestats_list[[sestats_name]][[isignal_label]]$hit_array);
+   isignal_name <- sestats_dimnames[[3]];
+   icutoff_names <- sestats_dimnames[[1]];
+   icontrast_names <- sestats_dimnames[[2]];
+
+   # icomp_name <- jamses::contrast2comp(icontrast_name)
+   icontrast_name <- jamses::comp2contrast(icomp_name)
+   
+   par("mar"=c(7, 7, 4, 3));
+   submain <- paste0(sestats_name, ", ", isignal_label);
+   idf <- sestats_list[[sestats_name]][[isignal_label]][["stats_dfs"]][[
+         isignal_name]][[icontrast_name]];
+   vp1adjp <- volcano_plot(
+      x=idf,
+      verbose=FALSE,
+      sig_cutoff=adjp_cutoff,
+      fold_cutoff=fold_cutoff,
+      expr_cutoff=mgm_cutoff,
+      main=icomp_name,
+      submain=submain,
+      sig_colname="adj.P.Val");
+   par("mar"=c(5, 4, 4, 2) + 0.1);
+
 }
+
+# Rmd tab iterator
+# Todo:
+# - altered: fold_cutoff, adjp_cutoff
+withr::with_options(
+   list(jam.htmlOut=TRUE,
+      jam.comment=FALSE),
+   rmd_tab_iterator(
+      tab_list=list(
+         sestats_name=sestats_names,
+         isignal_label=isignal_labels,
+         icomp_name=icomp_names),
+      base_fn=volcano_fn,
+      heading_level=4)
+)
 
 ```
 
@@ -1382,59 +1405,92 @@ the adjust P-value and fold change criteria.
 Base filename: `mgm_hit_distribution`
 
 ```{r, mgm_hit_distribution, fig.height=10, fig.width=10, dependson=c("run_limma"), results='asis'}
-# iterate each sestats
-for (sestats_name in names(sestats_list)) {
-   cat(paste0("\n\n#### ", sestats_name, " {.tabset}\n\n"));
-   mgm_cutoff <- mgm_list[[sestats_name]];
-   isignal_labels <- names(sestats_list[[sestats_name]]);
-   for (isignal_label in isignal_labels) {
-      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
-         isignal_label]]$hit_array);
-      isignal_name <- sestats_dimnames[[3]];
-      icutoff_names <- sestats_dimnames[[1]];
-      icontrast_names <- sestats_dimnames[[2]];
-   
-      cat(paste0("\n\n##### ", isignal_label, " {.tabset}\n\n"));
-      for (icontrast_name in icontrast_names) {
-         icomp_name <- jamses::contrast2comp(icontrast_name);
-         idf <- sestats_list[[sestats_name]][[isignal_label]][["stats_dfs"]][[
-            isignal_name]][[icontrast_name]];
-         mgmcol <- vigrep("^mgm ", colnames(idf));
-         # sigcol <- vigrep("^P.Value ", colnames(idf));
-         foldcol <- vigrep("^fold ", colnames(idf));
-         # filter by adjusted P-value
-         sigcol <- vigrep("^adj.P.Val ", colnames(idf));
-         sigadjp <- which(abs(idf[[foldcol]]) >= 1.5 &
-            idf[[sigcol]] <= 0.05);
-         if (length(sigadjp) > 2) {
-            cat(paste0("\n\n###### ", icomp_name, "\n\n"));
-            tryCatch({
-               jamba::plotPolygonDensity(
-                  main=paste0("Max Group Mean for ",
-                     formatInt(length(sigadjp)),
-                     " statistical hits\n",
-                     "with adj.P.Val <= 0.05 and abs(fold) >= 1.5\n",
-                     icomp_name
-                     # gsub("^mgm ", "", mgmcol)
-                     ),
-                  xlab=mgmcol,
-                  idf[sigadjp, mgmcol])
-               abline(v=mgm_cutoff, col="black", lwd=2);
-               abline(v=mgm_cutoff, col="gold", lty=2, lwd=2);
-            }, error=function(e){
-               jamba::printDebug("plot skipped, signal: ",
-                  isignal_name,
-                  ", contrast: ",
-                  icontrast_name,
-                  comment=FALSE,
-                  ", error:");
-               print(e);
-            })
-         }
+# set up rmd tabs
+sestats_names <- names(sestats_list);
+isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
+   names(sestats_list[[sestats_name]])
+})))
+icontrast_names <- contrast_names(sedesign);
+icomp_names <- jamses::contrast2comp(icontrast_names)
+fold_cutoff <- 1.5;
+adjp_cutoff <- 0.05;
 
-      }
+mgm_dist_fn <- function(...){
+   # variables iterated:
+   # sestats_name
+   # isignal_label
+   # icomp_names (we must derive icontrast_name)
+   mgm_cutoff <- mgm_list[[sestats_name]];
+
+   sestats_dimnames <- dimnames(
+      sestats_list[[sestats_name]][[isignal_label]]$hit_array);
+   isignal_name <- sestats_dimnames[[3]];
+   icutoff_names <- sestats_dimnames[[1]];
+   icontrast_names <- sestats_dimnames[[2]];
+
+   # icomp_name <- jamses::contrast2comp(icontrast_name)
+   icontrast_name <- jamses::comp2contrast(icomp_name)
+
+   idf <- sestats_list[[sestats_name]][[isignal_label]][["stats_dfs"]][[
+      isignal_name]][[icontrast_name]];
+   mgmcol <- vigrep("^mgm ", colnames(idf));
+   foldcol <- vigrep("^fold ", colnames(idf));
+   # filter by adjusted P-value
+   sigcol <- vigrep("^adj.P.Val ", colnames(idf));
+   sigadjp <- which(abs(idf[[foldcol]]) >= fold_cutoff &
+      idf[[sigcol]] <= adjp_cutoff &
+         !is.na(idf[[sigcol]]) &
+         !is.na(idf[[foldcol]]));
+
+   # if 2 or more points meet the criteria, make a plot
+   if (length(sigadjp) > 2) {
+      tryCatch({
+         jamba::plotPolygonDensity(
+            main=paste0("Max Group Mean for ",
+               formatInt(length(sigadjp)),
+               " statistical hits\n",
+               "with adj.P.Val <= ", adjp_cutoff,
+               " and abs(fold) >= ", fold_cutoff, "\n",
+               icomp_name
+               # gsub("^mgm ", "", mgmcol)
+               ),
+            xlab=mgmcol,
+            idf[sigadjp, mgmcol])
+         abline(v=mgm_cutoff, col="black", lwd=2);
+         abline(v=mgm_cutoff, col="gold", lty=2, lwd=2);
+      }, error=function(e){
+         jamba::printDebugHtml("Error during plot. ",
+            "sestats_name: ", sestats_name,
+            ", signal: ",
+            isignal_name,
+            ", comp: ", icomp_name,
+            ", contrast: ", icontrast_name);
+         print(e);
+      })
+   } else {
+         jamba::printDebugHtml("No statistical hits. ",
+            "sestats_name: ", sestats_name,
+            ", signal label: ", isignal_label,
+            ", signal name: ", isignal_name,
+            ", comp: ", icomp_name,
+            ", contrast: ", icontrast_name);
    }
 }
+
+# Rmd tab iterator
+# Todo:
+# - altered: fold_cutoff, adjp_cutoff
+withr::with_options(
+   list(jam.htmlOut=TRUE,
+      jam.comment=FALSE),
+   rmd_tab_iterator(
+      tab_list=list(
+         sestats_name=sestats_names,
+         isignal_label=isignal_labels,
+         icomp_name=icomp_names),
+      base_fn=mgm_dist_fn,
+      heading_level=4)
+)
 
 ```
 
@@ -1451,74 +1507,107 @@ if ("C" %in% Sys.getlocale("LC_ALL")) {
    new_locale <- Sys.setlocale("LC_ALL", "en_US.UTF-8")
 }
 
-# iterate each sestats
-for (sestats_name in names(sestats_list)) {
-   isignal_labels <- names(sestats_list[[sestats_name]]);
-   for (isignal_label in isignal_labels) {
-      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
-         isignal_label]]$hit_array);
-      isignal_name <- sestats_dimnames[[3]];
-      icutoff_names <- sestats_dimnames[[1]];
-      icontrast_names <- sestats_dimnames[[2]];
-      contrast_colors <- group2colors(icontrast_names);
+venn_wrapper_fn <- function(...){
+   # variables iterated:
+   # sestats_name
+   # isignal_label
+   # icontrast_names will be determined each iteration
+   sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
+      isignal_label]]$hit_array);
+   isignal_name <- sestats_dimnames[[3]];
+   icutoff_names <- sestats_dimnames[[1]];
+   icontrast_names <- sestats_dimnames[[2]];
    
-      if (length(icontrast_names) > 1) {
-         cat(paste0("\n\n#### ", sestats_name, " {.tabset}\n\n"));
-      }
+   # obtain the hit list
+   set_lists <- jamses::hit_array_to_list(
+      sestats_list[[sestats_name]][[isignal_label]]$hit_array,
+      assay_names=isignal_name,
+      cutoff_names=icutoff_names)
+   # subset for non-empty hits
+   icontrast_names <- names(set_lists)[lengths(set_lists) > 0];
+   # assign colors to non-empty entries
+   # (this step may assign inconsistent colors across sestats_names)
+   contrast_colors <- group2colors(icontrast_names);
    
-      set_lists <- jamses::hit_array_to_list(
-         sestats_list[[sestats_name]][[isignal_label]]$hit_array,
-         assay_names=isignal_name,
-         cutoff_names=icutoff_names)
-      icontrast_names <- names(set_lists)[lengths(set_lists) > 0];
+   if (length(icontrast_names) < 2) {
+      jamba::printDebugHtml(
+         "There were not two or more suitable sets of hits.");
+   } else {
+      # generate list of Venn diagrams
+      pair_l <- jamses::contrasts_to_venn_setlists(icontrast_names,
+         include_multifactor=FALSE,
+         factor_names=factor_names)
+      names(pair_l) <- makeNames(
+         gsub("[.0-9]+$", "", names(pair_l)));
+      venn_names <- names(pair_l);
       
-      if (length(icontrast_names) > 1) {
-         cat(paste0("\n\n##### ", isignal_label, " {.tabset}\n\n"));
-         # Use function that determines reasonably intuitive comparisons
-         pair_l <- jamses::contrasts_to_venn_setlists(icontrast_names,
-            include_multifactor=FALSE,
-            factor_names=factor_names)
-         names(pair_l) <- makeNames(
-            gsub("[.0-9]+$", "", names(pair_l)));
-
-         # iterate Venn pairs
-         for (venn_name in names(pair_l)) {
-            venn_contrasts <- pair_l[[venn_name]];
-            cat(paste0("\n\n###### ", venn_name, "\n\n"));
-            tryCatch({
-               setlist <- set_lists[venn_contrasts];
-               names(setlist) <- gsub(":",
-                  "<br>\n",
-                  jamses::contrast2comp(names(setlist)))
-               venn_title <- paste0(
-                  "Signal:", isignal_label,
-                  "\nPeaks: ", sestats_name,
-                  "\nThreshold: ", cPaste(icutoff_names))
-               vogg <- venndir::venndir(setlist,
-                  overlap_type="concordance",
-                  expand_fraction=0.2,
-                  # offset=c(0, -1),
-                  plot_style="gg",
-                  show_segments=FALSE,
-                  label_preset="main outside",
-                  set_colors=contrast_colors[venn_contrasts],
-                  main=venn_title);
-               venndir_legender(setlist=setlist,
-                  venndir_out=vogg)
-            }, error=function(e){
-               jamba::printDebug("venndir::venndir() ",
-                  comment=FALSE,
-                  "skipping plot for signal:", isignal_name,
-                  ", icutoff_names:", icutoff_names,
-                  ", contrasts:", venn_contrasts,
-                  "\nError (below):\n");
-               print(e);
-            });
-            cat("\n\n");
-         }
-      }
+      # iterate venn_name
+      withr::with_options(
+         list(jam.htmlOut=TRUE,
+            jam.comment=FALSE),
+         rmd_tab_iterator(
+            tab_list=list(
+               venn_name=venn_names),
+            base_fn=venn_fn,
+            heading_level=6)
+      )
    }
 }
+
+venn_fn <- function(...){
+   # variables iterated:
+   # venn_name
+   venn_contrasts <- pair_l[[venn_name]];
+
+   tryCatch({
+      setlist <- set_lists[venn_contrasts];
+      names(setlist) <- gsub(":",
+         "<br>\n",
+         jamses::contrast2comp(names(setlist)))
+      venn_title <- paste0(
+         "Signal:", isignal_label,
+         "\nPeaks: ", sestats_name,
+         "\nThreshold: ", cPaste(icutoff_names))
+      vogg <- venndir::venndir(setlist,
+         overlap_type="concordance",
+         expand_fraction=0.2,
+         # offset=c(0, -1),
+         plot_style="gg",
+         show_segments=FALSE,
+         label_preset="main outside",
+         set_colors=contrast_colors[venn_contrasts],
+         main=venn_title);
+      venndir_legender(setlist=setlist,
+         venndir_out=vogg)
+   }, error=function(e){
+      jamba::printDebugHtml("Error during Venn. ",
+         "sestats_name: ", sestats_name,
+         ", signal label: ", isignal_label,
+         ", signal name: ", isignal_name,
+         ", venn_name: ", venn_name,
+         ", contrasts: ", venn_contrasts);
+      print(e);
+   });
+
+}
+
+# set up rmd tabs
+sestats_names <- names(sestats_list);
+isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
+   names(sestats_list[[sestats_name]])
+})))
+
+# Rmd tab iterator
+withr::with_options(
+   list(jam.htmlOut=TRUE,
+      jam.comment=FALSE),
+   rmd_tab_iterator(
+      tab_list=list(
+         sestats_name=sestats_name,
+         isignal_label=isignal_labels),
+      base_fn=venn_fn,
+      heading_level=4)
+)
 
 ```
 
@@ -1680,34 +1769,51 @@ gg2_height <- ceiling(gg2_num / 2) * 7;
 feature_type_winner <- values(fc_gr)$feature_type_winner;
 names(feature_type_winner) <- values(fc_gr)$Gene;
 
-# iterate
-for (sestats_name in names(sestats_list)) {
-   mgm_cutoff <- mgm_list[[sestats_name]];
-   cat(paste0("\n\n##### ", sestats_name, " {.tabset}\n\n"));
-   # isignal_names <- names(sestats_list[[sestats_name]]);
-   isignal_labels <- names(sestats_list[[sestats_name]]);
-   for (isignal_label in isignal_labels) {
-      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
-         isignal_label]]$hit_array);
-      isignal_name <- sestats_dimnames[[3]];
-      icutoff_names <- sestats_dimnames[[1]];
-      icontrast_names <- sestats_dimnames[[2]];
+# set up rmd tabs
+sestats_names <- names(sestats_list);
+isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
+   names(sestats_list[[sestats_name]])
+})))
 
-      cat(paste0("\n\n###### ", isignal_label, "\n\n"));
-      if (max(lengths(sestats_list[[sestats_name]][[isignal_label]]$hit_array)) > 0) {
-         # iterate each set of pie charts
-         gg2 <- gg_pie_by_feature_type(
-            hit_array=sestats_list[[sestats_name]][[isignal_label]][["hit_array"]],
-            iSig=isignal_name,
-            colorSub=sample_color_list$feature_type_winner,
-            add_peak_list=iPeaks_list[sestats_name],
-            do_pie=TRUE,
-            feature_type_winner=feature_type_winner);
-         print(gg2);
-         cat("\n");
-      }
+pie_fn <- function(...){
+   # variables iterated:
+   # sestats_name
+   # isignal_label
+   mgm_cutoff <- mgm_list[[sestats_name]];
+   sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
+      isignal_label]]$hit_array);
+   isignal_name <- sestats_dimnames[[3]];
+   icutoff_names <- sestats_dimnames[[1]];
+   icontrast_names <- sestats_dimnames[[2]];
+
+   if (max(lengths(sestats_list[[sestats_name]][[isignal_label]]$hit_array)) > 0) {
+      # iterate each set of pie charts
+      gg2 <- gg_pie_by_feature_type(
+         hit_array=sestats_list[[sestats_name]][[isignal_label]][["hit_array"]],
+         iSig=isignal_name,
+         colorSub=sample_color_list$feature_type_winner,
+         add_peak_list=iPeaks_list[sestats_name],
+         do_pie=TRUE,
+         feature_type_winner=feature_type_winner);
+      cat("\n\n");
+      print(gg2);
+      cat("\n\n");
    }
+
 }
+
+# Rmd tab iterator
+withr::with_options(
+   list(jam.htmlOut=TRUE,
+      jam.comment=FALSE),
+   rmd_tab_iterator(
+      tab_list=list(
+         sestats_name=sestats_names,
+         isignal_label=isignal_labels),
+      base_fn=pie_fn,
+      heading_level=5)
+)
+
 
 ```
 
@@ -1722,60 +1828,56 @@ for (sestats_name in names(sestats_list)) {
 feature_type_winner <- values(fc_gr)$feature_type_winner;
 names(feature_type_winner) <- values(fc_gr)$Gene;
 
-# iterate
-for (sestats_name in names(sestats_list)) {
+# set up rmd tabs
+sestats_names <- names(sestats_list);
+isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
+   names(sestats_list[[sestats_name]])
+})))
+
+pie_table_fn <- function(...){
+   # variables iterated:
+   # sestats_name
+   # isignal_label
    mgm_cutoff <- mgm_list[[sestats_name]];
-   cat(paste0("\n\n##### ", sestats_name, " {.tabset}\n\n"));
-   # isignal_names <- names(sestats_list[[sestats_name]]);
-   isignal_labels <- names(sestats_list[[sestats_name]]);
-   for (isignal_label in isignal_labels) {
-      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
-         isignal_label]]$hit_array);
-      isignal_name <- sestats_dimnames[[3]];
-      icutoff_names <- sestats_dimnames[[1]];
-      icontrast_names <- sestats_dimnames[[2]];
-      
-      cat(paste0("\n\n###### ", isignal_label, "\n\n"));
-      if (max(lengths(sestats_list[[sestats_name]][[isignal_label]][["hit_array"]])) > 0) {
-         # iterate each set of pie charts
-         jdf <- gg_pie_by_feature_type(
-            hit_array=sestats_list[[sestats_name]][[isignal_label]][["hit_array"]],
-            iSig=isignal_name,
-            colorSub=sample_color_list$feature_type_winner,
-            add_peak_list=iPeaks_list[sestats_name],
-            do_pie=FALSE,
-            feature_type_winner=feature_type_winner);
-         print(
-            kable_coloring(jdf[, 1:10],
-               row.names=FALSE,
-               colorSub=sample_color_list$feature_type_winner))
-         cat("\n");
-      }
+   sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
+      isignal_label]]$hit_array);
+   isignal_name <- sestats_dimnames[[3]];
+   icutoff_names <- sestats_dimnames[[1]];
+   icontrast_names <- sestats_dimnames[[2]];
+
+   if (max(lengths(sestats_list[[sestats_name]][[isignal_label]]$hit_array)) > 0) {
+      jdf <- gg_pie_by_feature_type(
+         hit_array=sestats_list[[sestats_name]][[isignal_label]][["hit_array"]],
+         iSig=isignal_name,
+         colorSub=sample_color_list$feature_type_winner,
+         add_peak_list=iPeaks_list[sestats_name],
+         do_pie=FALSE,
+         feature_type_winner=feature_type_winner);
+      cat("\n\n");
+      print(
+         kable_coloring(jdf[, 1:10],
+            row.names=FALSE,
+            colorSub=sample_color_list$feature_type_winner))
+      cat("\n\n");
    }
+
 }
+
+# Rmd tab iterator
+withr::with_options(
+   list(jam.htmlOut=TRUE,
+      jam.comment=FALSE),
+   rmd_tab_iterator(
+      tab_list=list(
+         sestats_name=sestats_names,
+         isignal_label=isignal_labels),
+      base_fn=pie_table_fn,
+      heading_level=5)
+)
+
 
 ```
 
-
-```{r, peak_pies_gg_all, fig.height=gg2_height, fig.width=gg2_width}
-if (FALSE) {
-if (length(gg2) > 0) {
-   print(gg2);
-   
-   # print table format
-   kable_coloring(jdf[, 1:10, drop=FALSE],
-      row.names=FALSE,
-      colorSub=sample_color_list$feature_type_winner,
-      full_width=TRUE,
-      caption="Data used for the pie charts above:") %>%
-      kable_styling(bootstrap_options=c("striped","bordered")) %>%
-      kableExtra::column_spec(column=seq_len(10),
-         extra_css="white-space: nowrap;") %>%
-      row_spec(0, background="#DDDDDD");
-
-}
-}
-```
 
 </div></div>
 
@@ -1896,11 +1998,13 @@ for (sestats_name in names(sestats_list)) {
 
 ### Stats Heatmaps {.tabset}
 
+Base filename: `stat_heatmaps`
+
 ```{r stat_heatmaps, fig.height=14, fig.width=4 + sqrt(length(contrastNames)) + sqrt(length(iSamplesUse)) * 1.5, results='asis'}
 
 # centering and controls
 centerby_list <- list(
-   `centered by first group`=NULL,
+   `versus first factor level`=NULL,
    `global-centered`=NULL,
    `centered by Run`="Run")
 # control samples in the first group
@@ -1908,14 +2012,22 @@ iControl <- head(levels(iGroup), 1);
 iControlSamples <- iSamplesUse[
    colData(fc_se[, iSamplesUse])[[group_colname]] %in% iControl]
 centering_controls <- list(
-   `centered by first group`=iControlSamples,
+   `versus first factor level`=iControlSamples,
    `global-centered`=iSamplesUse,
    `centered by Run`=iSamplesUse)
 centering_control_labels <- list(
-   `centered by first group`=paste0("versus ",
+   `versus first factor level`=paste0("versus ",
       as.character(iControl), ""),
    `global-centered`="",
    `centered by Run`="")
+
+# different sets of hits
+hm_factor_names <- c("all");
+if (length(factor_names) > 1) {
+   hm_factor_names <- c(
+      hm_factor_names,
+      factor_names);
+}
 
 # remove "Run" when there are not multiple values
 if (length(unique(colData(fc_se[, iSamplesUse])$Run)) == 1) {
@@ -1924,79 +2036,197 @@ if (length(unique(colData(fc_se[, iSamplesUse])$Run)) == 1) {
    centering_control_labels <- head(centering_control_labels, 2);
 }
 
+stats_hm_row_order <- list();
+
+# stats heatmap function
+stats_hm_fn <- function(...){
+   # variable iterated:
+   # sestats_name
+   # isignal_label
+   # hm_factor_name
+   # centering_name
+   sestats_dimnames <- dimnames(
+      sestats_list[[sestats_name]][[isignal_label]]$hit_array);
+   isignal_name <- sestats_dimnames[[3]];
+   icutoff_names <- sestats_dimnames[[1]];
+   icontrast_names <- sestats_dimnames[[2]];
+   
+   # subset contrasts by factors
+   if (!"all" %in% hm_factor_name) {
+      factors_df <- jamses::contrasts_to_factors(
+         icontrast_names,
+         factor_names=factor_names,
+         default_order="appearance")
+      icontrast_names <- rownames(
+         subset(factors_df,
+            grepl("-", factors_df[[hm_factor_name]])))
+   }
+   
+   hit_list <- jamses::hit_array_to_list(
+      hit_array=sestats_list[[sestats_name]][[isignal_label]],
+      assay_names=isignal_name,
+      contrast_names=icontrast_names,
+      cutoff_names=icutoff_names)
+   hit_lengths <- lengths(hit_list)
+   icontrast_names <- names(hit_lengths)[hit_lengths > 0];
+   if (length(icontrast_names) > 0) {
+      icenterby_colnames <- centerby_list[[centering_name]];
+      iControlSamples <- NULL;
+      control_label <- "";
+      if ("versus first factor level" %in% centering_name) {
+         if ("all" %in% hm_factor_name) {
+            iControlSamples <- centering_controls[[centering_name]];
+            control_label <- centering_control_labels[[centering_name]];
+         } else {
+            factors_df2 <- sedesign_to_factors(sedesign)
+            first_level <- as.character(head(factors_df2[[hm_factor_name]], 1));
+            iControlSamples <- rownames(
+               subset(factors_df2,
+                  factors_df2[[hm_factor_name]] %in% first_level));
+            control_label <- paste0("versus ", first_level);
+         }
+      }
+   
+      # determine whether to hide dendrogram and use k-means
+      # when there are too many rows to use hcluster
+      show_row_dend <- TRUE;
+      cluster_rows <- TRUE;
+      row_split <- "feature_type_winner";
+      row_km <- 1;
+      temp_hit_im <- venndir::list2im_value(hit_list[icontrast_names]);
+      if (nrow(temp_hit_im) > 5000) {
+         show_row_dend <- FALSE;
+         cluster_rows <- FALSE;
+         row_km <- 12;
+         row_split <- NULL;
+      }
+      
+      # generate heatmap
+      row_type <- paste0("significant peaks (", hm_factor_name, ")");
+      hm_sestats <- heatmap_se(
+         fc_se_b[, iSamplesUse],
+         sestats=sestats_list[[sestats_name]][[isignal_label]],
+         assay_name=isignal_name,
+         correlation=FALSE,
+         top_colnames=c("Run", "Group"),
+         centerby_colnames=icenterby_colnames,
+         controlSamples=iControlSamples,
+         control_label=control_label,
+         contrast_names=icontrast_names,
+         data_type="signal",
+         row_type=row_type,
+         color_max=3,
+         sample_color_list=sample_color_list,
+         row_split=row_split,
+         row_km=row_km,
+         cluster_rows=cluster_rows,
+         show_row_dend=show_row_dend,
+         show_row_names=FALSE,
+         column_cex=0.4,
+         column_split=c("Group"),
+         column_title_rot=90)
+      hm_sestats_drawn <- ComplexHeatmap::draw(
+         hm_sestats,
+         column_title=attr(hm_sestats, "hm_title"),
+         merge_legends=TRUE)
+      # Todo: Consider using jamses::heatmap_column_group_labels()
+      # when there are multiple factors
+      stats_hm_row_order[[sestats_name]][[isignal_label]][[hm_factor_name]][[
+         centering_name]] <<- heatmap_row_order(hm_sestats_drawn);
+   }
+}
+
+# Rmd tab iterator
+centering_names <- names(centerby_list);
+
+withr::with_options(
+   list(jam.htmlOut=TRUE,
+      jam.comment=FALSE),
+   rmd_tab_iterator(
+      tab_list=list(
+         sestats_name=sestats_names,
+         isignal_label=isignal_labels,
+         hm_factor_name=hm_factor_names,
+         centering_name=centering_names),
+      base_fn=stats_hm_fn,
+      heading_level=4)
+)
+
+
 # iterate each MGM threshold used in sestats_list
 # - then at each signal_label
-for (sestats_name in names(sestats_list)) {
-   cat(paste0("\n\n#### ", sestats_name, " {.tabset}\n\n"));
-   isignal_labels <- names(sestats_list[[sestats_name]]);
-   for (isignal_label in isignal_labels) {
-      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[isignal_label]]$hit_array);
-      isignal_name <- sestats_dimnames[[3]];
-      icutoff_names <- sestats_dimnames[[1]];
-      icontrast_names <- sestats_dimnames[[2]];
-
-      # Only create heatmap when there are statistical hits.
-      # - consider hiding contrasts that have no hits from the heatmap
-      #   sidebar, as created by argument sestats. We can do that by
-      #   supplying a subset of contrast_names with length > 0.
-      # - Consider subsetting contrasts shown by the factor being compared?
-      #   This option is more interesting with multi-factor designs.
-      hit_lengths <- lengths(sestats_list[[sestats_name]][[isignal_label]][[
-         "hit_array"]][, , isignal_name, drop=FALSE])
-      if (max(hit_lengths) > 0) {
-         #
-         cat(paste0("\n\n##### Signal: ", isignal_label, "  {.tabset}\n\n"));
-         icontrast_names <- names(hit_lengths)[hit_lengths > 0];
-         for (centering_name in names(centerby_list)) {
-            cat(paste0("\n\n###### ", centering_name, "\n\n"));
-            # determine centering
-            icenterby_colnames <- centerby_list[[centering_name]];
-            iControlSamples <- centering_controls[[centering_name]];
-            # optionally hide dendrogram when too many rows
-            show_row_dend <- TRUE;
-            temp_hit_im <- venndir::list2im_value(
-               sestats_list[[sestats_name]][[isignal_label]]$hit_array[, ,
-                  isignal_name]);
-            cluster_rows <- TRUE;
-            row_km <- 1;
-            row_split <- "feature_type_winner";
-            if (nrow(temp_hit_im) > 5000) {
-               show_row_dend <- FALSE
-               cluster_rows <- FALSE;
-               row_km <- 12;
-               row_split <- NULL;
+if (FALSE) {
+   for (sestats_name in names(sestats_list)) {
+      cat(paste0("\n\n#### ", sestats_name, " {.tabset}\n\n"));
+      isignal_labels <- names(sestats_list[[sestats_name]]);
+      for (isignal_label in isignal_labels) {
+         sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[isignal_label]]$hit_array);
+         isignal_name <- sestats_dimnames[[3]];
+         icutoff_names <- sestats_dimnames[[1]];
+         icontrast_names <- sestats_dimnames[[2]];
+   
+         # Only create heatmap when there are statistical hits.
+         # - consider hiding contrasts that have no hits from the heatmap
+         #   sidebar, as created by argument sestats. We can do that by
+         #   supplying a subset of contrast_names with length > 0.
+         # - Consider subsetting contrasts shown by the factor being compared?
+         #   This option is more interesting with multi-factor designs.
+         hit_lengths <- lengths(sestats_list[[sestats_name]][[isignal_label]][[
+            "hit_array"]][, , isignal_name, drop=FALSE])
+         if (max(hit_lengths) > 0) {
+            #
+            cat(paste0("\n\n##### Signal: ", isignal_label, "  {.tabset}\n\n"));
+            icontrast_names <- names(hit_lengths)[hit_lengths > 0];
+            for (centering_name in names(centerby_list)) {
+               cat(paste0("\n\n###### ", centering_name, "\n\n"));
+               # determine centering
+               icenterby_colnames <- centerby_list[[centering_name]];
+               iControlSamples <- centering_controls[[centering_name]];
+               # optionally hide dendrogram when too many rows
+               show_row_dend <- TRUE;
+               temp_hit_im <- venndir::list2im_value(
+                  sestats_list[[sestats_name]][[isignal_label]]$hit_array[, ,
+                     isignal_name]);
+               cluster_rows <- TRUE;
+               row_km <- 1;
+               row_split <- "feature_type_winner";
+               if (nrow(temp_hit_im) > 5000) {
+                  show_row_dend <- FALSE
+                  cluster_rows <- FALSE;
+                  row_km <- 12;
+                  row_split <- NULL;
+               }
+               # generate heatmap
+               hm_sestats <- heatmap_se(
+                  fc_se_b[, iSamplesUse],
+                  sestats=sestats_list[[sestats_name]][[isignal_label]],
+                  assay_name=isignal_name,
+                  correlation=FALSE,
+                  top_colnames=c("Run", "Group"),
+                  centerby_colnames=icenterby_colnames,
+                  controlSamples=iControlSamples,
+                  control_label=centering_control_labels[[centering_name]],
+                  contrast_names=icontrast_names,
+                  data_type="signal",
+                  row_type="significant peaks",
+                  color_max=3,
+                  sample_color_list=sample_color_list,
+                  row_split=row_split,
+                  row_km=row_km,
+                  cluster_rows=cluster_rows,
+                  show_row_dend=show_row_dend,
+                  show_row_names=FALSE,
+                  column_cex=0.4,
+                  column_split=c("Group"),
+                  column_title_rot=90)
+               ComplexHeatmap::draw(hm_sestats,
+                  column_title=attr(hm_sestats, "hm_title"),
+                  merge_legends=TRUE)
             }
-            # generate heatmap
-            hm_sestats <- heatmap_se(
-               fc_se_b[, iSamplesUse],
-               sestats=sestats_list[[sestats_name]][[isignal_label]],
-               assay_name=isignal_name,
-               correlation=FALSE,
-               top_colnames=c("Run", "Group"),
-               centerby_colnames=icenterby_colnames,
-               controlSamples=iControlSamples,
-               control_label=centering_control_labels[[centering_name]],
-               contrast_names=icontrast_names,
-               data_type="signal",
-               row_type="significant peaks",
-               color_max=3,
-               sample_color_list=sample_color_list,
-               row_split=row_split,
-               row_km=row_km,
-               cluster_rows=cluster_rows,
-               show_row_dend=show_row_dend,
-               show_row_names=FALSE,
-               column_cex=0.4,
-               column_split=c("Group"),
-               column_title_rot=90)
-            ComplexHeatmap::draw(hm_sestats,
-               column_title=attr(hm_sestats, "hm_title"),
-               merge_legends=TRUE)
          }
       }
    }
 }
-
 ```
 
 

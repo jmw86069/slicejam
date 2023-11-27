@@ -1,3 +1,34 @@
+# slicejam 0.0.50.900
+
+**Still in progress.**
+
+## changes
+
+* upped dependency on platjam to version 0.0.79.900 to use the updated
+`rmd_tab_iterator()`
+* `slicejam_analysis.Rmd`
+
+   * Several sections were converted to use `platjam::rmd_tab_iterator()`:
+   Volcano Plots, Venn Diagrams, Pie Charts, MGM Distribution, Stats Heatmaps
+   * Stats Heatmaps
+   
+      * for multi-factor designs will now show sub-divisions of hits:
+      (1) "all" contrast hits, (2) contrasts that involve each factor.
+      For example, with "Treatment" and "Genotype" the contrasts will show:
+      (1) all statistical hits, (2) only hits for contrasts across Treatments,
+      (3) only hits for contrasts across Genotypes.
+      * When enabled, the centering defaults to `"versus first factor level"`
+      which uses the first level of the factor shown.
+      
+         * For "all" it uses the first overall group.
+         * Otherwise it uses the first factor level.
+         For example "Vehicle" is the first factor level for "Treatment", and
+         "Wildtype" is the first factor level for "Genotype". It will center
+         relative to all groups with that factor level.
+         * Currently the `centerby_colnames` argument is not used, for example,
+         the "Vehicle" is not sub-divided for each Genotype level.
+   
+
 # slicejam 0.0.49.900
 
 ## changes
