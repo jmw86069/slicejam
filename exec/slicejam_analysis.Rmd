@@ -1040,7 +1040,7 @@ kable_coloring(
    colorSub=sample_color_list)
 ```
 
-### Sample Correlation {.tabset}
+### Signal and Correlation {.tabset}
 
 Note that only detected rows with the first MGM threshold were used
 to calculate sample correlation.
@@ -1072,6 +1072,9 @@ centering_controls <- list(
    `centered by first group`=iControlSamples,
    `global-centered`=iSamplesUse,
    `centered by Run`=iSamplesUse)
+hmtype_tabs <- c(
+   Correlation="Correlation",
+   Signal="Signal")
 
 # remove "Run" when there are not multiple values
 if (length(unique(colData(fc_se[, iSamplesUse])$Run)) == 1) {
@@ -1080,42 +1083,71 @@ if (length(unique(colData(fc_se[, iSamplesUse])$Run)) == 1) {
    # centering_control_labels <- head(centering_control_labels, 2);
 }
 
-for (ipeaks_name in names(ipeaks_names)) {
+# max_signal_peaks is maximum rows to include when displaying "Signal"
+max_signal_peaks <- 2000;
+
+corr_hm_fn <- function(...) {
+   #
+   # define rows to include
    ipeaks_use <- ipeaks_names[[ipeaks_name]];
-   cat(paste0("\n\n#### ", ipeaks_name, " {.tabset}\n\n"));
-   for (signal_name in signal_names) {
-      cat(paste0("\n\n##### Signal: ", signal_name, "  {.tabset}\n\n"));
-      for (centering_name in names(centerby_list)) {
-         cat(paste0("\n\n###### ", centering_name, "\n\n"));
-         # determine centering
-         centerby_colnames <- centerby_list[[centering_name]];
-         iControlSamples <- centering_controls[[centering_name]];
-         # generate heatmap
-         hm_cor <- heatmap_se(
-            fc_se_b[,iSamples],
-            rows=ipeaks_use,
-            assay_name=signal_name,
-            correlation=TRUE,
-            top_colnames=c("Run", "Group"),
-            centerby_colnames=centerby_colnames,
-            controlSamples=iControlSamples,
-            # row_type=paste0("hits at: ",
-            #    gsub("^hit ", "", hm_cutoff)),
-            data_type="signal",
-            color_max=1,
-            # control_label="versus control samples",
-            show_row_names=FALSE,
-            sample_color_list=sample_color_list,
-            column_cex=0.4,
-            column_split=c("Group"),
-            row_split=c("Group"),
-            column_title_rot=90)
-         ComplexHeatmap::draw(hm_cor,
-            column_title=attr(hm_cor, "hm_title"),
-            merge_legends=TRUE)
+   # determine centering
+   centerby_colnames <- centerby_list[[centering_name]];
+   iControlSamples <- centering_controls[[centering_name]];
+   
+   # determine type of heatmap: Correlation or Signal
+   if ("Signal" %in% hmtype_tab) {
+      correlation <- FALSE;
+      if (length(ipeaks_use) > max_signal_peaks) {
+         set.seed(123);
+         ipeaks_use <- sample(ipeaks_use, size=2000);
       }
+      row_split <- NULL;
+      if (length(ipeaks_use) > 1000) {
+         row_split <- 8;
+      }
+   } else {
+      correlation <- TRUE;
+      row_split <- c("Group")
    }
+   # generate heatmap
+   hm_cor <- heatmap_se(
+      fc_se_b[,iSamples],
+      rows=ipeaks_use,
+      assay_name=signal_name,
+      correlation=correlation,
+      top_colnames=c("Run", "Group"),
+      centerby_colnames=centerby_colnames,
+      controlSamples=iControlSamples,
+      # row_type=paste0("hits at: ",
+      #    gsub("^hit ", "", hm_cutoff)),
+      data_type="signal",
+      color_max=1,
+      # control_label="versus control samples",
+      show_row_names=FALSE,
+      sample_color_list=sample_color_list,
+      column_cex=0.4,
+      column_split=c("Group"),
+      row_split=row_split,
+      column_title_rot=90)
+   hm_cor_drawn <- ComplexHeatmap::draw(hm_cor,
+      column_title=attr(hm_cor, "hm_title"),
+      merge_legends=TRUE)
+   # optionally save heatmap data for review later
 }
+
+withr::with_options(
+   list(jam.htmlOut=TRUE,
+      jam.comment=FALSE),
+   rmd_tab_iterator(
+      tab_list=list(
+         ipeaks_name=names(ipeaks_names),
+         signal_name=signal_names,
+         centering_name=names(centerby_list),
+         hmtype_tab=hmtype_tabs),
+      base_fn=corr_hm_fn,
+      heading_level=4)
+)
+
 
 ```
 

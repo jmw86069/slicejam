@@ -1,10 +1,36 @@
-# slicejam 0.0.50.900
+# slicejam 0.0.51.900
 
 **Still in progress.**
 
+* `slicejam_analysis.Rmd`
+
+   * The tab `"Sample Correlation"` was renamed `"Signal and Correlation"`
+   
+      * Each heatmap is shown as correlation heatmap, and now as signal heatmap.
+      * The signal heatmap only includes up to 2000 rows, randomly selected
+      using consistent `set.seed()`, so it should be reproducible.
+      It complements the correlation heatmap by showing the same underlying
+      data used to calculate the correlation values.
+      * The signal heatmap might be the only visual method to review
+      overall signal in a heatmap/row-comparative context.
+      Therefore it should show any systematic bias, for example
+      which may appear as vertical stripes suggestive of normalization issues
+      or signal inconsistencies.
+      * The signal heatmap alongside the correlation heatmap should clarify
+      the signal the contributes to the correlation, therefore helping
+      to address any question of "outlier" samples. Not necessarily
+      technical outliers (which should appear in MA-plots) but biological
+      or other systemic source of outlier signal. For example, one could
+      have very high quality signal of a sample that was not perturbed
+      consistent with other samples in its group (e.g. sample label swap,
+      or inconsistent upstream sample handling.)
+
+# slicejam 0.0.50.900
+
+
 ## changes
 
-* upped dependency on platjam to version 0.0.79.900 to use the updated
+* upped dependency on platjam to version 0.0.78.900 to use the updated
 `rmd_tab_iterator()`
 * `slicejam_analysis.Rmd`
 

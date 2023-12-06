@@ -1,5 +1,15 @@
 # TODO items for Slicejam
 
+## 06dec2023
+
+* `slicejam_analysis.Rmd`
+
+   * in Sample Correlation, add alternative that uses up to the first 2000
+   rows to show the corresponding abundance heatmap. Otherwise nothing
+   downstream shows "all the data" to give any visual cues of potential
+   outlier signals/samples. When there are no statistical hits, there
+   is no downstream "Stats Heatmap".
+
 ## 27nov2023
 
 * `slicejam_analysis.Rmd`
