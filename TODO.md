@@ -1,5 +1,39 @@
 # TODO items for Slicejam
 
+## 25jan2024
+
+* `slicejam_analysis.Rmd`
+
+   * Organization / Order of Figures
+   
+      * DONE. MA-plots consider: Normalization Signal, Centering, MGM threshold
+      * DONE. Rename "centered by Run" to "centered within Run"
+      * DONE. Rename "centered by first group" to "centered versus first group"
+      * DONE. Centering / Controls: Separate "within" and "versus".
+      Within: either "global" or "within run".
+      Versus: either "global" or "versus group_name". (Is there still a
+      reason to use global-centering, instead of versus at least the
+      first control group?)
+   
+   * pie charts
+   
+      * DONE. Make panel title (strip size) slightly smaller.
+      * Consider adding bar chart form showing the same data.
+
+   * Heatmaps
+   
+      * are either (1) clustered by genomic region (promoter, gene body, etc)
+      or (2) by k-means clusters when too many rows for hierarchical.
+      * DONE. Do both: subgroup by genomic region; separately by k-means.
+      * Also create heatmap with replicates averaged - re-use row clusters.
+      * Assign k-means cluster to the `countsbatch` output file for follow-up.
+      
+         * This step adds complexity, since there are multiple heatmaps,
+         each with its own row clustering and row order...
+      
+      * Consider adding MGM threshold column to output, each MGM threshold.
+
+
 ## 06dec2023
 
 * `slicejam_analysis.Rmd`

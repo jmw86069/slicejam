@@ -4,6 +4,37 @@
 
 * `slicejam_analysis.Rmd`
 
+   * More refactoring: Tabs are generally ordered with MGM last instead of
+   first, since comparing MGM thresholds is usually the last operation,
+   and other tabs seem like the "drill-down".
+   * Changed MA-plots to use `rmd_tab_iterator()`, and only shows MAD factor
+   (`displayMAD=TRUE`) for normalized signal, not for raw signal.
+   * Centering now has more definitive terminology:
+   
+      * "Centered within" indicates centering subgroups: "within Run".
+      * "Centered versus" indicates the centering control, "versus Control".
+      * These two options can be chained, "Centered by first group within Run".
+      * "Global-centered" should only be used when there are no
+      centering groups, and no centering control.
+   
+   * Pie charts use smaller title font, hoping to fit inside the plot panel.
+   (I may need to solve this problem properly by resizing font to fit,
+   but that's harder.)
+   * Heatmap row clustering is now split two ways:
+   
+      * `"split by region"` - splits by Promoter, TSS, exon, intron, etc.
+      * `"split by kmeans"` - uses k-means clustering, scaling the number
+      of clusters based upon number of rows `nrow^(1/4)` up to 12.
+      * In either case, when there are fewer than <5000 rows, each split
+      is hierarchically clustered.
+      With 5000+ rows, it does not cluster rows (`cluster_rows=FALSE`),
+      and instead relies upon default `ComplexHeatmap::Heatmap()` row ordering.
+      * `row_order` is now explicitly defined when `cluster_rows=FALSE`
+
+# slicejam 0.0.51.900
+
+* `slicejam_analysis.Rmd`
+
    * The tab `"Sample Correlation"` was renamed `"Signal and Correlation"`
    
       * Each heatmap is shown as correlation heatmap, and now as signal heatmap.

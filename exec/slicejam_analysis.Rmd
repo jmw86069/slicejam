@@ -185,14 +185,15 @@ suppressPackageStartupMessages(p_load_gh("jmw86069/jamma"));
 suppressPackageStartupMessages(p_load_gh("jmw86069/splicejam"));
 suppressPackageStartupMessages(p_load_gh("jmw86069/multienrichjam"));
 suppressPackageStartupMessages(p_load_gh("jmw86069/venndir"));
+suppressPackageStartupMessages(p_load_gh("jmw86069/platjam"));
 
 suppressPackageStartupMessages(p_load("SummarizedExperiment"));
 suppressPackageStartupMessages(p_load("data.table"));
 suppressPackageStartupMessages(p_load("matrixStats"));
 suppressPackageStartupMessages(p_load("extrafont"));
-#suppressPackageStartupMessages(library(GenomicFeatures));
+#suppressPackageStartupMessages(library("GenomicFeatures"));
 suppressPackageStartupMessages(p_load("rtracklayer"));
-suppressPackageStartupMessages(p_load(methods));
+suppressPackageStartupMessages(p_load("methods"));
 suppressPackageStartupMessages(p_load("kableExtra"));
 
 ```
@@ -228,17 +229,17 @@ from featureCounts to populate rows, such as
 * Create MA-plots:
 
     * un-normalized data, global-centered
-    * un-normalized data, centered by "Run"
+    * un-normalized data, centered within "Run"
     * normalized data, global-centered
-    * normalized data, centered by "Run"
-    * normalized data, centered by "Group","Run"
+    * normalized data, centered within "Run"
+    * normalized data, centered within "Group","Run"
     * normalizeddata, global-centered, batch-adjusted by "Run"
 
 * Create sample correlation heatmaps:
 
-   * normalized data, centered by the first factor level
+   * normalized data, centered versus the first factor level
    in "Group", intended to act as a control group.
-   * normalized data, batch-adjusted by "Run", centered by the
+   * normalized data, batch-adjusted by "Run", centered versus the
    first factor level in "Group".
 
 * Statistical comparisons
@@ -899,8 +900,6 @@ if (length(iPeaks_list) == 0) {
 
 ```
 
-### MA-Plots {.tabset}
-
 
 ```{r, ma_layout, dependson="apply_norm"}
 ## Determine blank plot positions to organize Group and Run
@@ -929,10 +928,13 @@ tryCatch({
    print(e);
 })
 # 2 inches padding top/bottom, 1 inch height per row
-ma_height <- 2 + (ma_nrow + 1/ma_nrow);
+ma_factor <- 1.5;
+ma_height <- (2 + (ma_nrow + 1/ma_nrow)) * ma_factor;
 # 0.5 inch padding left/right, 1 inch height per row
-ma_width <- 0.5 + (ma_ncol + 1/ma_ncol) * 1.3;
+ma_width <- (0.5 + (ma_ncol + 1/ma_ncol) * 1.3) * ma_factor;
 ```
+
+### MA-Plots {.tabset}
 
 Base filename: `ma_plots`
 
@@ -949,20 +951,20 @@ ipeaks_names <- c(list(
 
 # centering and controls
 centerby_list <- list(
-   # `centered by first group`=NULL,
+   # `centered versus first group`=NULL,
    `global-centered`=NULL,
-   `centered by Run`="Run")
+   `centered within Run`="Run")
 
 # control samples in the first group
 iControl <- head(levels(iGroup), 1);
 iControlSamples <- iSamples[
    colData(fc_se[, iSamples])[[group_colname]] %in% iControl]
 centering_controls <- list(
-   # `centered by first group`=iControlSamples,
+   # `centered versus first group`=iControlSamples,
    `global-centered`=iSamples,
-   `centered by Run`=iSamples)
+   `centered within Run`=iSamples)
 
-# hide `centered by Run` when not relevant
+# hide `centered within Run` when not relevant
 if (length(unique(colData(fc_se[, iSamples])$Run)) == 1) {
    centerby_list <- head(centerby_list, -1);
    centering_controls <- head(centering_controls, -1);
@@ -970,50 +972,63 @@ if (length(unique(colData(fc_se[, iSamples])$Run)) == 1) {
 }
 
 
-for (ipeaks_name in names(ipeaks_names)) {
+ma_fn <- function(...){
    ipeaks_use <- ipeaks_names[[ipeaks_name]];
-   cat(paste0("\n\n#### ", ipeaks_name, " {.tabset}\n\n"));
-   for (signal_name in signal_names) {
-      cat(paste0("\n\n##### Signal: ", signal_name, " {.tabset}\n\n"));
-      for (centering_name in names(centerby_list)) {
-         cat(paste0("\n\n###### ", centering_name, "\n\n"));
-         # determine centering
-         centerGroups <- NULL;
-         centerby_colnames <- centerby_list[[centering_name]];
-         if (length(centerby_colnames) > 0) {
-            centerGroups <- pasteByRow(data.frame(check.names=FALSE,
-               colData(fc_se_b[, iSamples])[, centerby_colnames, drop=FALSE]))
-            names(centerGroups) <- iSamples;
-         }
-         
-         iControlSamples <- centering_controls[[centering_name]];
-         # create MA-plots
-         jp_attr <- attributes(jammaplot(
-            fc_se_b[ipeaks_use, iSamples],
-            assay_name=signal_name,
-            controlSamples=iControlSamples,
-            centerGroups=centerGroups,
-            noise_floor=1,
-            noise_floor_value=NA,
-            ncol=ma_ncol,
-            nrow=ma_nrow,
-            blankPlotPos=blank_pos,
-            maintitle=paste0("Signal: ", signal_name,
-               "Peaks: ", ipeaks_name,
-               "\n", centering_name),
-            groupSuffix="",
-            subtitlePreset="bottomleft",
-            subtitle=Run[iSamples],
-            subtitleBoxColor=run_colors1[iSamples],
-            useMean=TRUE,
-            displayMAD=TRUE,
-            outlierMAD=2,
-            ablineV=MGM,
-            titleBoxColor=color_sub1[iSamples]
-         ))
-      }
+   # centering
+   centerGroups <- NULL;
+   centerby_colnames <- centerby_list[[centering_name]];
+   if (length(centerby_colnames) > 0) {
+      centerGroups <- pasteByRow(data.frame(check.names=FALSE,
+         colData(fc_se_b[, iSamples])[, centerby_colnames, drop=FALSE]))
+      names(centerGroups) <- iSamples;
    }
+   useRank <- FALSE;
+   if ("ranked" %in% matype_tab) {
+      useRank <- TRUE;
+   }
+   
+   # MA-plot
+   iControlSamples <- centering_controls[[centering_name]];
+   # create MA-plots
+   jp_attr <- attributes(jammaplot(
+      fc_se_b[ipeaks_use, iSamples],
+      assay_name=signal_name,
+      controlSamples=iControlSamples,
+      centerGroups=centerGroups,
+      noise_floor=1,
+      noise_floor_value=NA,
+      ncol=ma_ncol,
+      nrow=ma_nrow,
+      blankPlotPos=blank_pos,
+      maintitle=paste0("Signal: ", signal_name,
+         "Peaks: ", ipeaks_name,
+         "\n", centering_name),
+      groupSuffix="",
+      subtitlePreset="bottomleft",
+      subtitle=Run[iSamples],
+      subtitleBoxColor=run_colors1[iSamples],
+      useMean=TRUE,
+      useRank=useRank,
+      displayMAD=grepl("_", signal_name),
+      outlierMAD=2,
+      ablineV=MGM,
+      titleBoxColor=color_sub1[iSamples]
+   ))
 }
+
+matype_tabs <- c("ma", "ranked")
+withr::with_options(
+   list(jam.htmlOut=TRUE,
+      jam.comment=FALSE),
+   rmd_tab_iterator(
+      tab_list=list(
+         signal_name=signal_names,
+         centering_name=names(centerby_list),
+         matype_tab=matype_tabs,
+         ipeaks_name=names(ipeaks_names)),
+      base_fn=ma_fn,
+      heading_level=4)
+)
 
 ```
 
@@ -1040,7 +1055,7 @@ kable_coloring(
    colorSub=sample_color_list)
 ```
 
-### Signal and Correlation {.tabset}
+## Signal and Correlation {.tabset}
 
 Note that only detected rows with the first MGM threshold were used
 to calculate sample correlation.
@@ -1059,29 +1074,39 @@ ipeaks_names <- c(
    iPeaks_list)
 # only one signal is used when batch-adjustment was not performed
 signal_names <- unique(c(normname, bnormname))
+
 # centering and controls
 centerby_list <- list(
-   `centered by first group`=NULL,
+   `centered versus first group`=NULL,
    `global-centered`=NULL,
-   `centered by Run`="Run")
+   `centered versus first group within Run`="Run",
+   `global-centered within Run`="Run")
 # control samples in the first group
 iControl <- head(levels(iGroup), 1);
 iControlSamples <- iSamplesUse[
    colData(fc_se[, iSamplesUse])[[group_colname]] %in% iControl]
 centering_controls <- list(
-   `centered by first group`=iControlSamples,
+   `centered versus first group`=iControlSamples,
    `global-centered`=iSamplesUse,
-   `centered by Run`=iSamplesUse)
+   `centered versus first group within Run`=iControlSamples,
+   `global-centered within Run`=iSamplesUse)
+# remove "Run" when there are not multiple values
+if (length(unique(colData(fc_se[, iSamplesUse])$Run)) == 1) {
+   centerby_list <- centerby_list[unvigrep("within Run", names(centerby_list))];
+   centering_controls <- centering_controls[names(centerby_list)];
+}
+centering_control_labels <- list(
+   `centered versus first group`=paste0("versus ",
+      as.character(iControl), ""),
+   `global-centered`="",
+   `centered versus first group within Run`=paste0("versus ",
+      as.character(iControl), ""),
+   `global-centered within Run`="")
+
 hmtype_tabs <- c(
    Correlation="Correlation",
    Signal="Signal")
 
-# remove "Run" when there are not multiple values
-if (length(unique(colData(fc_se[, iSamplesUse])$Run)) == 1) {
-   centerby_list <- head(centerby_list, 2);
-   centering_controls <- head(centering_controls, 2);
-   # centering_control_labels <- head(centering_control_labels, 2);
-}
 
 # max_signal_peaks is maximum rows to include when displaying "Signal"
 max_signal_peaks <- 2000;
@@ -1093,6 +1118,7 @@ corr_hm_fn <- function(...) {
    # determine centering
    centerby_colnames <- centerby_list[[centering_name]];
    iControlSamples <- centering_controls[[centering_name]];
+   control_label <- centering_control_labels[[centering_name]];
    
    # determine type of heatmap: Correlation or Signal
    if ("Signal" %in% hmtype_tab) {
@@ -1105,9 +1131,11 @@ corr_hm_fn <- function(...) {
       if (length(ipeaks_use) > 1000) {
          row_split <- 8;
       }
+      color_max <- 3;
    } else {
       correlation <- TRUE;
       row_split <- c("Group")
+      color_max <- 1;
    }
    # generate heatmap
    hm_cor <- heatmap_se(
@@ -1121,8 +1149,8 @@ corr_hm_fn <- function(...) {
       # row_type=paste0("hits at: ",
       #    gsub("^hit ", "", hm_cutoff)),
       data_type="signal",
-      color_max=1,
-      # control_label="versus control samples",
+      color_max=color_max,
+      control_label=control_label,
       show_row_names=FALSE,
       sample_color_list=sample_color_list,
       column_cex=0.4,
@@ -1140,12 +1168,12 @@ withr::with_options(
       jam.comment=FALSE),
    rmd_tab_iterator(
       tab_list=list(
-         ipeaks_name=names(ipeaks_names),
          signal_name=signal_names,
          centering_name=names(centerby_list),
+         ipeaks_name=names(ipeaks_names),
          hmtype_tab=hmtype_tabs),
       base_fn=corr_hm_fn,
-      heading_level=4)
+      heading_level=3)
 )
 
 
@@ -1153,7 +1181,9 @@ withr::with_options(
 
 
 
-### Statistical Comparisons
+## Statistical Comparisons
+
+### Design
 
 #### Confirm Replicates
 
@@ -1253,7 +1283,7 @@ kable_coloring(
 ```
 
 
-#### Limma Contrasts {.tabset}
+### Limma Contrasts {.tabset}
 
 ```{r, limma_contrasts, dependson=c("stats_design"), results='asis'}
 
@@ -1285,11 +1315,11 @@ sestats_list <- lapply(nameVectorN(ipeaks_names), function(ipeaks_name) {
    if (length(ipeaks_use) == 0) {
       return(NULL)
    }
-   cat(paste0("\n\n##### ", ipeaks_name, " {.tabset}\n\n"));
+   cat(paste0("\n\n#### ", ipeaks_name, " {.tabset}\n\n"));
    mgm_cutoff <- mgm_list[[ipeaks_name]];
    # iterate each signal so that blocking factor can be handled appropriately
    sestats_inner_list <- lapply(signal_names, function(isignal_name){
-      isignal_label <- signal_labels[[signal_name]]
+      isignal_label <- signal_labels[[isignal_name]]
       blocking_values <- NULL;
       if (any(grepl("limma_batch_adjust", isignal_name))) {
          # apply blocking factor instead of using batch-adjusted data
@@ -1337,7 +1367,7 @@ sestats_list <- lapply(nameVectorN(ipeaks_names), function(ipeaks_name) {
          # summarize while using the isignal_label
          hitdf <- sestats_to_df(sestats)
          hitdf$Signal <- isignal_label;
-         cat(paste0("\n\n###### ", isignal_label, "\n\n"));
+         cat(paste0("\n\n##### ", isignal_label, "\n\n"));
          print(kable_coloring(
             hitdf,
             caption=paste0(
@@ -1418,8 +1448,8 @@ withr::with_options(
       jam.comment=FALSE),
    rmd_tab_iterator(
       tab_list=list(
-         sestats_name=sestats_names,
          isignal_label=isignal_labels,
+         sestats_name=sestats_names,
          icomp_name=icomp_names),
       base_fn=volcano_fn,
       heading_level=4)
@@ -1539,6 +1569,10 @@ if ("C" %in% Sys.getlocale("LC_ALL")) {
    new_locale <- Sys.setlocale("LC_ALL", "en_US.UTF-8")
 }
 
+venn_env <- new.env();
+venn_pair_l <- list();
+assign("venn_pair_l", value=venn_pair_l, envir=venn_env);
+
 venn_wrapper_fn <- function(...){
    # variables iterated:
    # sestats_name
@@ -1571,27 +1605,39 @@ venn_wrapper_fn <- function(...){
          factor_names=factor_names)
       names(pair_l) <- makeNames(
          gsub("[.0-9]+$", "", names(pair_l)));
+      assign("venn_pair_l", value=pair_l, envir=venn_env);
       venn_names <- names(pair_l);
       
-      # iterate venn_name
-      withr::with_options(
-         list(jam.htmlOut=TRUE,
-            jam.comment=FALSE),
-         rmd_tab_iterator(
-            tab_list=list(
-               venn_name=venn_names),
-            base_fn=venn_fn,
-            heading_level=6)
-      )
+      if (length(venn_names) > 0) {
+         # iterate venn_name
+         withr::with_options(
+            list(jam.htmlOut=TRUE,
+               jam.comment=FALSE),
+            rmd_tab_iterator(
+               tab_list=list(
+                  venn_name=venn_names),
+               base_fn=venn_fn,
+               heading_level=6)
+         )
+      }
    }
 }
 
 venn_fn <- function(...){
    # variables iterated:
    # venn_name
-   venn_contrasts <- pair_l[[venn_name]];
+   pair_l <- get("venn_pair_l", envir=venn_env);
 
    tryCatch({
+      venn_contrasts <- pair_l[[venn_name]];
+      
+      # obtain these values again
+      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
+         isignal_label]]$hit_array);
+      isignal_name <- sestats_dimnames[[3]];
+      icutoff_names <- sestats_dimnames[[1]];
+      icontrast_names <- sestats_dimnames[[2]];
+
       setlist <- set_lists[venn_contrasts];
       names(setlist) <- gsub(":",
          "<br>\n",
@@ -1615,9 +1661,10 @@ venn_fn <- function(...){
       jamba::printDebugHtml("Error during Venn. ",
          "sestats_name: ", sestats_name,
          ", signal label: ", isignal_label,
-         ", signal name: ", isignal_name,
-         ", venn_name: ", venn_name,
-         ", contrasts: ", venn_contrasts);
+         # ", signal name: ", isignal_name,
+         # ", venn_name: ", venn_name,
+         # ", contrasts: ", venn_contrasts,
+         ", names(pair_l): ", names(pair_l))
       print(e);
    });
 
@@ -1635,8 +1682,8 @@ withr::with_options(
       jam.comment=FALSE),
    rmd_tab_iterator(
       tab_list=list(
-         sestats_name=sestats_name,
-         isignal_label=isignal_labels),
+         isignal_label=isignal_labels,
+         sestats_name=sestats_names),
       base_fn=venn_fn,
       heading_level=4)
 )
@@ -1826,6 +1873,7 @@ pie_fn <- function(...){
          colorSub=sample_color_list$feature_type_winner,
          add_peak_list=iPeaks_list[sestats_name],
          do_pie=TRUE,
+         strip_size=20,
          feature_type_winner=feature_type_winner);
       cat("\n\n");
       print(gg2);
@@ -1840,8 +1888,8 @@ withr::with_options(
       jam.comment=FALSE),
    rmd_tab_iterator(
       tab_list=list(
-         sestats_name=sestats_names,
-         isignal_label=isignal_labels),
+         isignal_label=isignal_labels,
+         sestats_name=sestats_names),
       base_fn=pie_fn,
       heading_level=5)
 )
@@ -2028,7 +2076,7 @@ for (sestats_name in names(sestats_list)) {
 
 ```
 
-### Stats Heatmaps {.tabset}
+## Stats Heatmaps {.tabset}
 
 Base filename: `stat_heatmaps`
 
@@ -2036,36 +2084,46 @@ Base filename: `stat_heatmaps`
 
 # centering and controls
 centerby_list <- list(
-   `versus first factor level`=NULL,
+   `centered versus first group`=NULL,
    `global-centered`=NULL,
-   `centered by Run`="Run")
+   `centered versus first group within Run`="Run",
+   `global-centered within Run`="Run")
 # control samples in the first group
 iControl <- head(levels(iGroup), 1);
 iControlSamples <- iSamplesUse[
    colData(fc_se[, iSamplesUse])[[group_colname]] %in% iControl]
 centering_controls <- list(
-   `versus first factor level`=iControlSamples,
+   `centered versus first group`=iControlSamples,
    `global-centered`=iSamplesUse,
-   `centered by Run`=iSamplesUse)
-centering_control_labels <- list(
-   `versus first factor level`=paste0("versus ",
-      as.character(iControl), ""),
-   `global-centered`="",
-   `centered by Run`="")
-
-# different sets of hits
-hm_factor_names <- c("all");
-if (length(factor_names) > 1) {
-   hm_factor_names <- c(
-      hm_factor_names,
-      factor_names);
-}
-
+   `centered versus first group within Run`=iControlSamples,
+   `global-centered within Run`=iSamplesUse)
 # remove "Run" when there are not multiple values
 if (length(unique(colData(fc_se[, iSamplesUse])$Run)) == 1) {
-   centerby_list <- head(centerby_list, 2);
-   centering_controls <- head(centering_controls, 2);
-   centering_control_labels <- head(centering_control_labels, 2);
+   centerby_list <- centerby_list[unvigrep("within Run", names(centerby_list))];
+   centering_controls <- centering_controls[names(centerby_list)];
+}
+centering_control_labels <- list(
+   `centered versus first group`=paste0("versus ",
+      as.character(iControl), ""),
+   `global-centered`="",
+   `centered versus first group within Run`=paste0("versus ",
+      as.character(iControl), ""),
+   `global-centered within Run`="")
+
+# different sets of hits
+hm_factor_names <- c("all factors");
+
+# subset factors with level comparisons
+comps_df <- jamses::contrasts_to_factors(contrastNames, rowname="comp")
+factor_names <- jamba::makeNames(rep("factor", ncol(comps_df)),
+   suffix="", renameOnes=TRUE)
+use_factor_names <- factor_names[sapply(factor_names, function(i){
+   igrepHas("-", comps_df[[i]])
+})]
+if (length(use_factor_names) > 1) {
+   hm_factor_names <- c(
+      hm_factor_names,
+      use_factor_names);
 }
 
 stats_hm_row_order <- list();
@@ -2084,7 +2142,7 @@ stats_hm_fn <- function(...){
    icontrast_names <- sestats_dimnames[[2]];
    
    # subset contrasts by factors
-   if (!"all" %in% hm_factor_name) {
+   if (!"all factors" %in% hm_factor_name) {
       factors_df <- jamses::contrasts_to_factors(
          icontrast_names,
          factor_names=factor_names,
@@ -2105,8 +2163,8 @@ stats_hm_fn <- function(...){
       icenterby_colnames <- centerby_list[[centering_name]];
       iControlSamples <- NULL;
       control_label <- "";
-      if ("versus first factor level" %in% centering_name) {
-         if ("all" %in% hm_factor_name) {
+      if (igrepHas("versus first", centering_name)) {
+         if ("all factors" %in% hm_factor_name) {
             iControlSamples <- centering_controls[[centering_name]];
             control_label <- centering_control_labels[[centering_name]];
          } else {
@@ -2129,9 +2187,46 @@ stats_hm_fn <- function(...){
       if (nrow(temp_hit_im) > 5000) {
          show_row_dend <- FALSE;
          cluster_rows <- FALSE;
-         row_km <- 12;
-         row_split <- NULL;
+         if (igrepHas("kmeans", row_type)) {
+            row_km <- 12;
+            row_split <- NULL;
+         }
+      } else {
+         show_row_dend <- TRUE;
+         cluster_rows <- TRUE;
+         if (igrepHas("kmeans", row_type)) {
+            row_km <- jamba::noiseFloor(
+               floor(nrow(temp_hit_im) ^ (1/4)),
+               minimum=1);
+            # cluster_rows <- FALSE;
+            row_split <- NULL;
+         }
       }
+      
+      # optionally provide row_order
+      row_order <- NULL;
+      if (FALSE %in% cluster_rows) {
+         use_rows <- intersect(rownames(fc_se_b),
+            unlist(lapply(jamses::hit_array_to_list(
+               sestats_list[[sestats_name]][[isignal_label]],
+               assay_name=isignal_name,
+               contrast_names=icontrast_names), names)))
+         m <- assays(fc_se_b[use_rows, iSamplesUse])[[isignal_name]];
+         if (length(icenterby_colnames) > 0) {
+            centerGroups <- colData(fc_se_b[, iSamplesUse])[[icenterby_colnames]]
+         } else {
+            centerGroups <- NULL;
+         }
+         m <- jamba::rowGroupMeans(
+            jamma::centerGeneData(m,
+               centerGroups=centerGroups,
+               controlSamples=iControlSamples),
+            groups=colData(fc_se_b[, iSamplesUse])$Group);
+         # order using the column with the highest mean absolute centered value
+         use_col <- which.max(colMeans(abs(m), na.rm=TRUE))
+         row_order <- order(-m[, use_col]);
+      }
+      # fc_se_b[, iSamplesUse]
       
       # generate heatmap
       row_type <- paste0("significant peaks (", hm_factor_name, ")");
@@ -2147,6 +2242,7 @@ stats_hm_fn <- function(...){
          contrast_names=icontrast_names,
          data_type="signal",
          row_type=row_type,
+         row_order=row_order,
          color_max=3,
          sample_color_list=sample_color_list,
          row_split=row_split,
@@ -2164,105 +2260,34 @@ stats_hm_fn <- function(...){
       # Todo: Consider using jamses::heatmap_column_group_labels()
       # when there are multiple factors
       stats_hm_row_order[[sestats_name]][[isignal_label]][[hm_factor_name]][[
-         centering_name]] <<- heatmap_row_order(hm_sestats_drawn);
+         centering_name]][[row_type]] <<- heatmap_row_order(hm_sestats_drawn);
    }
 }
 
 # Rmd tab iterator
 centering_names <- names(centerby_list);
 
+row_types <- c("split by region",
+   "split by kmeans");
+
 withr::with_options(
    list(jam.htmlOut=TRUE,
       jam.comment=FALSE),
    rmd_tab_iterator(
       tab_list=list(
-         sestats_name=sestats_names,
          isignal_label=isignal_labels,
+         centering_name=centering_names,
+         sestats_name=sestats_names,
          hm_factor_name=hm_factor_names,
-         centering_name=centering_names),
+         row_type=row_types),
       base_fn=stats_hm_fn,
-      heading_level=4)
+      heading_level=3)
 )
 
-
-# iterate each MGM threshold used in sestats_list
-# - then at each signal_label
-if (FALSE) {
-   for (sestats_name in names(sestats_list)) {
-      cat(paste0("\n\n#### ", sestats_name, " {.tabset}\n\n"));
-      isignal_labels <- names(sestats_list[[sestats_name]]);
-      for (isignal_label in isignal_labels) {
-         sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[isignal_label]]$hit_array);
-         isignal_name <- sestats_dimnames[[3]];
-         icutoff_names <- sestats_dimnames[[1]];
-         icontrast_names <- sestats_dimnames[[2]];
-   
-         # Only create heatmap when there are statistical hits.
-         # - consider hiding contrasts that have no hits from the heatmap
-         #   sidebar, as created by argument sestats. We can do that by
-         #   supplying a subset of contrast_names with length > 0.
-         # - Consider subsetting contrasts shown by the factor being compared?
-         #   This option is more interesting with multi-factor designs.
-         hit_lengths <- lengths(sestats_list[[sestats_name]][[isignal_label]][[
-            "hit_array"]][, , isignal_name, drop=FALSE])
-         if (max(hit_lengths) > 0) {
-            #
-            cat(paste0("\n\n##### Signal: ", isignal_label, "  {.tabset}\n\n"));
-            icontrast_names <- names(hit_lengths)[hit_lengths > 0];
-            for (centering_name in names(centerby_list)) {
-               cat(paste0("\n\n###### ", centering_name, "\n\n"));
-               # determine centering
-               icenterby_colnames <- centerby_list[[centering_name]];
-               iControlSamples <- centering_controls[[centering_name]];
-               # optionally hide dendrogram when too many rows
-               show_row_dend <- TRUE;
-               temp_hit_im <- venndir::list2im_value(
-                  sestats_list[[sestats_name]][[isignal_label]]$hit_array[, ,
-                     isignal_name]);
-               cluster_rows <- TRUE;
-               row_km <- 1;
-               row_split <- "feature_type_winner";
-               if (nrow(temp_hit_im) > 5000) {
-                  show_row_dend <- FALSE
-                  cluster_rows <- FALSE;
-                  row_km <- 12;
-                  row_split <- NULL;
-               }
-               # generate heatmap
-               hm_sestats <- heatmap_se(
-                  fc_se_b[, iSamplesUse],
-                  sestats=sestats_list[[sestats_name]][[isignal_label]],
-                  assay_name=isignal_name,
-                  correlation=FALSE,
-                  top_colnames=c("Run", "Group"),
-                  centerby_colnames=icenterby_colnames,
-                  controlSamples=iControlSamples,
-                  control_label=centering_control_labels[[centering_name]],
-                  contrast_names=icontrast_names,
-                  data_type="signal",
-                  row_type="significant peaks",
-                  color_max=3,
-                  sample_color_list=sample_color_list,
-                  row_split=row_split,
-                  row_km=row_km,
-                  cluster_rows=cluster_rows,
-                  show_row_dend=show_row_dend,
-                  show_row_names=FALSE,
-                  column_cex=0.4,
-                  column_split=c("Group"),
-                  column_title_rot=90)
-               ComplexHeatmap::draw(hm_sestats,
-                  column_title=attr(hm_sestats, "hm_title"),
-                  merge_legends=TRUE)
-            }
-         }
-      }
-   }
-}
 ```
 
 
-### ATAC Mode
+## ATAC Mode
 
 **`r if (ATAC) {("ATAC-mode is enabled.")} else {("ATAC-mode is disabled.")}`**
 
@@ -2390,7 +2415,7 @@ if (ATAC) {
 }
 ```
 
-### Annotate Gene Name
+## Annotate Gene Name
 
 This section uses each `_gene_id` column to
 retrieve the Entrez gene description, using the R package
@@ -2466,7 +2491,7 @@ if (suppressPackageStartupMessages(require(genejam))) {
 ```
 
 
-### Summary Table
+## Summary Table
 
 ```{r summary_table}
 idf <- head(as.data.frame(fc_gr), 20);
@@ -2488,6 +2513,9 @@ Statistical results are saved as text files and BED files.
 ```{r, export_stats, results='asis'}
 #
 # iterate each sestats
+stats_df_list <- list();
+# stats_df_list[[sestats_name]][[isignal_label]]
+
 for (sestats_name in names(sestats_list)) {
    sestats_label <- tolower(gsub("[ ]*>=[ ]*", "", sestats_name));
    mgm_cutoff <- mgm_list[[sestats_name]];
@@ -2575,6 +2603,10 @@ for (sestats_name in names(sestats_list)) {
                `Output file`=txt_file),
             row.names=FALSE,
             caption="Filename saved.")
+         
+         # save into list format for convenient review
+         stats_df_list[[sestats_name]][[isignal_label]] <- stats_df;
+         
          #
          # Save all peaks in BED format
          # TODO: also export "all" peaks tested
