@@ -236,7 +236,6 @@ get_slicejam_args <- function
    } else {
       controlPeaks_file <- Sys.getenv("CONTROL_PEAKS");
    if (length(controlPeaks_file) > 0 && nchar(controlPeaks_file) > 0 && file.exists(controlPeaks_file)) {
-   }
       controlPeaks <- readLines(controlPeaks_file);
    } else {
       controlPeaks <- NULL;
