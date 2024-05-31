@@ -29,14 +29,11 @@ into memory.
 #### Rmarkdown options
 
 ```{r, setup, include=TRUE}
-#    css: liao_style.css
-## To render this page:
-## In the farrisSeq folder run:
-## rmarkdown::render("Adam19_Rnaseq_Analysis_vM21.Rmd", "html_document", knit_root_dir=getwd(), output_dir=getwd());
-##    css: /Users/wardjm/Projects/R-scripts/liao_style.css
 
 ## Define the cache so it is dependent upon:
 ## - the versions of a few R packages,
+## - the datestamp of contrasts.txt
+## - the datestamp of the file from variable CURATION_TXT
 contrast_txt_file <- file.path(OUTDIR,
    "contrasts.txt");
 contrast_mtime <- NULL;
@@ -84,7 +81,7 @@ options("kable_styling_position"="left",
 );
 ## Set font to Arial which helps compatibility in Adobe Illustrator,
 ## and helps display of up and down arrow characters in Venn diagrams
-par("family"="Arial",
+par("family"=Sys.getenv("RMD_FAMILY", "Arial"),
    "lend"="square",
    "ljoin"="mitre");
 ```
@@ -98,8 +95,8 @@ The parameters used for this analysis are defined below.
 
 ```{r, slicejam_minimum_version}
 # check version of slicejam
-min_slicejam_version <- "0.0.37.900";
-if (compareVersion(as.character(packageVersion("slicejam")), "0.0.37.900") < 0) {
+min_slicejam_version <- "0.0.52.900";
+if (compareVersion(as.character(packageVersion("slicejam")), "0.0.52.900") < 0) {
    jamba::kable_coloring(
    data.frame(check.names=FALSE,
       stringsAsFactors=FALSE,
@@ -149,6 +146,7 @@ SAVE_RDATA <- sliceargs$SAVE_RDATA;
 
 detectedTx <- sliceargs$DETECTED_TX;
 detectedGenes <- sliceargs$DETECTED_GENES;
+controlPeaks <- sliceargs$CONTROL_PEAKS;
 
 upstream_promoter <- sliceargs$UPSTREAM_PROMOTER;
 downstream_promoter <- sliceargs$DOWNSTREAM_PROMOTER;
@@ -200,7 +198,7 @@ suppressPackageStartupMessages(p_load("kableExtra"));
 
 </div></div>
 
-## Description of workflow
+# Description of workflow
 
 <p><a class="btn btn-primary" data-toggle="collapse" href="#collapseDescription1" role="button" aria-expanded="false" aria-controls="collapseDescription1">(Expand...)</a></p>
 <div class="collapse" id="collapseDescription1"><div class="card card-body">
@@ -299,10 +297,10 @@ from featureCounts to populate rows, such as
 </div></div>
 
 
-## Analysis workflow
+# Analysis
 
 
-### Import featureCounts data
+## Import featureCounts data
 
 <p><a class="btn btn-primary" data-toggle="collapse" href="#collapseImport1" role="button" aria-expanded="false" aria-controls="collapseImport1">(Expand...)</a></p>
 <div class="collapse" id="collapseImport1"><div class="card card-body">
@@ -497,7 +495,7 @@ iGroup <- nameVector(colData(fc_se)[[group_colname]],
 
 </div></div>
 
-#### Assign colors
+### Assign colors
 
 Base filename: `define_colors`
 
@@ -538,7 +536,7 @@ run_colors1 <- nameVector(run_colors[colData(fc_se[,iSamples])[[run_colname]]],
    iSamples);
 ```
 
-#### Statistical Contrasts
+### Define Contrasts
 
 Base filename: `define_contrasts`
 
@@ -560,13 +558,13 @@ sedesign <- jamses::groups_to_sedesign(
       colData(fc_se[, iSamples])[, group_colname, drop=FALSE]),
    factor_order=FACTOR_ORDER,
    max_depth=2);
+contrastNames <- contrast_names(sedesign);
 
 # server stored file
 contrast_txt_file <- file.path(OUTDIR,
    "contrasts.txt");
 all_contrast_txt_file <- file.path(OUTDIR,
    "all_contrasts.txt");
-contrastNames <- contrast_names(sedesign);
 # if contrasts were previously saved, use those contrasts
 if (file.exists(contrast_txt_file)) {
    contrastNames <- readLines(contrast_txt_file);
@@ -625,6 +623,13 @@ comps_df <- jamses::contrasts_to_factors(contrastNames, rowname="comp")
 factor_names <- jamba::makeNames(rep("factor", ncol(comps_df)),
    suffix="", renameOnes=TRUE)
 colnames(comps_df) <- factor_names;
+
+# define axis_order by decreasing number of levels in each factor
+level_count <- sapply(nameVector(colnames(comps_df)), function(i){
+   length(unique(unlist(strsplit(comps_df[, i], "-"))))
+})
+axis_order <- order(-level_count);
+
 kable_coloring(
    data.frame(
       `Contrasts`=contrastNames,
@@ -639,10 +644,10 @@ jamses::plot_sedesign(sedesign,
    arrow_ex=0.3,
    contrast_style="none",
    twoway_lwd=3,
-   axis1=2,
-   axis2=1,
-   axis3=3,
-   axis4=4)
+   axis1=jamba::rmNA(axis_order[1]),
+   axis2=jamba::rmNA(axis_order[2]),
+   axis3=jamba::rmNA(axis_order[3]),
+   axis4=jamba::rmNA(axis_order[4]))
 ```
 
 ```{r check_groupcheck, cache=FALSE, results='asis'}
@@ -661,14 +666,14 @@ if (GROUPCHECK) {
 
 ```
 
-### Annotate Peaks 
+## Peak Summary
 
-#### Peak Sizes {.tabset}
+### Peak Sizes {.tabset}
 
 If the featureCounts output included column name `"Length"`,
 the plots below will show the distribution of lengths.
 
-##### Distribution
+#### Distribution
 
 Base filename: `peak_sizes`
 
@@ -695,7 +700,7 @@ if ("Length" %in% colnames(rowData(fc_se))) {
 }
 ```
 
-##### Distribution (log)
+#### Distribution (log)
 
 Base filename: `peak_sizes_log`
 
@@ -737,11 +742,11 @@ kable_coloring(
 ```
 
 
-### Data Normalization
+## Data Normalization
 
-#### Apply Normalization
+### Apply Normalization
 
-```{r, apply_norm, dependson="import_fc"}
+```{r, apply_norm, dependson="import_fc", results='asis'}
 kable_coloring(
    data.frame(check.names=FALSE,
       `normalization method (NORM)`=NORM),
@@ -752,17 +757,24 @@ iMatrix <- assays(fc_se[,iSamples])[["counts"]];
 
 ## Perform normalization
 if ("median" %in% NORM) {
+   jamba::printDebugHtml("Applied ", "median", " normalization. ",
+      NORMMIN, " NORMMIN, and ",
+      jamba::formatInt(length(controlPeaks)), " CONTROL_PEAKS.")
    fc_se <- jamses::se_normalize(fc_se,
       assay_names="counts",
       method=c("jammanorm"),
       param=list(
          jammanorm=list(
             minimum_mean=NORMMIN,
+            controlGenes=controlPeaks,
             useMean=FALSE)
       )
    );
    normname <- "jammanorm_counts";
 } else if ("mediangroup" %in% NORM) {
+   jamba::printDebugHtml("Applied ", "mediangroup", " normalization. ",
+      NORMMIN, " NORMMIN, and ",
+      jamba::formatInt(length(controlPeaks)), " CONTROL_PEAKS.")
    fc_se <- jamses::se_normalize(fc_se,
       assay_names="counts",
       method=c("jammanorm"),
@@ -771,11 +783,13 @@ if ("median" %in% NORM) {
             minimum_mean=NORMMIN,
             centerGroups=iNormGroup,
             controlSamples=iSamples,
+            controlGenes=controlPeaks,
             useMean=FALSE)
       )
    );
    normname <- "jammanorm_counts";
 } else if ("quantile" %in% NORM) {
+   jamba::printDebugHtml("Applied ", "quantile", " normalization.")
    ## Evaluate quantile normalization
    fc_se <- jamses::se_normalize(fc_se,
       assay_names="counts",
@@ -790,11 +804,14 @@ iMatrixQ <- assays(fc_se[,iSamples])[[normname]];
 
 ```
 
-#### Batch Adjustment
+### Batch Adjustment
 
 When there are multiple values in the `"Run"` column,
 batch adjustment is performed using `limma::removeBatchEffect()`,
-solely for data visualization.
+solely for data visualization. Note that batch is encoded
+as a blocking factor during statistical contrasts with 
+limma-voom when applicable.
+
 Batch is defined by `"Run"`, with group defined by `"Group"`.
 
 ```{r, batch_adjust_run, dependson="apply_norm"}
@@ -849,12 +866,12 @@ if (length(unique(colData(fc_se[,iSamples])[[run_colname]])) > 1) {
 ```
 
 
-#### Detected Peaks
+### Detected Peaks
 
-This section defines "detected peaks" for downstream analysis,
-which requires the max group mean in any one group should be
-at least `MGM` at each threshold defined.
-This step should be performed using normalized data if possible.
+This section defines detected peaks for downstream analysis,
+which requires the group mean in any one group (max group mean = MGM)
+should be at least the `MGM` threshold for each MGM value defined.
+This step is performed using normalized data.
 
 ```{r detected_rows}
 # calculate row group means
@@ -934,7 +951,7 @@ ma_height <- (2 + (ma_nrow + 1/ma_nrow)) * ma_factor;
 ma_width <- (0.5 + (ma_ncol + 1/ma_ncol) * 1.3) * ma_factor;
 ```
 
-### MA-Plots {.tabset}
+## MA-Plots {.tabset}
 
 Base filename: `ma_plots`
 
@@ -983,7 +1000,7 @@ ma_fn <- function(...){
       names(centerGroups) <- iSamples;
    }
    useRank <- FALSE;
-   if ("ranked" %in% matype_tab) {
+   if (igrepHas("rank", matype_tab)) {
       useRank <- TRUE;
    }
    
@@ -1001,7 +1018,8 @@ ma_fn <- function(...){
       nrow=ma_nrow,
       blankPlotPos=blank_pos,
       maintitle=paste0("Signal: ", signal_name,
-         "Peaks: ", ipeaks_name,
+         "; ", ipeaks_name,
+         " (", jamba::formatInt(length(ipeaks_use)), " points)",
          "\n", centering_name),
       groupSuffix="",
       subtitlePreset="bottomleft",
@@ -1016,7 +1034,7 @@ ma_fn <- function(...){
    ))
 }
 
-matype_tabs <- c("ma", "ranked")
+matype_tabs <- c("mean-difference", "rank-difference")
 withr::with_options(
    list(jam.htmlOut=TRUE,
       jam.comment=FALSE),
@@ -1027,16 +1045,17 @@ withr::with_options(
          matype_tab=matype_tabs,
          ipeaks_name=names(ipeaks_names)),
       base_fn=ma_fn,
-      heading_level=4)
+      heading_level=3)
 )
 
 ```
 
 
-### Sample outliers
+## Technical outliers
 
-Initially, all samples are used, but this section is a placeholder
-for outlier detection and removal.
+This section is a placeholder for outlier detection and removal.
+Samples with MAD factor >= 2 in relevant mean-difference MA-plots
+may be considered technical outliers.
 
 ```{r, sample_outliers}
 ## Optional subset of samples (e.g. MA-plot outliers)
@@ -1055,10 +1074,10 @@ kable_coloring(
    colorSub=sample_color_list)
 ```
 
-## Signal and Correlation {.tabset}
+## Correlation and Signal {.tabset}
 
-Note that only detected rows with the first MGM threshold were used
-to calculate sample correlation.
+Heatmaps are presented to show the sample correlation, or the
+abundance of up to 2,000 rows of the underlying signal.
 
 Base filename: `correlation_heatmaps`
 
@@ -1121,11 +1140,13 @@ corr_hm_fn <- function(...) {
    control_label <- centering_control_labels[[centering_name]];
    
    # determine type of heatmap: Correlation or Signal
+   row_type <- "peaks";
    if ("Signal" %in% hmtype_tab) {
       correlation <- FALSE;
       if (length(ipeaks_use) > max_signal_peaks) {
          set.seed(123);
          ipeaks_use <- sample(ipeaks_use, size=2000);
+         row_type <- "sampled peaks";
       }
       row_split <- NULL;
       if (length(ipeaks_use) > 1000) {
@@ -1146,8 +1167,7 @@ corr_hm_fn <- function(...) {
       top_colnames=c("Run", "Group"),
       centerby_colnames=centerby_colnames,
       controlSamples=iControlSamples,
-      # row_type=paste0("hits at: ",
-      #    gsub("^hit ", "", hm_cutoff)),
+      row_type=row_type,
       data_type="signal",
       color_max=color_max,
       control_label=control_label,
@@ -1283,7 +1303,7 @@ kable_coloring(
 ```
 
 
-### Limma Contrasts {.tabset}
+### Limma-Voom {.tabset}
 
 ```{r, limma_contrasts, dependson=c("stats_design"), results='asis'}
 
@@ -1466,7 +1486,7 @@ the adjust P-value and fold change criteria.
 
 Base filename: `mgm_hit_distribution`
 
-```{r, mgm_hit_distribution, fig.height=10, fig.width=10, dependson=c("run_limma"), results='asis'}
+```{r, mgm_hit_distribution, fig.height=8, fig.width=8, dependson=c("run_limma"), results='asis'}
 # set up rmd tabs
 sestats_names <- names(sestats_list);
 isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
@@ -1547,8 +1567,8 @@ withr::with_options(
       jam.comment=FALSE),
    rmd_tab_iterator(
       tab_list=list(
-         sestats_name=sestats_names,
          isignal_label=isignal_labels,
+         sestats_name=sestats_names,
          icomp_name=icomp_names),
       base_fn=mgm_dist_fn,
       heading_level=4)
@@ -1684,7 +1704,7 @@ withr::with_options(
       tab_list=list(
          isignal_label=isignal_labels,
          sestats_name=sestats_names),
-      base_fn=venn_fn,
+      base_fn=venn_wrapper_fn,
       heading_level=4)
 )
 
@@ -1776,7 +1796,7 @@ sample_color_list$feature_type_winner <- feature_type_colors;
 ```
 
 
-#### Incidence Matrix by feature_type
+#### feature_type Overlap Matrix
 
 The plot below shows the association of each peak with one or more
 `feature_type` values.
@@ -1847,6 +1867,17 @@ gg2_height <- ceiling(gg2_num / 2) * 7;
 
 feature_type_winner <- values(fc_gr)$feature_type_winner;
 names(feature_type_winner) <- values(fc_gr)$Gene;
+
+# convert to ordered factor
+ftw_order <- c("Promoter",
+   "TTS",
+   "exon",
+   "intron",
+   "extragenic",
+   ".")
+feature_type_winner <- factor(feature_type_winner,
+   levels=provigrep(ftw_order,
+      unique(feature_type_winner)))
 
 # set up rmd tabs
 sestats_names <- names(sestats_list);
@@ -1994,8 +2025,9 @@ values(fc_gr)$broad_peak_number <- makeNames(
    suffix="_",
    doPadInteger=TRUE,
    renameOnes=TRUE);
-fc_gr_bp_ct <- table(values(fc_gr)$broad_peak);
-values(fc_gr)$num_slices <- as.vector(fc_gr_bp_ct[values(fc_gr)$broad_peak]);
+fc_gr_bp_ct <- jamba::tcount(values(fc_gr)$broad_peak);
+# values(fc_gr)$num_slices <- as.vector(fc_gr_bp_ct[values(fc_gr)$broad_peak]);
+values(fc_gr)$broad_peak_slices <- as.vector(fc_gr_bp_ct[values(fc_gr)$broad_peak]);
 rowData(fc_se)$broad_peak <- values(fc_gr)$broad_peak;
 rowData(fc_se)$broad_peak_number <- values(fc_gr)$broad_peak_number;
 rowData(fc_se)$broad_peak_slices <- fc_gr_bp_ct[values(fc_gr)$broad_peak];
@@ -2023,49 +2055,71 @@ There are two potential outcomes of this process:
 ```{r, broad_hit_counts, results='asis'}
 
 broad_hit_counts <- list();
-for (sestats_name in names(sestats_list)) {
-   mgm_cutoff <- mgm_list[[sestats_name]];
-   cat(paste0("\n\n##### ", sestats_name, " {.tabset}\n\n"));
-   # isignal_names <- names(sestats_list[[sestats_name]]);
-   isignal_labels <- names(sestats_list[[sestats_name]]);
-   for (isignal_label in isignal_labels) {
-      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
-         isignal_label]]$hit_array);
-      isignal_name <- sestats_dimnames[[3]];
-      icutoff_names <- sestats_dimnames[[1]];
-      icontrast_names <- sestats_dimnames[[2]];
 
-      if (max(lengths(sestats_list[[sestats_name]][[isignal_label]][["hit_array"]])) > 0) {
-         cat(paste0("\n\n###### ", isignal_label, "\n\n"));
-         # iterate cutoffs
-         for (icutoff_name in icutoff_names) {
-            # iterate contrasts
-            idf <- rbindList(
-               lapply(nameVector(icontrast_names), function(icontrast_name){
-                  k <- sestats_list[[sestats_name]][[isignal_name]][["hit_array"]][
-                     icutoff_name, icontrast_name, isignal_name][[1]];
-                  k_bp <- values(fc_gr[names(k)])$broad_peak;
-                  icomp_name <- jamses::contrast2comp(icontrast_name)
-                  data.frame(check.names=FALSE,
-                     `contrast name`=icontrast_name,
-                     `comp name`=icomp_name,
-                     `total peak hits`=length(k_bp),
-                     `unique broad peak hits`=length(unique(k_bp)),
-                     `signal label`=isignal_label,
-                     `signal name`=isignal_name,
-                     `cutoff`=icutoff_name
-                  );
-               }));
-            broad_hit_counts[[sestats_name]][[isignal_label]][[
-               icutoff_name]] <- idf;
-            print(kable_coloring(idf));
-            cat("\n\n");
-         }
-         # jamba::printDebug("broad_hit_counts:");
-         # broad_hit_counts;
-      }
+broad_hit_fn <- function(..., test=FALSE){
+   # sestats_name
+   # isignal_label
+   # mgm_cutoff <- mgm_list[[sestats_name]];
+   isignal_labels <- names(sestats_list[[sestats_name]]);
+   # hide tab when isignal_label is not found in isignal_labels
+   # if (TRUE %in% test && !isignal_label %in% isignal_labels) {
+   #    return(FALSE)
+   # }
+   
+   isignal_name <- sestats_dimnames[[3]];
+   icutoff_names <- sestats_dimnames[[1]];
+   icontrast_names <- sestats_dimnames[[2]];
+
+   # hide tab when there are no hits
+   if (TRUE %in% test &&
+         max(lengths(sestats_list[[sestats_name]][[isignal_label]][["hit_array"]])) == 0) {
+      return(FALSE)
    }
+   
+   # iterate icutoff_names - however there should usually only be one per MGM
+   for (icutoff_name in icutoff_names) {
+      # iterate contrasts
+      idf <- rbindList(
+         lapply(nameVector(icontrast_names), function(icontrast_name){
+            k <- sestats_list[[sestats_name]][[isignal_label]][["hit_array"]][
+               icutoff_name, icontrast_name, isignal_name][[1]];
+            k_bp <- values(fc_gr[names(k)])$broad_peak;
+            icomp_name <- jamses::contrast2comp(icontrast_name)
+            data.frame(check.names=FALSE,
+               # `contrast name`=icontrast_name,
+               `comp name`=icomp_name,
+               `total peak hits`=length(k_bp),
+               `unique broad peak hits`=length(unique(k_bp)),
+               `signal label`=isignal_label,
+               # `signal name`=isignal_name,
+               `cutoff`=icutoff_name
+            );
+         }));
+      print(kable_coloring(idf, row.names=FALSE));
+      broad_hit_counts[[sestats_name]][[isignal_label]][[icutoff_name]] <<- idf;
+      cat("\n\n");
+   }
+
 }
+
+# Rmd tab iterator
+withr::with_options(
+   list(jam.htmlOut=TRUE,
+      jam.comment=FALSE),
+   rmd_tab_iterator(
+      tab_list=list(
+         isignal_label=isignal_labels,
+         sestats_name=sestats_names),
+      base_fn=broad_hit_fn,
+      heading_level=5)
+)
+
+# TODO:
+# - consider adding column to fc_se: broad_peak_hits [cutoff_name]
+#   - each broad peak has "broad_peak_slices"
+#   - so each broad peak could also have "broad_peak_hits" to help
+#     filter for broad peaks with multiple hits
+
 # data is stored in a nested list broad_hit_counts
 # - named by sestats_names, signal_labels, signal_name, cutoff_names
 
@@ -2076,7 +2130,7 @@ for (sestats_name in names(sestats_list)) {
 
 ```
 
-## Stats Heatmaps {.tabset}
+# Stats Heatmaps {.tabset}
 
 Base filename: `stat_heatmaps`
 
@@ -2097,11 +2151,8 @@ centering_controls <- list(
    `global-centered`=iSamplesUse,
    `centered versus first group within Run`=iControlSamples,
    `global-centered within Run`=iSamplesUse)
-# remove "Run" when there are not multiple values
-if (length(unique(colData(fc_se[, iSamplesUse])$Run)) == 1) {
-   centerby_list <- centerby_list[unvigrep("within Run", names(centerby_list))];
-   centering_controls <- centering_controls[names(centerby_list)];
-}
+
+# define control labels used in the heatmap
 centering_control_labels <- list(
    `centered versus first group`=paste0("versus ",
       as.character(iControl), ""),
@@ -2109,6 +2160,24 @@ centering_control_labels <- list(
    `centered versus first group within Run`=paste0("versus ",
       as.character(iControl), ""),
    `global-centered within Run`="")
+# define short column headers for centering options
+centering_control_headers <- list(
+   `centered versus first group`="vs_1st",
+   `global-centered`="global",
+   `centered versus first group within Run`="vs_1st_Run",
+   `global-centered within Run`="global_Run")
+
+# subset centering options based upon whether we should use "Run"
+if (length(unique(colData(fc_se[, iSamplesUse])$Run)) == 1) {
+   # remove centering with "Run" when there is only one "Run"
+   centerby_list <- centerby_list[unvigrep("within Run", names(centerby_list))];
+   centering_controls <- centering_controls[names(centerby_list)];
+} else {
+   # remove centering without "Run" when the "Run" has multiple values
+   centerby_list <- centerby_list[vigrep("within Run", names(centerby_list))];
+   centering_controls <- centering_controls[names(centerby_list)];
+}
+
 
 # different sets of hits
 hm_factor_names <- c("all factors");
@@ -2126,6 +2195,13 @@ if (length(use_factor_names) > 1) {
       use_factor_names);
 }
 
+# stats_hm_row_order is indexed by:
+# - sestats_name, e.g. "MGM >= 5"
+# - isignal_label, e.g. "quantile_counts (blocking by Run)", "quantile_counts"
+# - hm_factor_name, e.g. "all factors", "factor1", "factor2"
+# - centering_name, e.g. "centered versus first group", "global-centered"
+#    - use centering_control_headers[centering_name] to get short header
+# - row_split_type, e.g. "split by region", "split by kmeans"
 stats_hm_row_order <- list();
 
 # stats heatmap function
@@ -2187,14 +2263,14 @@ stats_hm_fn <- function(...){
       if (nrow(temp_hit_im) > 5000) {
          show_row_dend <- FALSE;
          cluster_rows <- FALSE;
-         if (igrepHas("kmeans", row_type)) {
+         if (igrepHas("kmeans", row_split_type)) {
             row_km <- 12;
             row_split <- NULL;
          }
       } else {
          show_row_dend <- TRUE;
          cluster_rows <- TRUE;
-         if (igrepHas("kmeans", row_type)) {
+         if (igrepHas("kmeans", row_split_type)) {
             row_km <- jamba::noiseFloor(
                floor(nrow(temp_hit_im) ^ (1/4)),
                minimum=1);
@@ -2260,9 +2336,10 @@ stats_hm_fn <- function(...){
       # Todo: Consider using jamses::heatmap_column_group_labels()
       # when there are multiple factors
       stats_hm_row_order[[sestats_name]][[isignal_label]][[hm_factor_name]][[
-         centering_name]][[row_type]] <<- heatmap_row_order(hm_sestats_drawn);
+         centering_name]][[row_split_type]] <<- heatmap_row_order(hm_sestats_drawn);
    }
 }
+
 
 # Rmd tab iterator
 centering_names <- names(centerby_list);
@@ -2279,13 +2356,15 @@ withr::with_options(
          centering_name=centering_names,
          sestats_name=sestats_names,
          hm_factor_name=hm_factor_names,
-         row_type=row_types),
+         row_split_type=row_types),
       base_fn=stats_hm_fn,
-      heading_level=3)
+      heading_level=2)
 )
 
 ```
 
+
+# Final Peak Annotations
 
 ## ATAC Mode
 
@@ -2516,6 +2595,47 @@ Statistical results are saved as text files and BED files.
 stats_df_list <- list();
 # stats_df_list[[sestats_name]][[isignal_label]]
 
+
+# Create one overall heatmap row cluster order
+row_dfs <- list();
+for (sestats_name in names(stats_hm_row_order)) {
+   # "MGM >= 4"
+   for (isignal_label in names(stats_hm_row_order[[sestats_name]])) {
+      # "quantile_counts (blocking by Run)"
+      for (hm_factor_name in names(stats_hm_row_order[[sestats_name]][[isignal_label]])) {
+         # "all factors"
+         for (centering_name in names(stats_hm_row_order[[sestats_name]][[isignal_label]][[hm_factor_name]])) {
+            # "centered versus first group within Run"
+            # "global-centered within Run"
+            # for (row_split_type in names(stats_hm_row_order[[sestats_name]][[isignal_label]][[hm_factor_name]][[centering_name]])) {
+            {
+               row_split_type <- "split by kmeans";
+               new_colname <- paste0("hm_",
+                  gsub("[<>= ]+", "", sestats_name), "_",
+                  gsub("[ ]+.*", "", hm_factor_name), "_",
+                  centering_control_headers[centering_name])
+               use_order <- stats_hm_row_order[[sestats_name]][[isignal_label]][[hm_factor_name]][[centering_name]][[row_split_type]]
+               if (length(use_order) > 0) {
+                  row_orders <- unlist(lapply(names(use_order), function(i){
+                     nameVector(paste0(i, ".", padInteger(seq_along(use_order[[i]]))),
+                        use_order[[i]])
+                  }))
+                  df <- renameColumn(
+                     data.frame(Gene=names(row_orders), row_order=row_orders),
+                     from="row_order", to=new_colname);
+                  row_dfs <- c(row_dfs,
+                     list(df));
+               }
+            }
+         }
+      }
+   }
+}
+row_order_df <- mergeAllXY(row_dfs)
+# row_order_match <- match(fc_gr$Gene, row_order_df$Gene)
+# head(row_order_df[row_order_match, , drop=FALSE])
+
+# iterate each MGM threshold
 for (sestats_name in names(sestats_list)) {
    sestats_label <- tolower(gsub("[ ]*>=[ ]*", "", sestats_name));
    mgm_cutoff <- mgm_list[[sestats_name]];
@@ -2544,6 +2664,7 @@ for (sestats_name in names(sestats_list)) {
          print(e);
          NULL
       })
+      
       if (length(stats_df) > 0) {
          ## Add nearest promoter df
          pro_cols1 <- provigrep(c("^gene_id",
@@ -2552,11 +2673,14 @@ for (sestats_name in names(sestats_list)) {
             "_gene",
             "_distance",
             "broad_peak|num_slices",
-            "^mask$"),
+            "^mask$",
+            "^hm_"),
             colnames(values(fc_gr)));
+         # 0.0.52.900 - changed to pro_cols1 having priority ordering
          pro_cols <- intersect(
-            colnames(values(fc_gr)),
-            pro_cols1
+            # colnames(values(fc_gr)),
+            pro_cols1,
+            colnames(values(fc_gr))
          );
          if (length(pro_cols) > 0) {
             idf_match <- match(stats_df[, 1], values(fc_gr)$Gene);
@@ -2583,6 +2707,19 @@ for (sestats_name in names(sestats_list)) {
                   rowData(fc_se[idf_match, ])[, coord_cols, drop=FALSE]),
                stats_df[, -1, drop=FALSE]);
          }
+         
+         # merge row order
+         row_order_match <- match(stats_df$probes, row_order_df$Gene)
+         row_order_cols <- vigrep(gsub("[<>= ]+", "", sestats_name), colnames(row_order_df))
+         stats_df[, row_order_cols] <- row_order_df[row_order_match, row_order_cols, drop=FALSE]
+   
+         # filter out MGM columns with the wrong MGM?
+         mgm_colnames <- vigrep("mgm[0-9]+", colnames(stats_df))
+         keep_mgm_colnames <- vigrep(gsub("[<>= ]+", "", sestats_name), mgm_colnames)
+         drop_mgm_colnames <- setdiff(mgm_colnames, keep_mgm_colnames);
+         keep_stats_colnames <- setdiff(colnames(stats_df), drop_mgm_colnames)
+         stats_df <- stats_df[, keep_stats_colnames, drop=FALSE];
+
          # define output filename
          txt_filename <- paste0("slicejam_stats.",
             sestats_label,

@@ -38,6 +38,8 @@
 #' * DOWNSTREAM_TTS - default 1000
 #' * DETECTED_TX - optional path to detected transcripts, one per line
 #' * DETECTED_GENES - optional path to detected genes, one per line
+#' * CONTROL_PEAKS - optional path to set of peaks to use as controls
+#' during median or mediangroup normalization.
 #' 
 #' Returned arguments derived from input:
 #' 
@@ -49,6 +51,13 @@
 #' * fc_html - output HTML filename
 #' * knit_root_dir - full path to directory used for knitr output
 #' * cache_dir - directory used for knitr file cache
+#' 
+#' ## Changelog
+#' 
+#' * 31may2024
+#' 
+#'    * Added CONTROL_PEAKS for optional set of peaks (rows) that
+#'    should be used as reference controls during median normalization.
 #' 
 #' @export
 get_slicejam_args <- function
@@ -198,7 +207,7 @@ get_slicejam_args <- function
       SAVE_RDATA <- TRUE;
    }
    
-   # DETECTED_TX, DETECTED_GENES
+   # DETECTED_TX
    if ("DETECTED_TX" %in% names(inplist)) {
       detectedTx_file <- inplist$DETECTED_TX;
    } else {
@@ -209,7 +218,8 @@ get_slicejam_args <- function
    } else {
       detectedTx <- NULL;
    }
-   if ("DETECTED_TX" %in% names(inplist)) {
+   # DETECTED_GENES
+   if ("DETECTED_GENES" %in% names(inplist)) {
       detectedGenes_file <- inplist$DETECTED_GENES;
    } else {
       detectedGenes_file <- Sys.getenv("DETECTED_GENES");
@@ -220,7 +230,18 @@ get_slicejam_args <- function
       detectedGenes <- NULL;
    }
    
-
+   # CONTROL_PEAKS
+   if ("CONTROL_PEAKS" %in% names(inplist)) {
+      controlPeaks_file <- inplist$CONTROL_PEAKS;
+   } else {
+      controlPeaks_file <- Sys.getenv("CONTROL_PEAKS");
+   if (length(controlPeaks_file) > 0 && nchar(controlPeaks_file) > 0 && file.exists(controlPeaks_file)) {
+   }
+      controlPeaks <- readLines(controlPeaks_file);
+   } else {
+      controlPeaks <- NULL;
+   }
+   
    # upstream and downstream ranges
    if ("UPSTREAM_PROMOTER" %in% names(inplist)) {
       UPSTREAM_PROMOTER <- inplist$UPSTREAM_PROMOTER;
@@ -412,6 +433,7 @@ get_slicejam_args <- function
    
    sliceargs$DETECTED_TX <- detectedTx;
    sliceargs$DETECTED_GENES <- detectedGenes;
+   sliceargs$CONTROL_PEAKS <- controlPeaks;
    
    sliceargs$fc_base <- fc_base;
    sliceargs$fc_basedir <- fc_basedir;

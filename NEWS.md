@@ -1,9 +1,23 @@
-# slicejam 0.0.51.900
+# slicejam 0.0.52.900
 
 **Still in progress.**
 
+* `get_slicejam_args()`
+
+   * recognizes new argument `CONTROL_PEAKS` with optional filename
+   that contains a subset of peak names to use for median or mediangroup
+   normalization in `slicejam_analysis.Rmd`.
+
 * `slicejam_analysis.Rmd`
 
+   * New argument `CONTROL_PEAKS` to define optional subset of peaks to
+   use during median or mediangroup normalization. May be useful when
+   known "stable reference regions" are included, such as spike-in
+   controls, or other regions with "stable" observed signal across
+   samples. The other alternative is to set `NORMMIN` to a high value
+   such that the only remaining peaks are stable at that threshold.
+   * Normalization settings are printed for reference, including method
+   and optional parameters.
    * More refactoring: Tabs are generally ordered with MGM last instead of
    first, since comparing MGM thresholds is usually the last operation,
    and other tabs seem like the "drill-down".
@@ -30,6 +44,23 @@
       With 5000+ rows, it does not cluster rows (`cluster_rows=FALSE`),
       and instead relies upon default `ComplexHeatmap::Heatmap()` row ordering.
       * `row_order` is now explicitly defined when `cluster_rows=FALSE`
+
+   * New environment variable `RMD_FAMILY` default `"Arial"` to control
+   the font family used during rendering.
+   * Broad Peaks
+   
+      * Fixed bug causing empty broad peak hit summary.
+      * Changed column type for `"broad_peak_slices"` from `table` to `integer`.
+      (Why on earth would conversion from `table` to `integer` remove the
+      names? Are the names not important?)
+
+   * Output files
+
+      * Renamed "num_slices" to "broad_peak_slices".
+      * Each MGM threshold output file now only includes the MGM columns
+      relevant to that threshold. The MGM4 output will not have MGM5, MGM6, MGM7
+      columns.
+      * Added column for k-means cluster and order: `"hm_MGM5_all_vs_1st_Run"`
 
 # slicejam 0.0.51.900
 

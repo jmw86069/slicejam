@@ -1,5 +1,40 @@
 # TODO items for Slicejam
 
+## 31may2024
+
+* `slicejam_analysis.Rmd`
+
+   * Consider option to apply multiple values for `NORMMIN`.
+   * Consider option to perform quantile normalization after `MGM` filtering,
+   also implies multiple normalizations if there are multiple `MGM` values.
+   These two points both mean maintaining separate normalizations at
+   every step thereafter.
+
+## 22may2024
+
+* `slicejam_analysis.Rmd`
+
+   * MA-plots
+
+      * DONE. Consider adding number of points displayed to overall title or caption.
+      * Consider adding option to center versus baseline, useful to "see"
+      the effect of treatment versus control for example.
+
+* `setup_slicejam()`
+
+   * Consider also copying `mergeSplitCountBed.sh` to the output folder.
+   * Consider also copying `genomic_regions_from_gtf` to the output folder.
+
+## 21feb2024
+
+* `slicejam_analysis.Rmd`: Export normalization factors.
+
+   * Requires running `se_normalize(..., method="jammanorm")` to extract
+   normalization factors.
+   * Normalize with each MGM threshold.
+   * Define lowest normalization factor in the first experiment group as NF=1,
+   all other values adjusted accordingly.
+
 ## 25jan2024
 
 * `slicejam_analysis.Rmd`
@@ -32,6 +67,23 @@
          each with its own row clustering and row order...
       
       * Consider adding MGM threshold column to output, each MGM threshold.
+
+   * Limma-Voom
+   
+      * Consider plotting `plot_sedesign()` labeled by number of hits,
+      however for complex designs, it should have subsets to display:
+      all contrasts; contrasts involving one factor at a time; then
+      two-way contrasts. (Lift the RMarkdown code from another Rmd example.)
+      * Consider replacing existing code with equivalent `rmd_tab_iterator()`.
+      
+   * MGM Distribution - Is this section useful or necessary? Should it be removed?
+   Mostly intended to address the question of whether to use a higher MGM.
+   * Stats Output
+   
+      * Consider adding broad_peak_hits to tabulate the number of
+      `broad_peak_slices` per `broad_peak` which were statistical hits.
+      I suppose it needs to tabulate slices which are a hit in any contrast,
+      for each MGM threshold.
 
 
 ## 06dec2023
