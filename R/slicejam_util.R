@@ -59,6 +59,13 @@
 #'    * Added CONTROL_PEAKS for optional set of peaks (rows) that
 #'    should be used as reference controls during median normalization.
 #' 
+#' @param use_first_fc `logical` indicating whether to use the first
+#'    available `.fc` file if none is supplief.
+#' @param verbose `logical` indicating whether to print verbose output.
+#' @param type `character` string indicating the type of verbose output.
+#' @param name `character` string indicating the type of analysis.
+#' @param ... additional arguments are ignored.
+#' 
 #' @export
 get_slicejam_args <- function
 (use_first_fc=TRUE,
@@ -147,7 +154,7 @@ get_slicejam_args <- function
    } else {
       stop("GTF was not supplied and is required.");
    }
-   
+
    # MASK used to annotate peaks for neighboring genes
    if ("MASK" %in% names(inplist)) {
       MASK <- inplist$MASK;
@@ -157,7 +164,7 @@ get_slicejam_args <- function
    if (length(MASK) > 0 && any(nchar(MASK) == 0)) {
       MASK <- MASK[nchar(MASK) > 0];
    }
-   
+
    # DRYRUN not likely to be used here but defines "dry-run"
    # - which does not process data, only prints debug output
    if ("DRYRUN" %in% names(inplist)) {
@@ -170,7 +177,7 @@ get_slicejam_args <- function
    } else {
       DRYRUN <- FALSE;
    }
-   
+
    # GROUPCHECK whether to stop analysis after groups and contrasts
    if ("GROUPCHECK" %in% names(inplist)) {
       GROUPCHECK <- inplist$GROUPCHECK;
@@ -206,7 +213,7 @@ get_slicejam_args <- function
    } else {
       SAVE_RDATA <- TRUE;
    }
-   
+
    # DETECTED_TX
    if ("DETECTED_TX" %in% names(inplist)) {
       detectedTx_file <- inplist$DETECTED_TX;
@@ -229,18 +236,19 @@ get_slicejam_args <- function
    } else {
       detectedGenes <- NULL;
    }
-   
+
    # CONTROL_PEAKS
    if ("CONTROL_PEAKS" %in% names(inplist)) {
       controlPeaks_file <- inplist$CONTROL_PEAKS;
    } else {
       controlPeaks_file <- Sys.getenv("CONTROL_PEAKS");
+   }
    if (length(controlPeaks_file) > 0 && nchar(controlPeaks_file) > 0 && file.exists(controlPeaks_file)) {
       controlPeaks <- readLines(controlPeaks_file);
    } else {
       controlPeaks <- NULL;
    }
-   
+
    # upstream and downstream ranges
    if ("UPSTREAM_PROMOTER" %in% names(inplist)) {
       UPSTREAM_PROMOTER <- inplist$UPSTREAM_PROMOTER;
@@ -266,7 +274,7 @@ get_slicejam_args <- function
    downstream_promoter <- as.numeric(DOWNSTREAM_PROMOTER);
    upstream_tts <- as.numeric(UPSTREAM_TTS);
    downstream_tts <- as.numeric(DOWNSTREAM_TTS);
-   
+
    # ATAC enables ATAC mode
    # - which requires genes to have an ATAC peak near the promoter
    #   during gene annotation of peaks
@@ -280,7 +288,7 @@ get_slicejam_args <- function
    } else {
       ATAC <- 1;
    }
-   
+
    # MGM maxGroupMean
    if ("MGM" %in% names(inplist)) {
       MGM <- inplist$MGM;
@@ -291,7 +299,7 @@ get_slicejam_args <- function
    if (length(MGM) == 0) {
       MGM <- c(4);
    }
-   
+
    # NORM normalization method
    if ("NORM" %in% names(inplist)) {
       NORM <- inplist$NORM;
@@ -325,7 +333,7 @@ get_slicejam_args <- function
    if (nchar(NORMMIN) == 0) {
       NORMMIN <- MGM;
    }
-   
+
    # Define base filename used for output
    # remove file extension
    fc_base <- gsub("[.]fc(|[.]txt)$", "",
@@ -334,7 +342,7 @@ get_slicejam_args <- function
    fc_filepath <- normalizePath(fc_file);
    # full directory containing the fc file
    fc_dirname <- dirname(fc_filepath);
-   
+
    ## add the max group mean threshold (mgm) _mgm4
    fc_base <- paste0(fc_base, "_mgm", MGM);
    ## add the normalization short name
