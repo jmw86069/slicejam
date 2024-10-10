@@ -5,7 +5,7 @@
 \title{ggplot2 Pie chart of peaks by feature_type}
 \usage{
 gg_pie_by_feature_type(
-  hit_array,
+  hit_array = NULL,
   feature_type_winner,
   PeakSet = "",
   iHit = NULL,
@@ -17,27 +17,30 @@ gg_pie_by_feature_type(
   main = NULL,
   colorSub = NULL,
   label_type = c("text", "label"),
-  label_size = 5,
-  base_size = 16,
+  label_size = 4,
+  base_size = 14,
   strip_size = 24,
   strip_sub_size = 12,
+  summary_type = c("peak", "width"),
+  verbose = FALSE,
   ...
 )
 }
 \arguments{
 \item{hit_array}{\code{array} output from \code{se_contrast_stats()} with
-three dimensions: hit, contrasts, signal. The arguments
-\code{iHit}, \code{iCon}, and \code{iSig} are used to subset the array for
-a specific result to use in each pie chart. Each cell of the
-array is expected to contain a numeric list with values \code{c(-1, 1)}
-with names that are peak names.}
+three dimensions: Cutoffs, Contrasts, Signal.
+The arguments \code{iHit}, \code{iCon}, and \code{iSig} are used to subset
+the array to define the specific cell corresponding to a Contrast,
+Hit criteria, and Signal.
+Each cell of the array is expected to contain a numeric list
+with values \code{c(-1, 1)} using names that are peak names.}
 
 \item{feature_type_winner}{\code{character} or \code{factor} vector whose names
 are expected to be peak names, which are also names of entries
-in \code{hit_array}.}
+in \code{hit_array}. The values will become labels in the pie chart.}
 
-\item{iHit, iCon, iSig}{\code{character} value indicating a specific hit,
-contrast, signal, respectively.}
+\item{iHit, iCon, iSig}{one \code{character} string for each argument,
+indicating a specific Hit, Contrast, and Signal, respectively.}
 
 \item{iPeaks}{\code{character} not used in this implementation.}
 
@@ -49,6 +52,28 @@ or when \code{do_pie=FALSE} the \code{data.frame} is returned.}
 \item{label_type}{\code{character} indicating the type of pie chart label
 to place around the outside: \code{"text"} uses \code{ggrepel::geom_text_repel()},
 and \code{"label"} uses \code{ggrepel::geom_label_repel()} with colored background.}
+
+\item{label_size}{\code{numeric} relative label size.}
+
+\item{base_size}{\code{numeric} font size passed to \code{colorjam::theme_jam()},
+in terms of base fontsize in the \code{ggplot2} theme.}
+
+\item{strip_size}{\code{numeric} adjustment for the \code{ggplot2} facet strip
+size above each plot panel.}
+
+\item{strip_sub_size}{\code{numeric} font size for the facet strip text.}
+
+\item{summary_type}{\code{character} string indicating the summary measurement:
+\itemize{
+\item \code{"peak"} (default) tabulates the number of peaks per feature type.
+\item \code{"width"} is available when \code{feature_type} is provided as \code{GRanges},
+and tabulates the number of bases covered, total width, per
+feature type.
+}}
+
+\item{verbose}{\code{logical} indicating whether to print verbose output.}
+
+\item{...}{additional arguments are ignored.}
 }
 \value{
 object of class \code{c("gg", "ggplot")} that also contains two
@@ -63,6 +88,16 @@ an appropriate figure size. We recommend about 6 inches width and
 }
 \description{
 ggplot2 Pie chart of peaks by feature_type
+}
+\examples{
+countset <- jamba::nameVector(c(978576, 327871, 127049, 188781, 29365),
+   c("Promoters (-2000,+200)", "TTS (-1000,+1000)",
+   "exons", "introns", "extragenic"))
+ft_data <- rep(names(countset), countset);
+names(ft_data) <- paste0("peak", seq_along(ft_data));
+gg_pie_by_feature_type(feature_type_winner=ft_data,
+   add_peak_list=list(`Summary`=names(ft_data)))
+
 }
 \seealso{
 Other slicejam plot functions: 

@@ -1,6 +1,30 @@
-# slicejam 0.0.52.900
+# slicejam 0.0.54.900
 
-**Still in progress.**
+## changes to existing functions
+
+* `gg_pie_by_feature_type()`
+
+   * Argument `feature_type` now accepts `GRanges` input.
+   * New argument `summary_type="peak"` default, with option
+   `summary_type="width"` when `feature_type` is `GRanges`, which
+   will summarize data in terms of the total number of bases.
+   * Further improved the use of `factor` order in pie chart and
+   associated labels.
+   * Added a simple example.
+
+# slicejam 0.0.53.900
+
+## changes to existing functions
+
+* `gg_pie_by_feature_type()`
+
+   * Updated to enforce correct factor order of feature type labels,
+   to fix the issue where the labels were not placed consistent
+   with the pie wedge locations.
+   * Argument `feature_type_winner` is now converted to `factor` with
+   specific level order by default, if the input is not already `factor`.
+
+# slicejam 0.0.52.900
 
 * `get_slicejam_args()`
 

@@ -12,6 +12,18 @@ get_slicejam_args(
   ...
 )
 }
+\arguments{
+\item{use_first_fc}{\code{logical} indicating whether to use the first
+available \code{.fc} file if none is supplief.}
+
+\item{verbose}{\code{logical} indicating whether to print verbose output.}
+
+\item{type}{\code{character} string indicating the type of verbose output.}
+
+\item{name}{\code{character} string indicating the type of analysis.}
+
+\item{...}{additional arguments are ignored.}
+}
 \description{
 Get slicejam argument values
 }
@@ -50,6 +62,8 @@ Recognized arguments:
 \item DOWNSTREAM_TTS - default 1000
 \item DETECTED_TX - optional path to detected transcripts, one per line
 \item DETECTED_GENES - optional path to detected genes, one per line
+\item CONTROL_PEAKS - optional path to set of peaks to use as controls
+during median or mediangroup normalization.
 }
 
 Returned arguments derived from input:
@@ -62,5 +76,14 @@ Returned arguments derived from input:
 \item fc_html - output HTML filename
 \item knit_root_dir - full path to directory used for knitr output
 \item cache_dir - directory used for knitr file cache
+}
+\subsection{Changelog}{
+\itemize{
+\item 31may2024
+\itemize{
+\item Added CONTROL_PEAKS for optional set of peaks (rows) that
+should be used as reference controls during median normalization.
+}
+}
 }
 }

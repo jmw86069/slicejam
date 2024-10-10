@@ -1939,6 +1939,17 @@ withr::with_options(
 feature_type_winner <- values(fc_gr)$feature_type_winner;
 names(feature_type_winner) <- values(fc_gr)$Gene;
 
+# convert to ordered factor
+ftw_order <- c("Promoter",
+   "TTS",
+   "exon",
+   "intron",
+   "extragenic",
+   ".")
+feature_type_winner <- factor(feature_type_winner,
+   levels=provigrep(ftw_order,
+      unique(feature_type_winner)))
+
 # set up rmd tabs
 sestats_names <- names(sestats_list);
 isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
@@ -2393,7 +2404,7 @@ In practice, most actively transcribed genes, or genes that are
 poised to become actively transcribed, have open chromatin
 seen by ATAC-seq across most or all conditions of an experiment.
 
-Peaks are annotated to the nearese MGM-filtered gene TSS, as
+Peaks are annotated to the nearest MGM-filtered gene TSS, as
 defined by the promoter regions, along with the distance to that region.
 
 </div></div>

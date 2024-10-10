@@ -1,5 +1,12 @@
 # TODO items for Slicejam
 
+## 09oct2024
+
+* Fix issue with `gg_pie_by_feature_type()` causing labels to align
+with incorrect regions on the pie chart. The numbers and pie wedge
+sizes appear to be correct and consistent, but labels are placed
+in incorrect locations.
+
 ## 31may2024
 
 * `slicejam_analysis.Rmd`
