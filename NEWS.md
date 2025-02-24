@@ -1,5 +1,7 @@
 # slicejam 0.0.55.900
 
+* Removed import of all data.table, using prefixing instead.
+
 ## changes to existing functions
 
 * `get_slicejam_args()`, `slicejam_analysis.Rmd`

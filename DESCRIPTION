@@ -32,7 +32,8 @@ Imports: jamba(>= 0.0.96.900),
    knitr,
    ggrepel,
    pacman,
-   GenomicFeatures
+   GenomicRanges,
+   GenomeInfoDb
 Suggests:
    farrisdata
 License: GPL-2

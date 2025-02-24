@@ -460,6 +460,8 @@ get_slicejam_args <- function
    sliceargs$NORM <- NORM;
    sliceargs$NORMMIN <- NORMMIN;
    sliceargs$NORMSHORT <- NORMSHORT;
+   sliceargs$FOLD_CUTOFF <- FOLD_CUTOFF;
+   sliceargs$ADJP_CUTOFF <- ADJP_CUTOFF;
    sliceargs$GROUPCHECK <- GROUPCHECK;
    sliceargs$FACTOR_ORDER <- FACTOR_ORDER;
    sliceargs$SAVE_RDATA <- SAVE_RDATA;
