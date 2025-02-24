@@ -1,3 +1,14 @@
+# slicejam 0.0.55.900
+
+## changes to existing functions
+
+* `get_slicejam_args()`, `slicejam_analysis.Rmd`
+
+   * Added customizable thresholds: `FOLD_CUTOFF`, `ADJP_CUTOFF`
+   with defaults defined by argument `default_fold_cutoff=1.5` and
+   `default_adjp_cutoff=0.01`. In future, multiple values may be
+   permitted, however the Rmd would become even more complex.
+
 # slicejam 0.0.54.900
 
 ## changes to existing functions

@@ -29,6 +29,8 @@
 #' * MGM - numeric max group mean threshold
 #' * NORM - normalization method: quantile, median, mediangroup, none
 #' * NORMMIN - normalization minimum_mean used for median, mediangroup
+#' * FOLD_CUTOFF - fold change threshold for statistical hits
+#' * ADJP_CUTOFF - adjusted P-value threshold for statistical hits
 #' * GROUPCHECK - 1/0 whether to stop analysis after groups and contrasts
 #' * FACTOR_ORDER - NULL, or comma-delimited `integer` vector
 #' * SAVE_RDATA - 1/0 whether to save RData during processing
@@ -59,11 +61,18 @@
 #'    * Added CONTROL_PEAKS for optional set of peaks (rows) that
 #'    should be used as reference controls during median normalization.
 #' 
+#' * 24feb2025
+#' 
+#'    * Added FOLD_CUTOFF, ADJP_CUTOFF and arguments default_fold_cutoff,
+#'    default_adjp_cutoff.
+#' 
 #' @param use_first_fc `logical` indicating whether to use the first
 #'    available `.fc` file if none is supplief.
 #' @param verbose `logical` indicating whether to print verbose output.
 #' @param type `character` string indicating the type of verbose output.
 #' @param name `character` string indicating the type of analysis.
+#' @param default_fold_cutoff,default_adjp_cutoff `numeric` values used
+#'    as defaults for FOLD_CUTOFF and ADJP_CUTOFF, respectively.
 #' @param ... additional arguments are ignored.
 #' 
 #' @export
@@ -74,6 +83,8 @@ get_slicejam_args <- function
     "data.frame"),
  name=c("analysis",
     "eval"),
+ default_fold_cutoff=1.5,
+ default_adjp_cutoff=0.05,
  ...)
 {
    type <- match.arg(type);
@@ -334,6 +345,26 @@ get_slicejam_args <- function
       NORMMIN <- MGM;
    }
 
+   # FOLD_CUTOFF applies to fold_cutoff for stat comparisons
+   if ("FOLD_CUTOFF" %in% names(inplist)) {
+      FOLD_CUTOFF <- as.numeric(inplist$FOLD_CUTOFF);
+   } else {
+      FOLD_CUTOFF <- as.numeric(Sys.getenv("FOLD_CUTOFF"));
+   }
+   if (any(is.na(FOLD_CUTOFF)) || length(FOLD_CUTOFF) == 0) {
+      FOLD_CUTOFF <- default_fold_cutoff;
+   }
+
+   # ADJP_CUTOFF applies to adjp_cutoff for stat comparisons
+   if ("ADJP_CUTOFF" %in% names(inplist)) {
+      ADJP_CUTOFF <- as.numeric(inplist$ADJP_CUTOFF);
+   } else {
+      ADJP_CUTOFF <- as.numeric(Sys.getenv("ADJP_CUTOFF"));
+   }
+   if (any(is.na(ADJP_CUTOFF)) || length(ADJP_CUTOFF) == 0) {
+      ADJP_CUTOFF <- default_adjp_cutoff;
+   }
+   
    # Define base filename used for output
    # remove file extension
    fc_base <- gsub("[.]fc(|[.]txt)$", "",

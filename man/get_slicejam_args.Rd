@@ -9,6 +9,8 @@ get_slicejam_args(
   verbose = FALSE,
   type = c("printDebug", "data.frame"),
   name = c("analysis", "eval"),
+  default_fold_cutoff = 1.5,
+  default_adjp_cutoff = 0.05,
   ...
 )
 }
@@ -21,6 +23,9 @@ available \code{.fc} file if none is supplief.}
 \item{type}{\code{character} string indicating the type of verbose output.}
 
 \item{name}{\code{character} string indicating the type of analysis.}
+
+\item{default_fold_cutoff, default_adjp_cutoff}{\code{numeric} values used
+as defaults for FOLD_CUTOFF and ADJP_CUTOFF, respectively.}
 
 \item{...}{additional arguments are ignored.}
 }
@@ -53,6 +58,8 @@ Recognized arguments:
 \item MGM - numeric max group mean threshold
 \item NORM - normalization method: quantile, median, mediangroup, none
 \item NORMMIN - normalization minimum_mean used for median, mediangroup
+\item FOLD_CUTOFF - fold change threshold for statistical hits
+\item ADJP_CUTOFF - adjusted P-value threshold for statistical hits
 \item GROUPCHECK - 1/0 whether to stop analysis after groups and contrasts
 \item FACTOR_ORDER - NULL, or comma-delimited \code{integer} vector
 \item SAVE_RDATA - 1/0 whether to save RData during processing
@@ -83,6 +90,11 @@ Returned arguments derived from input:
 \itemize{
 \item Added CONTROL_PEAKS for optional set of peaks (rows) that
 should be used as reference controls during median normalization.
+}
+\item 24feb2025
+\itemize{
+\item Added FOLD_CUTOFF, ADJP_CUTOFF and arguments default_fold_cutoff,
+default_adjp_cutoff.
 }
 }
 }

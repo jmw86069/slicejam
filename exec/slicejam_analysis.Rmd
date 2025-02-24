@@ -140,6 +140,8 @@ MGM <- sliceargs$MGM;
 NORM <- sliceargs$NORM;
 NORMMIN <- sliceargs$NORMMIN;
 NORMSHORT <- sliceargs$NORMSHORT;
+FOLD_CUTOFF <- sliceargs$FOLD_CUTOFF;
+ADJP_CUTOFF <- sliceargs$ADJP_CUTOFF;
 GROUPCHECK <- sliceargs$GROUPCHECK;
 FACTOR_ORDER <- sliceargs$FACTOR_ORDER;
 SAVE_RDATA <- sliceargs$SAVE_RDATA;
@@ -1328,8 +1330,8 @@ if (all(colSums(design(sedesign), na.rm=TRUE) < 2)) {
 
 
 ## sestats for each MGM threshold
-fold_cutoff <- 1.5;
-adjp_cutoff <- 0.05;
+fold_cutoff <- FOLD_CUTOFF;
+adjp_cutoff <- ADJP_CUTOFF;
 sestats_list <- lapply(nameVectorN(ipeaks_names), function(ipeaks_name) {
    ipeaks_use <- ipeaks_names[[ipeaks_name]];
    if (length(ipeaks_use) == 0) {
@@ -1423,8 +1425,8 @@ isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
 })))
 icontrast_names <- contrast_names(sedesign);
 icomp_names <- jamses::contrast2comp(icontrast_names)
-fold_cutoff <- 1.5;
-adjp_cutoff <- 0.05;
+fold_cutoff <- FOLD_CUTOFF;
+adjp_cutoff <- ADJP_CUTOFF;
 
 # volcano plot function
 volcano_fn <- function(...){
@@ -1494,8 +1496,8 @@ isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
 })))
 icontrast_names <- contrast_names(sedesign);
 icomp_names <- jamses::contrast2comp(icontrast_names)
-fold_cutoff <- 1.5;
-adjp_cutoff <- 0.05;
+fold_cutoff <- FOLD_CUTOFF;
+adjp_cutoff <- ADJP_CUTOFF;
 
 mgm_dist_fn <- function(...){
    # variables iterated:
