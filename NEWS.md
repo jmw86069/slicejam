@@ -2,6 +2,8 @@
 
 * More changes to data.table syntax to avoid errors.
 This time using syntax `DT[, cols, with=FALSE]`
+* Added `quiet=FALSE` to all `platjam::rmd_tab_iterator()` calls
+in `slicejam_analysis.Rmd`.
 
 # slicejam 0.0.55.900
 
