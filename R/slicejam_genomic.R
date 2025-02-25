@@ -1004,7 +1004,7 @@ annotate_gr_by_genome_region <- function
             }
             ## alternate syntax without "..icols"
             # idt <- grdt[, ..icols];
-            idt <- grdt[, icols];
+            idt <- grdt[, icols, with=FALSE];
             ## expand comma-delimited entries
             grdt0ft <- unique(jamba::mixedSortDF(idt, byCols=1:2)[, c(1, 2)]);
             grv <- S4Vectors::unstrsplit(
@@ -1103,7 +1103,7 @@ annotate_gr_by_genome_region <- function
       grdt0_hasbestft <- unique(
          subset(grdt0,
             grdt0[["feature_type"]] == grdt0_bestft[grdt0[["fc"]]]
-            )[, bestftcolnames]);
+            )[, bestftcolnames, with=FALSE]);
       
       # optionally sort only the subset rows by gene_name, gene_id
       if ("global" %in% sort_optimization) {
@@ -1132,7 +1132,9 @@ annotate_gr_by_genome_region <- function
          ikeepcolnames <- c("fc", i);
          ## avoid using "..ikeepcolnames"
          # grdt0_hasbestft_sub <- unique(grdt0_hasbestft[, ..ikeepcolnames]);
-         grdt0_hasbestft_sub <- unique(grdt0_hasbestft[, ikeepcolnames]);
+         grdt0_hasbestft_sub <- unique(
+            grdt0_hasbestft[, ikeepcolnames, with=FALSE]);
+         
          if (anyDuplicated(grdt0_hasbestft_sub[["fc"]])) {
             ## split only duplicate entries
             fcdupes <- is_duplicate(grdt0_hasbestft_sub[["fc"]]);
@@ -1144,7 +1146,7 @@ annotate_gr_by_genome_region <- function
                   #    byCols=c(i));
                   ifc <- c(i, "fc")
                   grdt0_hasbestft_sub_dupe <- jamba::mixedSortDF(
-                     grdt0_hasbestft_sub[fcdupes, ifc, drop=FALSE],
+                     grdt0_hasbestft_sub[fcdupes, ifc, with=FALSE],
                      byCols=c(i));
                }, gcFirst=FALSE);
                if (verbose) {
@@ -1181,7 +1183,8 @@ annotate_gr_by_genome_region <- function
             GenomicRanges::values(gr)[, inewcolname] <- c(NA, "")[1];
          }
          if (length(imatch) > 0) {
-            GenomicRanges::values(gr)[imatch, inewcolname] <- as.character(grdt0_bestvalue);
+            GenomicRanges::values(gr)[imatch, inewcolname] <- as.character(
+               grdt0_bestvalue);
          }
       }
    }

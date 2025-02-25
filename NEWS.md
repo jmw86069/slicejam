@@ -1,3 +1,8 @@
+# slicejam 0.0.55.950
+
+* More changes to data.table syntax to avoid errors.
+This time using syntax `DT[, cols, with=FALSE]`
+
 # slicejam 0.0.55.900
 
 * Removed import of all data.table, using prefixing instead.
