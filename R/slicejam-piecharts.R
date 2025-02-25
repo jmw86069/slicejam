@@ -377,7 +377,7 @@ gg_pie_by_feature_type <- function
                   iCon1,
                   iHit1,
                   iSig1,
-                  feature_lengths=feature_lengths);
+                  feature_widths=feature_widths);
             }
             j_df;
          }))

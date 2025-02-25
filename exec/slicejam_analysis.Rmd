@@ -1474,8 +1474,8 @@ withr::with_options(
       quiet=FALSE,
       tab_list=list(
          isignal_label=isignal_labels,
-         sestats_name=sestats_names,
-         icomp_name=icomp_names),
+         icomp_name=icomp_names,
+         sestats_name=sestats_names),
       base_fn=volcano_fn,
       heading_level=4)
 )
@@ -1574,8 +1574,8 @@ withr::with_options(
       quiet=FALSE,
       tab_list=list(
          isignal_label=isignal_labels,
-         sestats_name=sestats_names,
-         icomp_name=icomp_names),
+         icomp_name=icomp_names,
+         sestats_name=sestats_names),
       base_fn=mgm_dist_fn,
       heading_level=4)
 )
@@ -1599,7 +1599,46 @@ venn_env <- new.env();
 venn_pair_l <- list();
 assign("venn_pair_l", value=venn_pair_l, envir=venn_env);
 
-venn_wrapper_fn <- function(...){
+# set up rmd tabs
+sestats_names <- names(sestats_list);
+isignal_labels <- unique(unlist(lapply(sestats_names, function(sestats_name){
+   names(sestats_list[[sestats_name]])
+})))
+
+## Define all possible venn_names
+all_venn_names <- lapply(sestats_names, function(sestats_name){
+   lapply(isignal_labels, function(isignal_label) {
+      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
+         isignal_label]]$hit_array);
+      isignal_name <- sestats_dimnames[[3]];
+      icutoff_names <- sestats_dimnames[[1]];
+      icontrast_names <- sestats_dimnames[[2]];
+      
+      # obtain the hit list
+      set_lists <- jamses::hit_array_to_list(
+         sestats_list[[sestats_name]][[isignal_label]]$hit_array,
+         assay_names=isignal_name,
+         cutoff_names=icutoff_names)
+      # subset for non-empty hits
+      icontrast_names <- names(set_lists)[lengths(set_lists) > 0];
+      venn_names <- NULL;
+      if (length(icontrast_names) >= 2) {
+         # generate list of Venn diagrams
+         pair_l <- jamses::contrasts_to_venn_setlists(icontrast_names,
+            include_multifactor=FALSE,
+            factor_names=factor_names)
+         names(pair_l) <- makeNames(
+            gsub("[.0-9]+$", "", names(pair_l)));
+         assign("venn_pair_l", value=pair_l, envir=venn_env);
+         venn_names <- names(pair_l);
+      }
+      venn_names
+   })
+})
+venn_names <- unique(unlist(all_venn_names))
+
+## custom venn function
+venn_fn <- function(..., test=FALSE) {
    # variables iterated:
    # sestats_name
    # isignal_label
@@ -1620,11 +1659,9 @@ venn_wrapper_fn <- function(...){
    # assign colors to non-empty entries
    # (this step may assign inconsistent colors across sestats_names)
    contrast_colors <- group2colors(icontrast_names);
-   
-   if (length(icontrast_names) < 2) {
-      jamba::printDebugHtml(
-         "There were not two or more suitable sets of hits.");
-   } else {
+
+   venn_names <- NULL;
+   if (length(icontrast_names) >= 2) {
       # generate list of Venn diagrams
       pair_l <- jamses::contrasts_to_venn_setlists(icontrast_names,
          include_multifactor=FALSE,
@@ -1633,69 +1670,39 @@ venn_wrapper_fn <- function(...){
          gsub("[.0-9]+$", "", names(pair_l)));
       assign("venn_pair_l", value=pair_l, envir=venn_env);
       venn_names <- names(pair_l);
-      
-      if (length(venn_names) > 0) {
-         # iterate venn_name
-         withr::with_options(
-            list(jam.htmlOut=TRUE,
-               jam.comment=FALSE),
-            rmd_tab_iterator(
-               quiet=FALSE,
-               tab_list=list(
-                  venn_name=venn_names),
-               base_fn=venn_fn,
-               heading_level=6)
-         )
-      }
    }
+   if (TRUE %in% test) {
+      if (length(icontrast_names) < 2) {
+         return(FALSE)
+      }
+      if (!venn_name %in% venn_names) {
+         return(FALSE)
+      }
+      return(TRUE)
+   }
+   if (!venn_name %in% venn_names) {
+      return(NULL)
+   }
+   venn_contrasts <- pair_l[[venn_name]];
+   
+   setlist <- set_lists[venn_contrasts];
+   names(setlist) <- gsub(":", "\n",
+      jamses::contrast2comp(names(setlist)))
+   venn_title <- paste0(
+      "Signal:", isignal_label,
+      "\nPeaks: ", sestats_name,
+      "\nThreshold: ", cPaste(icutoff_names))
+   vogg <- venndir::venndir(setlist,
+      overlap_type="concordance",
+      # expand_fraction=0.2,
+      # offset=c(0, -1),
+      # plot_style="gg",
+      fontfamily="Arial",
+      show_segments=FALSE,
+      set_colors=contrast_colors[venn_contrasts],
+      main=venn_title);
 }
 
-venn_fn <- function(...){
-   # variables iterated:
-   # venn_name
-   pair_l <- get("venn_pair_l", envir=venn_env);
-
-   tryCatch({
-      venn_contrasts <- pair_l[[venn_name]];
-      
-      # obtain these values again
-      sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
-         isignal_label]]$hit_array);
-      isignal_name <- sestats_dimnames[[3]];
-      icutoff_names <- sestats_dimnames[[1]];
-      icontrast_names <- sestats_dimnames[[2]];
-
-      setlist <- set_lists[venn_contrasts];
-      names(setlist) <- gsub(":",
-         "<br>\n",
-         jamses::contrast2comp(names(setlist)))
-      venn_title <- paste0(
-         "Signal:", isignal_label,
-         "\nPeaks: ", sestats_name,
-         "\nThreshold: ", cPaste(icutoff_names))
-      vogg <- venndir::venndir(setlist,
-         overlap_type="concordance",
-         expand_fraction=0.2,
-         # offset=c(0, -1),
-         plot_style="gg",
-         show_segments=FALSE,
-         label_preset="main outside",
-         set_colors=contrast_colors[venn_contrasts],
-         main=venn_title);
-      venndir_legender(setlist=setlist,
-         venndir_out=vogg)
-   }, error=function(e){
-      jamba::printDebugHtml("Error during Venn. ",
-         "sestats_name: ", sestats_name,
-         ", signal label: ", isignal_label,
-         # ", signal name: ", isignal_name,
-         # ", venn_name: ", venn_name,
-         # ", contrasts: ", venn_contrasts,
-         ", names(pair_l): ", names(pair_l))
-      print(e);
-   });
-
-}
 
 # set up rmd tabs
 sestats_names <- names(sestats_list);
@@ -1711,8 +1718,9 @@ withr::with_options(
       quiet=FALSE,
       tab_list=list(
          isignal_label=isignal_labels,
+         venn_name=venn_names,
          sestats_name=sestats_names),
-      base_fn=venn_wrapper_fn,
+      base_fn=venn_fn,
       heading_level=4)
 )
 
@@ -2086,15 +2094,23 @@ broad_hit_fn <- function(..., test=FALSE){
    # if (TRUE %in% test && !isignal_label %in% isignal_labels) {
    #    return(FALSE)
    # }
+   sestats_dimnames <- dimnames(sestats_list[[sestats_name]][[
+      isignal_label]]$hit_array);
    
    isignal_name <- sestats_dimnames[[3]];
    icutoff_names <- sestats_dimnames[[1]];
    icontrast_names <- sestats_dimnames[[2]];
 
    # hide tab when there are no hits
-   if (TRUE %in% test &&
-         max(lengths(sestats_list[[sestats_name]][[isignal_label]][["hit_array"]])) == 0) {
-      return(FALSE)
+   if (TRUE %in% test) {
+      if (!isignal_label %in% isignal_labels) {
+         return(FALSE)
+      }
+      if (max(lengths(
+         sestats_list[[sestats_name]][[isignal_label]][["hit_array"]])) == 0) {
+         return(FALSE)
+      }
+      return(TRUE)
    }
    
    # iterate icutoff_names - however there should usually only be one per MGM
@@ -2280,6 +2296,17 @@ stats_hm_fn <- function(...){
       show_row_dend <- TRUE;
       cluster_rows <- TRUE;
       row_split <- "feature_type_winner";
+      if (row_split %in% colnames(rowData(fc_se_b))) {
+         if (!inherits(rowData(fc_se_b)[[row_split]], "factor")) {
+            use_levels <- provigrep(
+               c("promoter", "tts", "exon", "intron", "extra", "."),
+               unique(rowData(fc_se_b)[[row_split]]))
+            rowData(fc_se_b)[[row_split]] <- factor(
+               rowData(fc_se_b)[[row_split]],
+               levels=use_levels)
+         }
+      }
+      
       row_km <- 1;
       temp_hit_im <- venndir::list2im_value(hit_list[icontrast_names]);
       if (nrow(temp_hit_im) > 5000) {
@@ -2366,8 +2393,9 @@ stats_hm_fn <- function(...){
 # Rmd tab iterator
 centering_names <- names(centerby_list);
 
-row_types <- c("split by region",
-   "split by kmeans");
+row_types <- c(
+   "split by kmeans",
+   "split by region")
 
 withr::with_options(
    list(jam.htmlOut=TRUE,

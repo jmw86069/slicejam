@@ -2,8 +2,14 @@
 
 * More changes to data.table syntax to avoid errors.
 This time using syntax `DT[, cols, with=FALSE]`
-* Added `quiet=FALSE` to all `platjam::rmd_tab_iterator()` calls
-in `slicejam_analysis.Rmd`.
+* Fixed typo argument name in `gg_pie_by_feature_type()`
+* `slicejam_analysis.Rmd`
+
+   * Cleaned up Venn section
+   * changed order of tabs in some sections
+   * Fixed factor order in heatmap split by feature type
+   * Added `quiet=FALSE` to all `platjam::rmd_tab_iterator()`
+   
 
 # slicejam 0.0.55.900
 
