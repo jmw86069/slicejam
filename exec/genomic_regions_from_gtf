@@ -190,25 +190,38 @@ if (length(opt$genes) > 0 && all(file.exists(opt$genes))) {
    detectedGenes <- unname(unique(unlist(lapply(opt$genes, readLines))));
 }
 
-system.time({
-   genome_regions <- slicejam::genomic_regions_from_gtf(gtf=opt$gtf,
-      upstream_promoter=opt$upstream_promoter,
-      downstream_promoter=opt$downstream_promoter,
-      upstream_tts=opt$upstream_tts,
-      downstream_tts=opt$downstream_tts,
-      detectedTx=detectedTx,
-      detectedGenes=detectedGenes,
-      save_rdata=opt$save_rdata,
-      rdata_file=opt$rdata_file,
-      save_txdb=opt$save_txdb,
-      force_refresh=opt$force_refresh,
-      verbose=opt$verbose);
-})
+# define mx data.table threads
+max_threads <- 4
+data.table::setDTthreads(threads = max_threads)
 
+if (verbose) {
+   printDebug("Confirming genomic regions data.");
+}
+# system.time({
+genome_regions <- slicejam::genomic_regions_from_gtf(gtf=opt$gtf,
+   upstream_promoter=opt$upstream_promoter,
+   downstream_promoter=opt$downstream_promoter,
+   upstream_tts=opt$upstream_tts,
+   downstream_tts=opt$downstream_tts,
+   detectedTx=detectedTx,
+   detectedGenes=detectedGenes,
+   save_rdata=opt$save_rdata,
+   rdata_file=opt$rdata_file,
+   save_txdb=opt$save_txdb,
+   force_refresh=opt$force_refresh,
+   verbose=opt$verbose);
+# })
+if (verbose) {
+   printDebug("Confirmed genomic regions data.");
+}
+   
 # Load BED data
 if (length(opt$bed) > 0 && file.exists(opt$bed)) {
    bed <- opt$bed;
    #bed <- "/ddn/gs1/project/nextgen/post/archer1/shRNA_KD-Archer-Langer/Workflow_files/rnaseqOutput/BRG1_data_for_James/Processed_files/ATAC/BRG1KD_Strengthened_peaks_q005_FC1_5.bed";
+   if (verbose) {
+      printDebug("Importing bed file.");
+   }
    fc_gr <- rtracklayer::import(bed);
    # make sure "name" column is present
    if (!"name" %in% colnames(GenomicRanges::values(fc_gr))) {
@@ -218,12 +231,18 @@ if (length(opt$bed) > 0 && file.exists(opt$bed)) {
    fc_gr <- GenomeInfoDb::keepSeqlevels(fc_gr,
       jamba::mixedSort(GenomeInfoDb::seqlevels(fc_gr)));
    if (anyDuplicated(GenomicRanges::values(fc_gr)$name)) {
+      if (verbose) {
+         printDebug("Enforcing new unique peak names.");
+      }
       GenomicRanges::values(fc_gr)$bed_name <- GenomicRanges::values(fc_gr)$name;
       GenomicRanges::values(fc_gr)$name <- paste0("peak_",
          jamba::padInteger(seq_along(fc_gr)));
    }
    
    ## annotate using genome_regions
+   if (verbose) {
+      printDebug("Annotating bed with genome regions.");
+   }
    system.time(fc_gr2 <- annotate_gr_by_genome_region(gr=fc_gr,
       genome_regions=genome_regions,
       mask_regions=opt$mask,

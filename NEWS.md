@@ -9,7 +9,14 @@ This time using syntax `DT[, cols, with=FALSE]`
    * changed order of tabs in some sections
    * Fixed factor order in heatmap split by feature type
    * Added `quiet=FALSE` to all `platjam::rmd_tab_iterator()`
-   
+
+* `genomic_regions_from_gtf`
+
+   * defined 4 max threads for `data.table::fread()`,
+   in future the threads may be configurable, but for most peak files,
+   it doesn't need super high threads
+   * Added more verbose output when verbose=TRUE.
+
 
 # slicejam 0.0.55.900
 
