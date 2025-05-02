@@ -1,5 +1,21 @@
 # TODO items for Slicejam
 
+## 02may2025
+
+* Make the installation of scripts also check for, and update, paths
+to relevant tools:
+
+   * bedops
+   * bedtools
+   * featureCounts
+   * samtools
+   * gzcat, or zcat as potential fallback
+   * Optional: chromosome sizes TXT, Gencode GTF, problem regions BED
+
+* Add test data
+
+   * BED file, small BAM files
+
 ## 09oct2024
 
 * Fix issue with `gg_pie_by_feature_type()` causing labels to align

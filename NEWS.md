@@ -1,3 +1,11 @@
+# slicejam 0.0.56.900
+
+* Bumped dependency on jamba to CRAN.
+* Added Dr. Gokey as contributing author.
+* Updated package description, adjusted other package versions.
+* Made tool file paths generic, to be customized by user.
+
+
 # slicejam 0.0.55.950
 
 * More changes to data.table syntax to avoid errors.

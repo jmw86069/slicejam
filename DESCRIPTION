@@ -1,23 +1,33 @@
 Package: slicejam
 Title: Jam Slice ChIP-seq/ATAC-seq peak slice analysis
-Version: 0.0.55.950
-Authors@R: person(given="James M.", family="Ward",
-   email="jmw86069@gmail.com", role=c("aut", "cre"))
-Description: Jam Slice ChIP-seq/ATAC-seq peak slice analysis.
-   Peak count import, normalization, MA-plot data QC, statistical
-   group determination, differential peak analysis, Venn diagrams,
-   volcano plots, heatmaps.
+Version: 0.0.56.900
+Authors@R: c(
+    person(given="James M.",
+       family="Ward",
+       email="jmw86069@gmail.com",
+       comment=c(ORCID="0000-0002-9510-2848"),
+       role=c("aut", "cre", "cph")),
+    person(given="Nolan",
+       family="Gokey",
+       email="nolangokey@gmail.com",
+       comment=c(ORCID="0000-0002-2361-1440")
+       role=c("aut")))
+Description: Slice ChIP-seq/ATAC-seq peaks and perform differential analysis.
+   Peak counts are prepared, imported, normalized, visualized using MA-plots
+   for data QC. Statistical groups are defined and used for differential
+   analysis. Final visualizations include Venn diagrams, volcano plots,
+   genomic region pie and bar charts, and signal heatmaps.
 biocViews:
 Depends: R (>= 3.6.0)
-Imports: jamba(>= 0.0.96.900),
+Imports: jamba(>= 1.0.4),
    jamma (>= 0.0.33.900),
    jamses (>= 0.0.51.900),
-   colorjam (>= 0.0.23.900),
+   colorjam (>= 0.0.33.900),
    platjam (>= 0.0.78.900),
    splicejam (>= 0.0.74.900),
    genejam,
    multienrichjam,
-   venndir (>= 0.0.28.900),
+   venndir (>= 0.0.51.900),
    kableExtra,
    SummarizedExperiment,
    data.table,
@@ -39,7 +49,7 @@ Suggests:
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
-Remotes: github::jmw86069/jamba,
+Remotes:
     github::jmw86069/jamma,
     github::jmw86069/colorjam,
     github::jmw86069/platjam,
