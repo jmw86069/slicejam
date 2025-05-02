@@ -84,13 +84,13 @@ DRYRUN=0 \
       
    * For example, human hg19 gencode v32 is located here:
    
-         /ddn/gs1/shared/dirib/reference_genomes/hg19/hg19gencode/gencode.v32lift37.annotation/gencode.v32lift37.annotation.gtf
+         /path_to/reference_genomes/hg19/hg19gencode/gencode.v32lift37.annotation/gencode.v32lift37.annotation.gtf
          
    * You can copy the GTF file to your analysis directory, or
    you can point to that file.
    * You can be fancy and define a variable to store the file path
    
-         export GENCODE_GTF_V32="/ddn/gs1/shared/dirib/reference_genomes/hg19/hg19gencode/gencode.v32lift37.annotation/gencode.v32lift37.annotation.gtf"
+         export GENCODE_GTF_V32="/path_to/reference_genomes/hg19/hg19gencode/gencode.v32lift37.annotation/gencode.v32lift37.annotation.gtf"
 
 4. Two files from the slicejam R package.
 
@@ -106,19 +106,19 @@ DRYRUN=0 \
             
       * The output shows:
       
-            /ddn/gs1/biotools/misc/bin/R361 -> /ddn/gs1/biotools/R361/bin/R
+            /path_to/biotools/misc/bin/R361 -> /path_to/biotools/R361/bin/R
 
          which means the actual `R` is located at
       
-            /ddn/gs1/biotools/R361/bin/R
+            /path_to/biotools/R361/bin/R
 
       * Edit this path to change R to Rscript:
       
-            /ddn/gs1/biotools/R361/bin/Rscript
+            /path_to/biotools/R361/bin/Rscript
             
       * Confirm the file exists by running
       
-            ls -l /ddn/gs1/biotools/R361/bin/Rscript
+            ls -l /path_to/biotools/R361/bin/Rscript
             
    * The same steps can be run for R:
 
@@ -126,7 +126,7 @@ DRYRUN=0 \
          
    * Confirm the version of R is 3.6 or higher with the argument `"--version"`:
    
-         /ddn/gs1/biotools/R361/bin/Rscript --version
+         /path_to/biotools/R361/bin/Rscript --version
 
 ## How to create a `curation.txt` file
 

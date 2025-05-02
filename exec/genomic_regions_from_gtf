@@ -218,7 +218,7 @@ if (verbose) {
 # Load BED data
 if (length(opt$bed) > 0 && file.exists(opt$bed)) {
    bed <- opt$bed;
-   #bed <- "/ddn/gs1/project/nextgen/post/archer1/shRNA_KD-Archer-Langer/Workflow_files/rnaseqOutput/BRG1_data_for_James/Processed_files/ATAC/BRG1KD_Strengthened_peaks_q005_FC1_5.bed";
+   #bed <- "/path_to/project/BRG1KD_Strengthened_peaks_q005_FC1_5.bed";
    if (verbose) {
       printDebug("Importing bed file.");
    }

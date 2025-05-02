@@ -8,10 +8,10 @@ set RHOME with
 
 Optionally you may need to point to a specific directory
 in which the required R packages are installed.
-`export R_LIBS_USER=/ddn/gs1/home/wardjm/R/x86_64-pc-linux-gnu-library/3.6`
+`export R_LIBS_USER=/path_to/R/x86_64-pc-linux-gnu-library/3.6`
 
 Add the path to genomic_regions_from_gtf to PATH
-RPATH=/ddn/gs1/home/jmw86069/Projects/server_scripts
+RPATH=/path_to/Projects/server_scripts
 PATH=${RPATH}:${PATH}
 
 Verify genomic_regions_from_gtf is accessible:
@@ -27,7 +27,7 @@ contains genome regions that should be removed from the
 annotation, define MASK and use argument `--mask`:
 
 ```
-MASK="/ddn/gs1/shared/dirib/reference_genomes/hg19/hg19-blacklist.v2.bed"
+MASK="/path_to/reference_genomes/hg19/hg19-blacklist.v2.bed"
 export MASK
 
 genomic_regions_from_gtf --gtf="${GTF}" --mask="${MASK}" --bed="${BED}"

@@ -74,7 +74,7 @@ genomic_regions_from_gtf --gtf=${GTF} --bed=BRG1KD_Weakened_peaks_q005_FC1_5.bed
 
 
 ```
-MASK="/ddn/gs1/shared/dirib/reference_genomes/hg19/hg19-blacklist.v2.bed"
+MASK="/path_to/reference_genomes/hg19/hg19-blacklist.v2.bed"
 genomic_regions_from_gtf --gtf="${GTF}" --mask="${MASK}" --bed=BRG1KD_Weakened_peaks_q005_FC1_5.bed
 ```
 

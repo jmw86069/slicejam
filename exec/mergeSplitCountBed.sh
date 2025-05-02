@@ -66,7 +66,7 @@ if [ "." == ".${PEAKFILES}" ]; then
    echo -e "   PEAKSLOP    the width to expand merged peak edges, default ${BOLD}PEAKSLOP=0${RESET}";
    echo -e "   PEAKMAX     peaks are sliced to this maximum width, default ${BOLD}PEAKMAX=1000${RESET}";
    echo -e "   CHROMSIZES  path to tab-delimited chromosome sizes, default";
-   echo -e "               ${BOLD}/ddn/gs1/shared/dirib/reference_genomes/hg19/hg19.chromSizes${RESET}";
+   echo -e "               ${BOLD}/path_to/reference_genomes/hg19/hg19.chromSizes${RESET}";
    echo -e "   FCTHREADS   number of threads for featureCounts, largely ignored, ${BOLD}FCTHREADS=32${RESET}";
    echo -e "   BEDTOOLS    path to the binary executable file 'bedtools', optional";
    echo -e "   BEDOPS      path to folder that contains bedops binaries, optional";
@@ -99,7 +99,7 @@ PROJECT=${PROJECT:-"temp_"}
 ERROR="0";
 ## Genome-specific chromsizes
 ## path to tab-delimited chromosome names and lengths
-CHROMSIZES=${CHROMSIZES:-"/ddn/gs1/shared/dirib/reference_genomes/hg19/hg19.chromSizes"};
+CHROMSIZES=${CHROMSIZES:-"/path_to/reference_genomes/hg19/hg19.chromSizes"};
 if [ ! -f "${CHROMSIZES}" ]; then
    echo -e "${FRED}CHROMSIZES file is not available at path:${BOLD}${CHROMSIZES}${RESET}";
    ERROR="1";
@@ -109,7 +109,7 @@ fi;
 FCTHREADS=${FCTHREADS:-"32"};
 
 ## path to bedtool executable
-BEDTOOLS_DEFAULT="/ddn/gs1/biotools/bedtools/bin/bedtools";
+BEDTOOLS_DEFAULT="/path_to/biotools/bedtools/bin/bedtools";
 BEDTOOLS_FOUND=$(which bedtools);
 BEDTOOLS_FOUND=${BEDTOOLS_FOUND:-"${BEDTOOLS_DEFAULT}"};
 BEDTOOLS=${BEDTOOLS:-"${BEDTOOLS_FOUND}"};
@@ -119,7 +119,7 @@ if [ ! -f "${BEDTOOLS}" ]; then
 fi;
 
 ## path to bedops executable
-BEDOPS_DEFAULT="/ddn/gs1/biotools/bedops/bin";
+BEDOPS_DEFAULT="/path_to/biotools/bedops/bin";
 BEDOPS_FOUND=$(dirname $(which bedops));
 BEDOPS_FOUND=${BEDOPS_FOUND:-"${BEDOPS_DEFAULT}"};
 BEDOPS=${BEDOPS:-"${BEDOPS_FOUND}"};
