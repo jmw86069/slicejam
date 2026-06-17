@@ -10,7 +10,7 @@ Authors@R: c(
     person(given="Nolan",
        family="Gokey",
        email="nolangokey@gmail.com",
-       comment=c(ORCID="0000-0002-2361-1440")
+       comment=c(ORCID="0000-0002-2361-1440"),
        role=c("aut")))
 Description: Slice ChIP-seq/ATAC-seq peaks and perform differential analysis.
    Peak counts are prepared, imported, normalized, visualized using MA-plots
