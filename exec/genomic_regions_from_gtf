@@ -170,11 +170,15 @@ if (opt$debug) {
 }
 
 if (!suppressPackageStartupMessages(require(jamba))) {
-   remotes::install_github("jmw86069/jamba");
+   install.packages("jmw86069/jamba");
+}
+if (!suppressPackageStartupMessages(require(jamba))) {
    stop("The jamba package is required.");
 }
 if (!suppressPackageStartupMessages(require(slicejam))) {
    remotes::install_github("jmw86069/slicejam");
+}
+if (!suppressPackageStartupMessages(require(slicejam))) {
    stop("The slicejam package is required.");
 }
 
@@ -214,7 +218,7 @@ genome_regions <- slicejam::genomic_regions_from_gtf(gtf=opt$gtf,
 if (verbose) {
    printDebug("Confirmed genomic regions data.");
 }
-   
+
 # Load BED data
 if (length(opt$bed) > 0 && file.exists(opt$bed)) {
    bed <- opt$bed;

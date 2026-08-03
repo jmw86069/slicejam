@@ -49,7 +49,7 @@ argument, the default \code{lens=-5} has a tendency to increase intermediate
 color saturation.
 }
 \seealso{
-Other slicejam deprecated: 
-\code{\link{blend_colors_deprecated}()}
+Other slicejam deprecated:
+\code{\link[=blend_colors_deprecated]{blend_colors_deprecated()}}
 }
 \concept{slicejam deprecated}

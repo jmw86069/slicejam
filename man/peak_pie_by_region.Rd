@@ -56,8 +56,8 @@ order to use ggplot2 common color key to help provide more
 legible labels.
 }
 \seealso{
-Other slicejam plot functions: 
-\code{\link{feature_to_pie}()},
-\code{\link{gg_pie_by_feature_type}()}
+Other slicejam plot functions:
+\code{\link[=feature_to_pie]{feature_to_pie()}},
+\code{\link[=gg_pie_by_feature_type]{gg_pie_by_feature_type()}}
 }
 \concept{slicejam plot functions}

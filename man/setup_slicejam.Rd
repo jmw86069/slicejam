@@ -56,7 +56,7 @@ if (FALSE) {
 
 }
 \seealso{
-Other slicejam commandline: 
-\code{\link{update_slicejam_shebang}()}
+Other slicejam commandline:
+\code{\link[=update_slicejam_shebang]{update_slicejam_shebang()}}
 }
 \concept{slicejam commandline}

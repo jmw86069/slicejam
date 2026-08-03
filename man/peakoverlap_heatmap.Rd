@@ -104,7 +104,7 @@ of \code{peakoverlap_calcs()}.
 See \code{peakoverlap_calcs()} for the full example workflow.
 }
 \seealso{
-Other slicejam overlap: 
-\code{\link{peakoverlap_calcs}()}
+Other slicejam overlap:
+\code{\link[=peakoverlap_calcs]{peakoverlap_calcs()}}
 }
 \concept{slicejam overlap}

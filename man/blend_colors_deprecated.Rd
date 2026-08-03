@@ -77,7 +77,7 @@ blend_colors_deprecated(c("red", "yellow", "blue"), do_plot=TRUE)
 
 }
 \seealso{
-Other slicejam deprecated: 
-\code{\link{mean_angle_deprecated}()}
+Other slicejam deprecated:
+\code{\link[=mean_angle_deprecated]{mean_angle_deprecated()}}
 }
 \concept{slicejam deprecated}

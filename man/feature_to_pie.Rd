@@ -28,8 +28,8 @@ as a simple wrapper to \code{graphics::pie()} to plot the
 feature_type values in a \code{GRanges} object.
 }
 \seealso{
-Other slicejam plot functions: 
-\code{\link{gg_pie_by_feature_type}()},
-\code{\link{peak_pie_by_region}()}
+Other slicejam plot functions:
+\code{\link[=gg_pie_by_feature_type]{gg_pie_by_feature_type()}},
+\code{\link[=peak_pie_by_region]{peak_pie_by_region()}}
 }
 \concept{slicejam plot functions}

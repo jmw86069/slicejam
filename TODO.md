@@ -2,7 +2,12 @@
 
 ## 03aug2026
 
-* Fix bug requiring 'txdbmaker' instead of 'GenomicFeatures'.
+* DONE. Fix bug requiring 'txdbmaker' instead of 'GenomicFeatures'.
+* Create minimal files for testing: GTF, detectedTx, detectedGenes,
+and mask.bed.
+* Add minimal testthat unit tests for `genomic_regions_from_gtf_bed()`.
+* Determine how best to test Rscript use.
+
 
 ## 02may2025
 

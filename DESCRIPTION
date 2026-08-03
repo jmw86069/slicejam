@@ -34,6 +34,7 @@ Imports: jamba(>= 1.0.4),
    matrixStats,
    extrafont,
    GenomicFeatures,
+   txdbmaker,
    rtracklayer,
    methods,
    yaml,
@@ -63,4 +64,4 @@ URL: http://github.com/jmw86069/slicejam
 BugReports: http://github.com/jmw86069/slicejam/issues
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+Config/roxygen2/version: 8.0.0.9000

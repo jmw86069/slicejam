@@ -15,7 +15,7 @@ threshold applied to the analyzed data.}
 
 \item{...}{additional arguments are ignored.}
 
-\item{`character`}{value indicating results to save: \code{"all"}
+\item{character}{value indicating results to save: \code{"all"}
 will save results for all rows in \code{statsdf}; \code{"hits"}
 will save only those results that are considered
 statistical hits using the thresholds applied.}

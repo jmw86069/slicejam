@@ -171,7 +171,7 @@ dev.off()
 
 }
 \seealso{
-Other slicejam overlap: 
-\code{\link{peakoverlap_heatmap}()}
+Other slicejam overlap:
+\code{\link[=peakoverlap_heatmap]{peakoverlap_heatmap()}}
 }
 \concept{slicejam overlap}

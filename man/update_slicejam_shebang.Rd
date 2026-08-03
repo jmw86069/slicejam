@@ -23,7 +23,7 @@ a shebang line should be a formal part of the build
 process, but this process is not well documented.
 }
 \seealso{
-Other slicejam commandline: 
-\code{\link{setup_slicejam}()}
+Other slicejam commandline:
+\code{\link[=setup_slicejam]{setup_slicejam()}}
 }
 \concept{slicejam commandline}

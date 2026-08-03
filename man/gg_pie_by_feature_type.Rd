@@ -100,8 +100,8 @@ gg_pie_by_feature_type(feature_type_winner=ft_data,
 
 }
 \seealso{
-Other slicejam plot functions: 
-\code{\link{feature_to_pie}()},
-\code{\link{peak_pie_by_region}()}
+Other slicejam plot functions:
+\code{\link[=feature_to_pie]{feature_to_pie()}},
+\code{\link[=peak_pie_by_region]{peak_pie_by_region()}}
 }
 \concept{slicejam plot functions}

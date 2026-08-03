@@ -1,3 +1,21 @@
+# slicejam 0.0.57.900
+
+* Added 'txdbmaker' dependency.
+
+## Updates
+
+* `genomic_regions_from_gtf()` now uses 'txdbmaker' to
+convert GTF/GFF to `TxDb`, per Bioconductor changes.
+
+## New function
+
+* `genomic_regions_from_gtf_bed()` mimics the Rscript
+'genomic_regions_from_gtf' in that it takes both the GTF
+file and a BED file, and produces a new BED `GRanges`
+with each entry annotated using the genome regions.
+Previously this process involved `genomic_regions_from_gtf()`
+then `annotate_gr_from_genome_regions()` in two steps.
+
 # slicejam 0.0.56.900
 
 * Bumped dependency on jamba to CRAN.

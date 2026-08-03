@@ -153,7 +153,7 @@ by default. If the GTF file uses different attributes, adjust
 \subsection{Comments on compatible files}{
 
 The function itself is capable of reading GTF or GFF3 formatted files,
-by calling \code{GenomicFeatures::makeTxDbFromGFF()} to do that heavy work.
+by calling \code{txdbmaker::makeTxDbFromGFF()} to do that heavy work.
 However \code{splicejam::makeTx2geneFromGtf()} is required to import
 additional gene and transcript annotations.
 
@@ -173,7 +173,7 @@ We found it problematic when the GTF or GFF3 file contains \code{"Name"},
 specifically in cases where the same value is associated with multiple
 rows in the file. For example, a row with type "gene", \code{Name=APOE;}, then
 on the next row for type "transcript", also assigns \code{Name=APOE;}.
-Apparently this input causes \code{GenomicFeatures::makeTxDbFromGFF()} to assign
+Apparently this input causes \code{txdbmaker::makeTxDbFromGFF()} to assign
 the Name value as the primary identifier for both the gene and the
 transcript, and therefore interferes with the \code{tx2gene} association
 of \code{gene_id} to \code{gene_name}, and \code{gene_id} to \code{transcript_id}.
@@ -195,9 +195,10 @@ quality gene annotations.
 }
 }
 \seealso{
-Other slicejam genome regions: 
-\code{\link{annotate_gr_by_genome_region}()},
-\code{\link{flatten_genome_regions}()},
-\code{\link{promoter_to_tss}()}
+Other slicejam genome regions:
+\code{\link[=annotate_gr_by_genome_region]{annotate_gr_by_genome_region()}},
+\code{\link[=flatten_genome_regions]{flatten_genome_regions()}},
+\code{\link[=genomic_regions_from_gtf_bed]{genomic_regions_from_gtf_bed()}},
+\code{\link[=promoter_to_tss]{promoter_to_tss()}}
 }
 \concept{slicejam genome regions}

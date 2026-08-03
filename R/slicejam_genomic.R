@@ -85,7 +85,7 @@
 #' 
 #' @family slicejam genome regions
 #' 
-#' @return `GRanges` object
+#' @returns `GRanges` object
 #' 
 #' @param gtf `character` path to a GTF file. When `gtf` is
 #'    not supplied, `rdata_file` must be supplied, in which
@@ -933,7 +933,7 @@ annotate_gr_by_genome_region <- function
    }
 
    ## combine gene_name with feature_type
-   GenomicRanges::values(genome_regions_exp)[,"gene_feature_type"] <- pasteByRow(
+   GenomicRanges::values(genome_regions_exp)[,"gene_feature_type"] <- jamba::pasteByRow(
       GenomicRanges::values(genome_regions_exp)[,c(gene_name_colname, feature_type_colname)],
       sep=" ");
 
