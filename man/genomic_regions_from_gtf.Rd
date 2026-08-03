@@ -39,7 +39,8 @@ a \code{"Promoter"}.}
 \item{upstream_tts, downstream_tts}{\code{numeric} value
 which defines the distance upstream and downstream relative
 to each gene transcript termination site, to be annotated as
-a \code{"TTS"}.}
+a \code{"TTS"}.
+When both are 0, the TTS region is not included.}
 
 \item{detectedTx}{\code{character} vector of transcripts which are
 "detected" and therefore used in determining the relevant
@@ -137,6 +138,10 @@ then subtracting exons. Introns are therefore defined as regions
 of a gene locus which are not annotated as exons in any associated
 gene transcripts for that gene locus.
 }
+
+\strong{Note}: When \code{upstream_tts==0} and \code{downstream_tts==0} the TTS
+region is not included in the genome regions, nor any downstream
+annotations.
 
 Any region of the genome which is not annotated as a Promoter, TTS,
 exon, or intron, is referred to as \code{"extragenic"}, although extragenic

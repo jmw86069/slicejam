@@ -29,6 +29,10 @@
 #' of a gene locus which are not annotated as exons in any associated
 #' gene transcripts for that gene locus.
 #' 
+#' **Note**: When `upstream_tts==0` and `downstream_tts==0` the TTS
+#' region is not included in the genome regions, nor any downstream
+#' annotations.
+#' 
 #' Any region of the genome which is not annotated as a Promoter, TTS,
 #' exon, or intron, is referred to as `"extragenic"`, although extragenic
 #' regions are not defined by this function directly. Note that we favor
@@ -99,6 +103,7 @@
 #'    which defines the distance upstream and downstream relative
 #'    to each gene transcript termination site, to be annotated as
 #'    a `"TTS"`.
+#'    When both are 0, the TTS region is not included.
 #' @param detectedTx `character` vector of transcripts which are
 #'    "detected" and therefore used in determining the relevant
 #'    gene-transcript annotations. This argument is intended to
@@ -637,7 +642,13 @@ genomic_regions_from_gtf <- function
       ",+",
       downstream_tts,
       ")");
-   
+   if (upstream_tts == 0) {
+      tts_name <- gsub("[-]", "", tts_name)
+   }
+   if (downstream_tts == 0) {
+      tts_name <- gsub("[+]", "", tts_name)
+   }
+         
    ## define genomic_regions
    if (verbose) {
       jamba::printDebug("genomic_regions_from_gtf(): ",
@@ -649,7 +660,13 @@ genomic_regions_from_gtf <- function
       introns=intronsByGene@unlistData[,c("gene_name", "gene_id")],
       tts=ttsByTxRed[,c("gene_name", "gene_id")]);
    names(genome_regions_l)[1] <- promoter_name;
-   names(genome_regions_l)[4] <- tts_name;
+   
+   # if TTS is 0-width then remove it
+   if (upstream_tts == 0 && downstream_tts == 0) {
+      genome_regions_l <- genome_regions_l[c(1, 2, 3)];
+   } else {
+      names(genome_regions_l)[4] <- tts_name;
+   }
 
    ## combine list elements into one GRanges object
    genome_regions <- GenomicRanges::GRangesList(genome_regions_l)@unlistData;
