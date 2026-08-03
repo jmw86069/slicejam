@@ -1,5 +1,9 @@
 # TODO items for Slicejam
 
+## 03aug2026
+
+* Fix bug requiring 'txdbmaker' instead of 'GenomicFeatures'.
+
 ## 02may2025
 
 * Make the installation of scripts also check for, and update, paths

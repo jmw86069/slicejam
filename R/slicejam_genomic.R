@@ -45,7 +45,7 @@
 #' ### Comments on compatible files
 #' 
 #' The function itself is capable of reading GTF or GFF3 formatted files,
-#' by calling `GenomicFeatures::makeTxDbFromGFF()` to do that heavy work.
+#' by calling `txdbmaker::makeTxDbFromGFF()` to do that heavy work.
 #' However `splicejam::makeTx2geneFromGtf()` is required to import
 #' additional gene and transcript annotations.
 #' 
@@ -63,7 +63,7 @@
 #' specifically in cases where the same value is associated with multiple
 #' rows in the file. For example, a row with type "gene", `Name=APOE;`, then
 #' on the next row for type "transcript", also assigns `Name=APOE;`.
-#' Apparently this input causes `GenomicFeatures::makeTxDbFromGFF()` to assign
+#' Apparently this input causes `txdbmaker::makeTxDbFromGFF()` to assign
 #' the Name value as the primary identifier for both the gene and the
 #' transcript, and therefore interferes with the `tx2gene` association
 #' of `gene_id` to `gene_name`, and `gene_id` to `transcript_id`.
@@ -289,7 +289,7 @@ genomic_regions_from_gtf <- function
             gtf);
       }
       refgene_txdb <- jamba::call_fn_ellipsis(
-         GenomicFeatures::makeTxDbFromGFF,
+         txdbmaker::makeTxDbFromGFF,
          file=gtf,
          ...);
       if (save_txdb) {
