@@ -7,7 +7,7 @@
 * `genomic_regions_from_gtf()` now uses 'txdbmaker' to
 convert GTF/GFF to `TxDb`, per Bioconductor changes.
 
-## New function
+## New functions
 
 * `genomic_regions_from_gtf_bed()` mimics the Rscript
 'genomic_regions_from_gtf' in that it takes both the GTF
@@ -15,6 +15,15 @@ file and a BED file, and produces a new BED `GRanges`
 with each entry annotated using the genome regions.
 Previously this process involved `genomic_regions_from_gtf()`
 then `annotate_gr_from_genome_regions()` in two steps.
+* `salmon_tss_per_gene()` determines the 'best TSS' per
+gene using Salmon quant transcript data. If given a GTF
+file, it will determine the 'best TSS' per gene, then
+use compatible transcripts (with that TSS) and determine
+the best TTS per gene, so the TSS and TTS are compatible
+in at least one transcript isoform.
+* Two internal functions to use GTF to produce `TxDb`,
+and 'tx2gene' `data.frame`, both of which will save to
+a file for future use by default.
 
 # slicejam 0.0.56.900
 

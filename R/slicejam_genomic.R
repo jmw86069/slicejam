@@ -190,14 +190,16 @@ genomic_regions_from_gtf <- function
          warning("Note detectedTx and detectedGenes are ignored when no GTF is supplied.");
       }
    }
+   genome_regions <- NULL;
    if (length(gtf) > 0) {
       if (!file.exists(gtf)) {
          stop(paste0("GTF file not found:", gtf));
       }
+      # Todo: Accept URL, and clean URL with parameters: file.gtf?format=3
       gtf_base <- gsub("[.](gff|gtf|gff3)([-_.](zip|gz|Z|tgz|tar.gz)|)$",
          "",
          ignore.case=TRUE,
-         gtf);
+         basename(gtf));
       if (length(rdata_file) == 0) {
          ## Create suitable filename for rdata_file
          short_dist_label <- function(x){
@@ -268,93 +270,35 @@ genomic_regions_from_gtf <- function
       }
    }
 
-   ## If genome_regions is not define, create it
    # if we need to create genome_regions, we need the txdb
-   #if (!exists("genome_regions")) {
    txdb_file <- paste0(gtf_base, ".txdb");
    refgene_txdb <- NULL;
-   if (!force_refresh && save_txdb) {
-      if (!file.exists(txdb_file) && file.exists(basename(txdb_file))) {
-         txdb_file <- basename(txdb_file);
-      }
-      if (file.exists(txdb_file)) {
-         if (verbose) {
-            jamba::printDebug("genomic_regions_from_gtf(): ",
-               "Loading existing txdb file:",
-               txdb_file);
-         }
-         refgene_txdb <- AnnotationDbi::loadDb(txdb_file);
-      }
-   }
-   if (length(refgene_txdb) == 0) {
-      ## 15-20 seconds for human GTF
-      if (verbose) {
-         jamba::printDebug("genomic_regions_from_gtf(): ",
-            "Creating txdb from gtf:",
-            gtf);
-      }
-      refgene_txdb <- jamba::call_fn_ellipsis(
-         txdbmaker::makeTxDbFromGFF,
-         file=gtf,
-         ...);
-      if (save_txdb) {
-         tryCatch({
-            AnnotationDbi::saveDb(refgene_txdb,
-               file=txdb_file);
-         }, error=function(e){
-            txdb_file <- basename(txdb_file);
-            AnnotationDbi::saveDb(refgene_txdb,
-               file=txdb_file);
-         });
-         if (verbose) {
-            if (file.exists(txdb_file)) {
-               jamba::printDebug("genomic_regions_from_gtf(): ",
-                  "Saved txdb to file:",
-                  txdb_file);
-            } else {
-               jamba::printDebug("genomic_regions_from_gtf(): ",
-                  "Unable to save txdb to file:",
-                  txdb_file);
-            }
-         }
-      }
-   }
-   #}
+   refgene_txdb <- convert_gtf_to_txdb(gtf,
+      save_txdb=save_txdb,
+      force_refresh=force_refresh,
+      txdb_file=txdb_file,
+      txdb_path=".",
+      verbose=verbose > 1)
+
    
    ## tx2geneDF
    if (!exists("tx2geneDF")) {
       if (verbose) {
-         jamba::printDebug("genomic_regions_from_gtf(): ",
-            "Creating tx2geneDF");
+         jamba::printDebug("genomic_regions_from_gtf(): ", "Creating tx2geneDF")
       }
       tx2gene_file <- paste0(
-         gsub("[.](gff|gff3|gtf)(|[.]gz)$", "", ignore.case=TRUE, gtf),
-         ".tx2gene.txt");
-      if (!file.exists(tx2gene_file) && file.exists(basename(tx2gene_file))) {
-         tx2gene_file <- basename(tx2gene_file);
-      }
-      if (file.exists(tx2gene_file)) {
-         tx2geneDF <- data.table::fread(tx2gene_file,
-            sep="\t",
-            data.table=FALSE);
-      } else {
-         tx2geneDF <- splicejam::makeTx2geneFromGtf(gtf,
-            geneAttrNames=geneAttrNames,
-            txAttrNames=txAttrNames,
-            geneFeatureType=geneFeatureType,
-            verbose=verbose,
-            txFeatureType=txFeatureType);
-         # save to a file
-         tryCatch({
-            data.table::fwrite(tx2geneDF,
-               file=tx2gene_file,
-               sep="\t");
-         }, error=function(e){
-            data.table::fwrite(tx2geneDF,
-               file=basename(tx2gene_file),
-               sep="\t");
-         });
-      }
+         gsub("[.](gff|gff3|gtf)(|[.]gz)$", "", ignore.case = TRUE, gtf),
+         ".tx2gene.txt"
+      )
+      # tx2geneDF <- convert_gtf_to_tx2gene()
+      tx2geneDF <- convert_gtf_to_tx2gene(
+         gtf,
+         save_tx2gene = save_txdb,
+         force_refresh = force_refresh,
+         tx2gene_file = tx2gene_file,
+         tx2gene_path = ".",
+         verbose = verbose > 1
+      )
    }
    gene_colname <- head(intersect(geneAttrNames, colnames(tx2geneDF)), 1);
    if (length(gene_colname) == 0) {
@@ -817,26 +761,41 @@ statsdf2bed <- function
 
 #' Annotate GRanges by genome_regions
 #' 
-#' Annotate GRanges by genome_regions
+#' Annotate GRanges by genome_regions, then define 'winner' using
+#' ordered feature type values, with corresponding gene data.
+#' Also define nearest gene for each feature.
 #' 
-#' This function uses the `genome_regions` data defined by
-#' `genomic_regions_from_gtf()` to annotate `GRanges` object `gr`.
+#' This function uses the 'genome_regions' `GRanges` data from
+#' `genomic_regions_from_gtf()` to annotate 'gr' `GRanges`.
+#' 
+#' It applies basic overlap, then heuristic rules to
+#' assign best feature type per region. For example, a
+#' transcript factor binding region may overlap a gene
+#' promoter, and perhaps part of the first exon of that gene.
+#' The output will include `feature_type='promoters,exon'`,
+#' and `feature_type_winner='promoters'`.
+#' Similarly, a region that overlaps 'exon' and 'intron'
+#' will have `feature_type='exon,intron'` and
+#' `feature_type_winner='exon'`.
 #' 
 #' It performs three levels of annotation:
 #' 
 #' 1. Direct overlap. Any overlapping region in `genome_regions`
 #' is added as an annotation column, where multiple regions
 #' are concatenated by commas.
-#' 2. "Winner" overlap. When there are multiple overlapping
-#' regions from step 1, the annotation(s) from the best `feature_type`
-#' are called "winner" and appended with column suffix `"_winner"`.
-#' 3. Nearest gene. The annotation of any overlapping gene body,
-#' or nearest gene body to each feature in `gr`. Columns
-#' have the prefix `"nearest_"`, and the distance is stored as
-#' `"nearest_gene_distance"`.
+#' 2. Define 'winner'. When there are multiple overlapping
+#' `feature_type`, use the best observed type.
+#' It applies this filter to the gene associations,
+#' and assigns new columns with suffix `'_winner'`.
+#' 3. Nearest gene. The nearest gene body, prioritizing
+#' direct overlap, then lowest distance to gene body.
+#' It uses column prefix `'nearest_'`, with distance
+#' stored in `'nearest_gene_distance'`.
 #' 
 #' When `mask_regions` is supplied, one additional column is
 #' added `"mask_region"` with either `TRUE` or `FALSE`.
+#' The identity of the region is not stored, only the
+#' `logical` value of whether there is any overlap.
 #' 
 #' @import data.table
 #' 
@@ -1048,6 +1007,8 @@ annotate_gr_by_genome_region <- function
    }
    
    ## is_duplicate()
+   # Define all instances of a duplicated value,
+   # not just the second and subsequent instance.
    is_duplicate <- function(x) {
       duplicated(x) | duplicated(x,
          fromLast=TRUE);
@@ -1065,39 +1026,18 @@ annotate_gr_by_genome_region <- function
       grdt_fac <- factor(grdt$feature_type,
          levels=jamba::provigrep(feature_grep_order,
             unique(grdt$feature_type)));
-      if (FALSE) {# && "global" %in% sort_optimization) {
-         grdt$feature_type <- grdt_fac;
-         sort_time <- system.time({
-            grdt0 <- jamba::mixedSortDF(grdt,
-               byCols=c("fc",
-                  "feature_type",
-                  "gene_name",
-                  "gene_id"
-                  ));
-         }, gcFirst=FALSE);
-      } else {#if ("fast" %in% sort_optimization) {
-         sort_time <- system.time({
-            grdt0 <- grdt[order(grdt_fac)];
-         }, gcFirst=FALSE);
-      }
+      # "fast" sort_optimization
+      sort_time <- system.time({
+         grdt0 <- grdt[order(grdt_fac)];
+      }, gcFirst=FALSE);
       if (verbose) {
          jamba::printDebug("",
             "elapsed sort_time (sec): ", sort_time[["elapsed"]]);
       }
       
       ## find first row per peak
-      if (TRUE) {
-         grdt0_bestft <- jamba::nameVector(subset(grdt0,
-            !duplicated(fc))[, c("feature_type", "fc"), drop=FALSE]);
-      } else {
-         grdt0_peak <- grdt0[["fc"]];
-         grdt0_peaku <- unique(grdt0_peak);
-         whichu <- match(grdt0_peaku, grdt0_peak);
-         ## First row per peak
-         grdt0_pk <- grdt0[whichu,][["fc"]];
-         grdt0_bestft <- grdt0[whichu,][["feature_type"]];
-         names(grdt0_bestft) <- grdt0_pk;
-      }
+      grdt0_bestft <- jamba::nameVector(subset(grdt0,
+         !duplicated(fc))[, c("feature_type", "fc"), drop=FALSE]);
       
       ## subset for peaks having the best feature_type
       bestftcolnames <- intersect(
@@ -1113,10 +1053,7 @@ annotate_gr_by_genome_region <- function
       }
       
       ## subset for best feature_type for each peak
-      # grdt0_hasbestft <- unique(
-      #    subset(grdt0,
-      #       grdt0[["feature_type"]] == grdt0_bestft[grdt0[["fc"]]])[, ..bestftcolnames]);
-      ## alternate syntax to avoid "..bestftcolnames"
+      # syntax to avoid "..bestftcolnames"
       grdt0_hasbestft <- unique(
          subset(grdt0,
             grdt0[["feature_type"]] == grdt0_bestft[grdt0[["fc"]]]
@@ -1130,7 +1067,8 @@ annotate_gr_by_genome_region <- function
          }, gcFirst=FALSE);
          if (verbose) {
             jamba::printDebug("",
-               "elapsed global sort_time (sec): ", sort_time[["elapsed"]]);
+               "elapsed global sort_time (sec): ",
+               sort_time[["elapsed"]]);
          }
       }
       
@@ -1158,9 +1096,6 @@ annotate_gr_by_genome_region <- function
             if ("fast" %in% sort_optimization) {
                sort_time <- system.time({
                   ## avoid using "..i"
-                  # grdt0_hasbestft_sub_dupe <- jamba::mixedSortDF(
-                  #    grdt0_hasbestft_sub[fcdupes, c(..i, "fc"), drop=FALSE],
-                  #    byCols=c(i));
                   ifc <- c(i, "fc")
                   grdt0_hasbestft_sub_dupe <- jamba::mixedSortDF(
                      grdt0_hasbestft_sub[fcdupes, ifc, with=FALSE],
@@ -1168,7 +1103,8 @@ annotate_gr_by_genome_region <- function
                }, gcFirst=FALSE);
                if (verbose) {
                   jamba::printDebug("",
-                     "elapsed fast sort_time (sec): ", sort_time[["elapsed"]]);
+                     "elapsed fast sort_time (sec): ",
+                     sort_time[["elapsed"]]);
                }
                grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
                   sep=",",
@@ -1176,6 +1112,7 @@ annotate_gr_by_genome_region <- function
                      split(as.character(grdt0_hasbestft_sub_dupe[[i]]),
                         grdt0_hasbestft_sub_dupe[["fc"]])));
             } else {
+               # 'global' has already been sorted upfront
                grdt0_bestvalue_dupe <- S4Vectors::unstrsplit(
                   sep=",",
                   IRanges::CharacterList(
@@ -1188,6 +1125,7 @@ annotate_gr_by_genome_region <- function
             grdt0_bestvalue <- c(grdt0_bestvalue_dupe,
                grdt0_bestvalue_nondupe);
          } else {
+            # no duplicates, no action to take
             grdt0_bestvalue <- jamba::nameVector(
                as.character(grdt0_hasbestft_sub[[i]]),
                grdt0_hasbestft_sub[["fc"]]);
@@ -1197,7 +1135,7 @@ annotate_gr_by_genome_region <- function
          if ("feature_type" %in% i) {
             GenomicRanges::values(gr)[, inewcolname] <- "extragenic";
          } else {
-            GenomicRanges::values(gr)[, inewcolname] <- c(NA, "")[1];
+            GenomicRanges::values(gr)[, inewcolname] <- NA_character_;
          }
          if (length(imatch) > 0) {
             GenomicRanges::values(gr)[imatch, inewcolname] <- as.character(
@@ -1272,6 +1210,7 @@ annotate_gr_by_genome_region <- function
    
    ##################################################
    ## Optional mask regions
+   # applied only as logical TRUE,FALSE any overlap
    if (length(mask_regions) > 0) {
       if (verbose) {
          jamba::printDebug("annotate_gr_by_genome_region(): ",
@@ -1310,19 +1249,48 @@ annotate_gr_by_genome_region <- function
 
 #' Flatten genome_regions
 #' 
-#' Flatten genome_regions
+#' Flatten genome_regions from `genomic_regions_from_gtf()` into
+#' genome-wide 'best feature type' for each range. It prioritizes
+#' when a region is 'Promoter' for some transcript start site (TSS),
+#' or is the 'TTS' region of a transcript termination site (TTS),
+#' or an exon for any transcript, an intron, or finally 'extragenic'.
 #' 
-#' This function is a simple wrapper method to take `genome_regions`
-#' and produce a flattened version with just the feature_type winners.
-#' It calls `annotate_gr_from_genome_regions()` in a somewhat
-#' streamlined way.
+#' This function is a simple wrapper method to take 'genome_regions'
+#' and produce a flattened version with just the equivalent of the
+#' 'feature_type_winner' column, using the best ordered feature type.
+#' It calls `annotate_gr_by_genome_region()` in a somewhat
+#' streamlined way, across the entire genome.
 #' 
-#' The chromosome lengths are either used from the `genome_regions` object,
-#' or by using argument `genome` to query UCSC data via
-#' `GenomeInfoDb::fetchExtendedChromInfoFromUCSC()`. These chromosome lengths
-#' are used to create chromosome-length `GRanges`, so that any region not
-#' described by `genome_regions` will be considered `extragenic`. In this
-#' way, every region in the genome will be represented.
+#' Chromosome lengths are taken either from the 'genome_regions'
+#' `GRanges` object, or when that it not defined it uses argument
+#' 'genome' to query UCSC with
+#' `GenomeInfoDb::fetchExtendedChromInfoFromUCSC()`.
+#' The chromosome lengths are necessary to create full
+#' chromosome output `GRanges`, so that all regions not
+#' described by 'genome_regions' are annotated
+#' as 'extragenic'.
+#' 
+#' It can be useful to prepare 'genome_regions' using specific
+#' genes via 'detectedGenes', and transcripts via 'detectedTx',
+#' so that the genome regions represent observed features,
+#' and not the comprehensive set of possible annotated
+#' features.
+#' 
+#' We have observed that the comprehensive annotations
+#' can include 40-60% features which have no observed
+#' supporting transcriptomics or chromatin epigenetic data.
+#' 
+#' The method enables creation of genome regions using
+#' supporting data to help define the landscape of gene
+#' loci and surrounding genome regions.
+#' The alternative is to use Gencode comprehensive data
+#' without this filtering step, which may define far
+#' more of the genome as 'genic' due to abnormally
+#' large potential transcript annotations.
+#' 
+#' 
+#' @returns `GRanges` with complete disjoint ranges,
+#'    representing the entire genome exactly once.
 #' 
 #' @family slicejam genome regions
 #' 
@@ -1354,7 +1322,7 @@ annotate_gr_by_genome_region <- function
 #' @export
 flatten_genome_regions <- function
 (genome_regions,
- genome="hg19",
+ genome="hg38",
  name_colname="name",
  gene_name_colname="gene_name",
  feature_type_colname="feature_type",
@@ -1463,51 +1431,63 @@ flatten_genome_regions <- function
 
 #' Convert promoter region to a single TSS position
 #' 
-#' Convert promoter region to a single TSS position
+#' Convert promoter region to a single TSS position, for example
+#' to reverse the process of applying upstream and downstream
+#' width to define a 'promoter', as in the label format
+#' 'Promoters (-2000, +200)'.
 #' 
-#' This function is called by `slicejam_analysis.Rmd`. It takes the promoter
-#' region defined around a transcript start site (TSS) by `upstream` and
-#' `downstream` distances from the TSS, and instead returns the original
-#' TSS position.
+#' This function is called by `slicejam_analysis.Rmd`.
+#' It takes the promoter region defined around a
+#' transcript start site (TSS) by `upstream` and
+#' `downstream` distances from the TSS, and instead returns
+#' the original TSS position.
 #' 
 #' ### Note
 #' 
-#' This function detects regions which are smaller than
-#' `upstream + downstream`, which would cause an error during adjustment.
-#' In this case, features at the start of the chromosome with start `0` or `1`
-#' will adjust the `GenomicRanges::end()` position, then will define the
-#' start position to have `width=1`.
-#' 
-#' In that case this function should trust the point farthest from the end
-#' of the chromosome, since that distance would not have been truncated by
-#' the chromosome size.
+#' This function will also adjust for positions near the
+#' chromosome end, where for example part of the region
+#' 'Promoters (-2000, +-200)' is beyond the chromosome.
+#' It handles this situation by using whichever side of
+#' the feature is not beyond the chromosome.
 #' 
 #' This step makes the assumption of the expected
-#' starting region width, which may not be correct and may need to be
-#' an optional argument. For example `upstream=2000,downstream=200` may
-#' imply a region with `width=2200`, or `width=2201`, depending upon
-#' the source data.
+#' starting region width, which may not be correct depending
+#' how the original operation was performed (if outside of
+#' slicejam).
+#' For example 'upstream=2000' and 'downstream=200' should
+#' define a region with `width=2200`, however it could also
+#' be `width=2201`. Use the appropriate value with
+#' argument 'minimum_width'.
 #' 
-#' Bonus points: calculate `width(gr) - upstream - downstream` and take
-#' the most frequently occuring value. If this value is `0` or `1` then
-#' proceed to check for peaks that are smaller.
+#' ## Bonus points
 #' 
+#' Calculate `width(gr) - upstream - downstream` and take
+#' the most frequently occuring value. If this value is not
+#' consistently `0` or `1` then it should be reviewed. A mixture
+#' of `0` and `1` indicates the TSS may not have been defined
+#' with consistent rules.
 #' 
-#' @return `GRanges` object after adjusting the `upstream` and `downstream`
-#'    positions, relative to the `GenomicRanges::strand()` of each feature.
+#' @returns `GRanges` object after adjusting the `upstream` and
+#'    `downstream` ranges, relative to the
+#'    `GenomicRanges::strand()` of each feature.
 #' 
 #' @family slicejam genome regions
 #' 
 #' @param gr `GRanges` object representing TSS regions defined using the
 #'    `upstream` and `downstream` argument values.
-#' @param upstream,downstream `integer` number of bases upstream, and downstream
-#'    the stranded gene TSS position, used to define
+#' @param upstream,downstream `integer` number of bases upstream, and
+#'    downstream the stranded gene TSS position, used to define
 #'    a "promoter region" around that site.
-#' @param minimum_width `integer` width below which a feature will be
-#'    adjusted only using the start or end of the range, and the output
-#'    will automatically have `width=1`.
+#'    Default is 2000, 200, respectively
+#' @param minimum_width `integer`,
+#'    width below which a feature is considered to be truncated,
+#'    to be adjusted only using the start or end of the range.
+#'    Default is the sum of 'upstream' and 'downstream'.
 #' @param positive `character` vector indicating `GenomicRanges::strand()`
-#'    values processed as positive strands.
+#'    values processed as positive strands, default assumes
+#'    either '+' or '*' are positive strand. There should
+#'    be no features with '*'.
+#' @param ... additional arguments are ignored.
 #' 
 #' @export
 promoter_to_tss <- function
@@ -1515,7 +1495,8 @@ promoter_to_tss <- function
  upstream=2000,
  downstream=200,
  minimum_width=upstream + downstream,
- positive=c("+", "*"))
+ positive=c("+", "*"),
+ ...)
 {
    ## Purpose is to convert coordinates of promoters back to original TSS
    to_process <- (GenomicRanges::width(gr) >= (minimum_width));

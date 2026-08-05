@@ -75,34 +75,50 @@ More detailed output is printed when \code{verbose=2}.}
 \item{...}{additional arguments are ignored.}
 }
 \description{
-Annotate GRanges by genome_regions
+Annotate GRanges by genome_regions, then define 'winner' using
+ordered feature type values, with corresponding gene data.
+Also define nearest gene for each feature.
 }
 \details{
-This function uses the \code{genome_regions} data defined by
-\code{genomic_regions_from_gtf()} to annotate \code{GRanges} object \code{gr}.
+This function uses the 'genome_regions' \code{GRanges} data from
+\code{genomic_regions_from_gtf()} to annotate 'gr' \code{GRanges}.
+
+It applies basic overlap, then heuristic rules to
+assign best feature type per region. For example, a
+transcript factor binding region may overlap a gene
+promoter, and perhaps part of the first exon of that gene.
+The output will include \code{feature_type='promoters,exon'},
+and \code{feature_type_winner='promoters'}.
+Similarly, a region that overlaps 'exon' and 'intron'
+will have \code{feature_type='exon,intron'} and
+\code{feature_type_winner='exon'}.
 
 It performs three levels of annotation:
 \enumerate{
 \item Direct overlap. Any overlapping region in \code{genome_regions}
 is added as an annotation column, where multiple regions
 are concatenated by commas.
-\item "Winner" overlap. When there are multiple overlapping
-regions from step 1, the annotation(s) from the best \code{feature_type}
-are called "winner" and appended with column suffix \code{"_winner"}.
-\item Nearest gene. The annotation of any overlapping gene body,
-or nearest gene body to each feature in \code{gr}. Columns
-have the prefix \code{"nearest_"}, and the distance is stored as
-\code{"nearest_gene_distance"}.
+\item Define 'winner'. When there are multiple overlapping
+\code{feature_type}, use the best observed type.
+It applies this filter to the gene associations,
+and assigns new columns with suffix \code{'_winner'}.
+\item Nearest gene. The nearest gene body, prioritizing
+direct overlap, then lowest distance to gene body.
+It uses column prefix \code{'nearest_'}, with distance
+stored in \code{'nearest_gene_distance'}.
 }
 
 When \code{mask_regions} is supplied, one additional column is
 added \code{"mask_region"} with either \code{TRUE} or \code{FALSE}.
+The identity of the region is not stored, only the
+\code{logical} value of whether there is any overlap.
 }
 \seealso{
 Other slicejam genome regions:
 \code{\link[=flatten_genome_regions]{flatten_genome_regions()}},
 \code{\link[=genomic_regions_from_gtf]{genomic_regions_from_gtf()}},
 \code{\link[=genomic_regions_from_gtf_bed]{genomic_regions_from_gtf_bed()}},
-\code{\link[=promoter_to_tss]{promoter_to_tss()}}
+\code{\link[=promoter_to_tss]{promoter_to_tss()}},
+\code{\link[=salmon_tss_per_gene]{salmon_tss_per_gene()}}
 }
 \concept{slicejam genome regions}

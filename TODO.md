@@ -2,6 +2,42 @@
 
 ## 03aug2026
 
+* Write short guide for common workflows:
+
+   * Define genome regions using GTF, detected genes/transcripts.
+   * Determine TSS and TTS using RNA-seq data.
+   * Use `splicejam::defineDetectedTx()` with RNA-seq data, then
+   `genomic_regions_from_gtf()`, to define best observed
+   genome regions in an experimental model system.
+
+* Add function 'gene-TSS-to-peak' with logic by distance.
+* Port the function to define 'best TSS' and 'best TTS':
+
+   * Goal: "one TSS per gene" using available RNA-seq.
+   * Cons: Does not account for TSS switch, or multiple equiavlent
+   TSS per gene. See optional output below.
+   * Input uses Salmon quant 'TxSE' `SummarizedExperiment` data,
+   tx2gene `data.frame`, and transcript ranges.
+   * It summarizes quant values by shared TSS to determine
+   the best represented start site.
+   * It then uses only the set of compatible TSS transcripts,
+   aggregates by TTS among those transcripts, to determine best
+   TTS termination site.
+   * The two-step process ensures the TSS and TTS is compatible
+   with at least one transcript as annotated.
+   * Default output: best TSS, best TTS per rgene.
+   * Optional output: Subset transcripts consistent
+   * Optional output: all "detected" TSS, TTS sites.
+
+* Port function to convert GTF to unspliced 'gene_body'.
+
+   * Goal: Make it easy to take new GTF and produce everything
+   needed to use for Salmon, R 'tximport', and SpliceJam.
+   * Output: new GTF rows to append to existing GTF.
+   * Output: new FASTA sequences to append for Salmon index.
+   * Output: tx2gene `data.frame` for `tximport::summarizeToGene()`.
+   * Option to sub-divide gene_body near 5-prime or 3-prime end?
+
 * DONE. Fix bug requiring 'txdbmaker' instead of 'GenomicFeatures'.
 * Create minimal files for testing: GTF, detectedTx, detectedGenes,
 and mask.bed.

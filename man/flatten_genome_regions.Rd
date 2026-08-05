@@ -6,7 +6,7 @@
 \usage{
 flatten_genome_regions(
   genome_regions,
-  genome = "hg19",
+  genome = "hg38",
   name_colname = "name",
   gene_name_colname = "gene_name",
   feature_type_colname = "feature_type",
@@ -55,27 +55,57 @@ to include only canonical chromosome names, for example starting with
 
 \item{...}{additional arguments are ignored.}
 }
+\value{
+\code{GRanges} with complete disjoint ranges,
+representing the entire genome exactly once.
+}
 \description{
-Flatten genome_regions
+Flatten genome_regions from \code{genomic_regions_from_gtf()} into
+genome-wide 'best feature type' for each range. It prioritizes
+when a region is 'Promoter' for some transcript start site (TSS),
+or is the 'TTS' region of a transcript termination site (TTS),
+or an exon for any transcript, an intron, or finally 'extragenic'.
 }
 \details{
-This function is a simple wrapper method to take \code{genome_regions}
-and produce a flattened version with just the feature_type winners.
-It calls \code{annotate_gr_from_genome_regions()} in a somewhat
-streamlined way.
+This function is a simple wrapper method to take 'genome_regions'
+and produce a flattened version with just the equivalent of the
+'feature_type_winner' column, using the best ordered feature type.
+It calls \code{annotate_gr_by_genome_region()} in a somewhat
+streamlined way, across the entire genome.
 
-The chromosome lengths are either used from the \code{genome_regions} object,
-or by using argument \code{genome} to query UCSC data via
-\code{GenomeInfoDb::fetchExtendedChromInfoFromUCSC()}. These chromosome lengths
-are used to create chromosome-length \code{GRanges}, so that any region not
-described by \code{genome_regions} will be considered \code{extragenic}. In this
-way, every region in the genome will be represented.
+Chromosome lengths are taken either from the 'genome_regions'
+\code{GRanges} object, or when that it not defined it uses argument
+'genome' to query UCSC with
+\code{GenomeInfoDb::fetchExtendedChromInfoFromUCSC()}.
+The chromosome lengths are necessary to create full
+chromosome output \code{GRanges}, so that all regions not
+described by 'genome_regions' are annotated
+as 'extragenic'.
+
+It can be useful to prepare 'genome_regions' using specific
+genes via 'detectedGenes', and transcripts via 'detectedTx',
+so that the genome regions represent observed features,
+and not the comprehensive set of possible annotated
+features.
+
+We have observed that the comprehensive annotations
+can include 40-60\% features which have no observed
+supporting transcriptomics or chromatin epigenetic data.
+
+The method enables creation of genome regions using
+supporting data to help define the landscape of gene
+loci and surrounding genome regions.
+The alternative is to use Gencode comprehensive data
+without this filtering step, which may define far
+more of the genome as 'genic' due to abnormally
+large potential transcript annotations.
 }
 \seealso{
 Other slicejam genome regions:
 \code{\link[=annotate_gr_by_genome_region]{annotate_gr_by_genome_region()}},
 \code{\link[=genomic_regions_from_gtf]{genomic_regions_from_gtf()}},
 \code{\link[=genomic_regions_from_gtf_bed]{genomic_regions_from_gtf_bed()}},
-\code{\link[=promoter_to_tss]{promoter_to_tss()}}
+\code{\link[=promoter_to_tss]{promoter_to_tss()}},
+\code{\link[=salmon_tss_per_gene]{salmon_tss_per_gene()}}
 }
 \concept{slicejam genome regions}

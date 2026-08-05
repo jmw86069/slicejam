@@ -204,6 +204,7 @@ Other slicejam genome regions:
 \code{\link[=annotate_gr_by_genome_region]{annotate_gr_by_genome_region()}},
 \code{\link[=flatten_genome_regions]{flatten_genome_regions()}},
 \code{\link[=genomic_regions_from_gtf_bed]{genomic_regions_from_gtf_bed()}},
-\code{\link[=promoter_to_tss]{promoter_to_tss()}}
+\code{\link[=promoter_to_tss]{promoter_to_tss()}},
+\code{\link[=salmon_tss_per_gene]{salmon_tss_per_gene()}}
 }
 \concept{slicejam genome regions}

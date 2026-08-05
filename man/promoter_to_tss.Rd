@@ -9,57 +9,73 @@ promoter_to_tss(
   upstream = 2000,
   downstream = 200,
   minimum_width = upstream + downstream,
-  positive = c("+", "*")
+  positive = c("+", "*"),
+  ...
 )
 }
 \arguments{
 \item{gr}{\code{GRanges} object representing TSS regions defined using the
 \code{upstream} and \code{downstream} argument values.}
 
-\item{upstream, downstream}{\code{integer} number of bases upstream, and downstream
-the stranded gene TSS position, used to define
-a "promoter region" around that site.}
+\item{upstream, downstream}{\code{integer} number of bases upstream, and
+downstream the stranded gene TSS position, used to define
+a "promoter region" around that site.
+Default is 2000, 200, respectively}
 
-\item{minimum_width}{\code{integer} width below which a feature will be
-adjusted only using the start or end of the range, and the output
-will automatically have \code{width=1}.}
+\item{minimum_width}{\code{integer},
+width below which a feature is considered to be truncated,
+to be adjusted only using the start or end of the range.
+Default is the sum of 'upstream' and 'downstream'.}
 
 \item{positive}{\code{character} vector indicating \code{GenomicRanges::strand()}
-values processed as positive strands.}
+values processed as positive strands, default assumes
+either '+' or '\emph{' are positive strand. There should
+be no features with '}'.}
+
+\item{...}{additional arguments are ignored.}
 }
 \value{
-\code{GRanges} object after adjusting the \code{upstream} and \code{downstream}
-positions, relative to the \code{GenomicRanges::strand()} of each feature.
+\code{GRanges} object after adjusting the \code{upstream} and
+\code{downstream} ranges, relative to the
+\code{GenomicRanges::strand()} of each feature.
 }
 \description{
-Convert promoter region to a single TSS position
+Convert promoter region to a single TSS position, for example
+to reverse the process of applying upstream and downstream
+width to define a 'promoter', as in the label format
+'Promoters (-2000, +200)'.
 }
 \details{
-This function is called by \code{slicejam_analysis.Rmd}. It takes the promoter
-region defined around a transcript start site (TSS) by \code{upstream} and
-\code{downstream} distances from the TSS, and instead returns the original
-TSS position.
+This function is called by \code{slicejam_analysis.Rmd}.
+It takes the promoter region defined around a
+transcript start site (TSS) by \code{upstream} and
+\code{downstream} distances from the TSS, and instead returns
+the original TSS position.
 \subsection{Note}{
 
-This function detects regions which are smaller than
-\code{upstream + downstream}, which would cause an error during adjustment.
-In this case, features at the start of the chromosome with start \code{0} or \code{1}
-will adjust the \code{GenomicRanges::end()} position, then will define the
-start position to have \code{width=1}.
-
-In that case this function should trust the point farthest from the end
-of the chromosome, since that distance would not have been truncated by
-the chromosome size.
+This function will also adjust for positions near the
+chromosome end, where for example part of the region
+'Promoters (-2000, +-200)' is beyond the chromosome.
+It handles this situation by using whichever side of
+the feature is not beyond the chromosome.
 
 This step makes the assumption of the expected
-starting region width, which may not be correct and may need to be
-an optional argument. For example \verb{upstream=2000,downstream=200} may
-imply a region with \code{width=2200}, or \code{width=2201}, depending upon
-the source data.
+starting region width, which may not be correct depending
+how the original operation was performed (if outside of
+slicejam).
+For example 'upstream=2000' and 'downstream=200' should
+define a region with \code{width=2200}, however it could also
+be \code{width=2201}. Use the appropriate value with
+argument 'minimum_width'.
+}
 
-Bonus points: calculate \code{width(gr) - upstream - downstream} and take
-the most frequently occuring value. If this value is \code{0} or \code{1} then
-proceed to check for peaks that are smaller.
+\subsection{Bonus points}{
+
+Calculate \code{width(gr) - upstream - downstream} and take
+the most frequently occuring value. If this value is not
+consistently \code{0} or \code{1} then it should be reviewed. A mixture
+of \code{0} and \code{1} indicates the TSS may not have been defined
+with consistent rules.
 }
 }
 \seealso{
@@ -67,6 +83,7 @@ Other slicejam genome regions:
 \code{\link[=annotate_gr_by_genome_region]{annotate_gr_by_genome_region()}},
 \code{\link[=flatten_genome_regions]{flatten_genome_regions()}},
 \code{\link[=genomic_regions_from_gtf]{genomic_regions_from_gtf()}},
-\code{\link[=genomic_regions_from_gtf_bed]{genomic_regions_from_gtf_bed()}}
+\code{\link[=genomic_regions_from_gtf_bed]{genomic_regions_from_gtf_bed()}},
+\code{\link[=salmon_tss_per_gene]{salmon_tss_per_gene()}}
 }
 \concept{slicejam genome regions}
