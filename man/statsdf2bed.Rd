@@ -13,12 +13,15 @@ following a statistical contrast.}
 \item{MGM}{\code{numeric} value indicating the max group mean
 threshold applied to the analyzed data.}
 
-\item{...}{additional arguments are ignored.}
-
-\item{character}{value indicating results to save: \code{"all"}
+\item{type}{\code{character} value indicating results to save: \code{"all"}
 will save results for all rows in \code{statsdf}; \code{"hits"}
 will save only those results that are considered
 statistical hits using the thresholds applied.}
+
+\item{...}{additional arguments are ignored.}
+}
+\value{
+\code{data.frame} in BED format
 }
 \description{
 Create BED format from stats results data.frame

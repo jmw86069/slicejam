@@ -157,26 +157,26 @@
 #' @param ... additional arguments are ignored.
 #' 
 #' @export
-genomic_regions_from_gtf <- function
-(gtf=NULL,
- upstream_promoter=2000,
- downstream_promoter=200,
- upstream_tts=1000,
- downstream_tts=1000,
- detectedTx=NULL,
- detectedGenes=NULL,
- geneAttrNames=c("gene_id", "gene_name"),
- txAttrNames=c("transcript_id"),
- geneFeatureType="exon",
- txFeatureType="exon",
- save_rdata=TRUE,
- rdata_file=NULL,
- save_txdb=TRUE,
- save_bed=TRUE,
- force_refresh=FALSE,
- verbose=FALSE,
- ...)
-{
+genomic_regions_from_gtf <- function(
+   gtf=NULL,
+   upstream_promoter=2000,
+   downstream_promoter=200,
+   upstream_tts=1000,
+   downstream_tts=1000,
+   detectedTx=NULL,
+   detectedGenes=NULL,
+   geneAttrNames=c("gene_id", "gene_name"),
+   txAttrNames=c("transcript_id"),
+   geneFeatureType="exon",
+   txFeatureType="exon",
+   save_rdata=TRUE,
+   rdata_file=NULL,
+   save_txdb=TRUE,
+   save_bed=TRUE,
+   force_refresh=FALSE,
+   verbose=FALSE,
+   ...
+) {
    ##
    ## genome_regions may be saved to a file already
    if (length(gtf) == 0 || !file.exists(gtf)) {
@@ -297,7 +297,11 @@ genomic_regions_from_gtf <- function
          force_refresh = force_refresh,
          tx2gene_file = tx2gene_file,
          tx2gene_path = ".",
-         verbose = verbose > 1
+         verbose = verbose > 1,
+         txAttrNames = txAttrNames,
+         geneAttrNames = geneAttrNames,
+         geneFeatureType = geneFeatureType,
+         txFeatureType = txFeatureType
       )
    }
    gene_colname <- head(intersect(geneAttrNames, colnames(tx2geneDF)), 1);
@@ -535,7 +539,7 @@ genomic_regions_from_gtf <- function
       GenomicRanges::seqnames(promoters_gr), "_",
       GenomicRanges::start(promoters_gr), "_",
       GenomicRanges::end(promoters_gr))
-   if (any(duplicated(gene_chr_start_end))) {
+   if (anyDuplicated(gene_chr_start_end)) {
       promoters_gr_shr <- promoters_gr[match(unique(gene_chr_start_end), gene_chr_start_end)];
    } else {
       promoters_gr_shr <- promoters_gr
@@ -693,11 +697,13 @@ genomic_regions_from_gtf <- function
 #'    following a statistical contrast.
 #' @param MGM `numeric` value indicating the max group mean
 #'    threshold applied to the analyzed data.
-#' @param `character` value indicating results to save: `"all"`
+#' @param type `character` value indicating results to save: `"all"`
 #'    will save results for all rows in `statsdf`; `"hits"`
 #'    will save only those results that are considered
 #'    statistical hits using the thresholds applied.
 #' @param ... additional arguments are ignored.
+#' 
+#' @returns `data.frame` in BED format
 #' 
 #' @export
 statsdf2bed <- function
@@ -840,6 +846,7 @@ statsdf2bed <- function
 #'    More detailed output is printed when `verbose=2`.
 #' @param ... additional arguments are ignored.
 #' 
+#' @returns `GenomicRanges` object with annotations
 #' @export
 annotate_gr_by_genome_region <- function
 (gr,

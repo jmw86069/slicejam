@@ -154,8 +154,8 @@ The workflow essentially re-uses \code{tximport::summarizeByGene()}
 where 'transcript_id' values are grouped by gene and transcript
 start site (TSS) to aggregate abundance estimates by TSS.
 Then the highest abundance TSS is selected as "preferred".
-\subsection{Handling both TSS and TTS}{
-
+}
+\section{Handling both TSS and TTS}{
 When providing only the 'gtf', it will calculate all TSS
 and TTS sites, and both will be processed.
 
@@ -180,8 +180,6 @@ from the 'best TSS' site.
 To retain the 'best TTS' independent of the 'best TSS',
 process the TSS \code{'tx2tss'} and the TTS \code{'tx2tts'} data
 in two independent steps.
-}
-
 \subsection{Additional Comments}{
 \itemize{
 \item Note that \code{"transcript_id"} values are not returned.
@@ -194,6 +192,7 @@ the \code{'tx2tss'} column 'tss', and comparing with the
 }
 }
 }
+
 \examples{
 jamsession::refresh_functions("salmontsspergene")
 tss_df638 <- salmon_tss_per_gene(TxSE638, groups="Group", tx2tss=tx2tss, detected_genes=env638$detected_genes, verbose=TRUE)

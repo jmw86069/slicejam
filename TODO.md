@@ -1,5 +1,10 @@
 # TODO items for Slicejam
 
+## 04sep2026
+
+* `genomic_regions_from_gtf_bed()`
+   * Consider argument `tx2gene` to shave off a little time.
+
 ## 03aug2026
 
 * Write short guide for common workflows:

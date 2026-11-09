@@ -34,7 +34,7 @@ genomic_regions_from_gtf_bed(
 upstream or downstream the gene transcript start site (TSS),
 with default 2000, 200, respectively.}
 
-\item{upstream_tts, downstream_TTS}{\code{integer} distance
+\item{upstream_tts, downstream_tts}{\code{integer} distance
 upstream or downstream the gene transcript termination site
 (TTS), with default 1000, 1000, respectively.}
 

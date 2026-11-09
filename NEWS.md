@@ -1,3 +1,8 @@
+# slicejam 0.0.58.900
+
+* Added missing arguments to `convert_gtf_to_tx2gene()`.
+* Minor syntax changes.
+
 # slicejam 0.0.57.900
 
 * Added 'txdbmaker' dependency.

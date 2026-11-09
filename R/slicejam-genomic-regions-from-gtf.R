@@ -39,7 +39,7 @@
 #' @param upstream_promoter,downstream_promoter `integer` distance
 #'    upstream or downstream the gene transcript start site (TSS),
 #'    with default 2000, 200, respectively.
-#' @param upstream_tts,downstream_TTS `integer` distance
+#' @param upstream_tts,downstream_tts `integer` distance
 #'    upstream or downstream the gene transcript termination site
 #'    (TTS), with default 1000, 1000, respectively.
 #' @param detectedTx `character` path to file with detected
@@ -191,7 +191,7 @@ genomic_regions_from_gtf_bed <- function
       }
       retvals$bed_gr <- bed_gr;
       
-      if (length(outfile) == 0 || nchar(outfile) == 0) {
+      if (length(outfile) == 0 || !nzchar(outfile)) {
          outfile <- gsub("[.](bed[0-9]*|broadPeak|narrowPeak|peak)$",
             ignore.case=TRUE,
             "",

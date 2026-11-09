@@ -74,6 +74,9 @@ More detailed output is printed when \code{verbose=2}.}
 
 \item{...}{additional arguments are ignored.}
 }
+\value{
+\code{GenomicRanges} object with annotations
+}
 \description{
 Annotate GRanges by genome_regions, then define 'winner' using
 ordered feature type values, with corresponding gene data.

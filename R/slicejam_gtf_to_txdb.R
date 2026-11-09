@@ -196,6 +196,10 @@ convert_gtf_to_tx2gene <- function(
    tx2gene_file = NULL,
    tx2gene_path = ".",
    verbose = FALSE,
+   geneAttrNames=c("gene_id", "gene_name"),
+   txAttrNames=c("transcript_id"),
+   geneFeatureType="exon",
+   txFeatureType="exon",
    ...
 ) {
    #
@@ -211,13 +215,13 @@ convert_gtf_to_tx2gene <- function(
    }
 
    define_tx2gene_filepath <- function(tx2gene_file, tx2gene_path) {
-      if (length(tx2gene_file) == 0 || nchar(tx2gene_file) == 0) {
+      if (length(tx2gene_file) == 0 || !nzchar(tx2gene_file)) {
          return(NULL)
       }
       if (grepl("[\\/]", tx2gene_file)) {
          return(tx2gene_file)
       }
-      if (length(tx2gene_path) == 0 || nchar(tx2gene_path) == 0) {
+      if (length(tx2gene_path) == 0 || !nzchar(tx2gene_path)) {
          tx2gene_path <- "."
       }
       file.path(tx2gene_file, tx2gene_path)
@@ -253,7 +257,7 @@ convert_gtf_to_tx2gene <- function(
          )
       }
       tx2geneDF <- data.table::fread(
-         txdb_filepath,
+         tx2gene_filepath,
          sep = "\t",
          data.table = FALSE
       )
@@ -267,12 +271,12 @@ convert_gtf_to_tx2gene <- function(
          )
       }
       tx2geneDF <- splicejam::makeTx2geneFromGtf(
-         gtf,
+         GTF=gtf,
          geneAttrNames = geneAttrNames,
          txAttrNames = txAttrNames,
          geneFeatureType = geneFeatureType,
-         verbose = verbose,
          txFeatureType = txFeatureType,
+         verbose = verbose,
          ...
       )
       #
