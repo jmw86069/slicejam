@@ -14,7 +14,7 @@ annotate_gr_by_genome_region(
   mask_regions = NULL,
   feature_grep_order = c("promoter", "tts", "exon", "intron", "extragenic", "intergenic",
     "."),
-  include_type = c("overlap", "winner", "nearest_gene"),
+  include_type = c("overlap", "winner", "nearest_gene", "nearest_tss"),
   sort_optimization = c("fast", "global"),
   verbose = FALSE,
   ...
@@ -67,7 +67,13 @@ annotation phases to include:
 the feature_type_winner for each entry in \code{gr}.
 \item \code{"nearest_gene"} annotates each entry in \code{gr} by the nearest gene
 in \code{genome_regions} alongside the distance to nearest gene.
+\item \code{"nearest_tss"} annotates each entry in \code{gr} by nearest gene TSS,
+derived from \code{genome_regions}, alongside the distance.
 }}
+
+\item{sort_optimization}{\code{character} string with sort optimization
+approach to use. In most cases, 'fast' is recommended, while 'global'
+is a legacy approach phase out of use.}
 
 \item{verbose}{\code{logical} indicating whether to print verbose output.
 More detailed output is printed when \code{verbose=2}.}

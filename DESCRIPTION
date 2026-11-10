@@ -1,17 +1,17 @@
 Package: slicejam
 Title: Jam Slice ChIP-seq/ATAC-seq peak slice analysis
-Version: 0.0.58.900
+Version: 0.0.58.950
 Authors@R: c(
-    person(given="James M.",
-       family="Ward",
-       email="jmw86069@gmail.com",
-       comment=c(ORCID="0000-0002-9510-2848"),
-       role=c("aut", "cre", "cph")),
-    person(given="Nolan",
-       family="Gokey",
-       email="nolangokey@gmail.com",
-       comment=c(ORCID="0000-0002-2361-1440"),
-       role=c("aut")))
+   person(given="James M.",
+      family="Ward",
+      email="jmw86069@gmail.com",
+      comment=c(ORCID="0000-0002-9510-2848"),
+      role=c("aut", "cre", "cph")),
+   person(given="Nolan",
+      family="Gokey",
+      email="nolangokey@gmail.com",
+      comment=c(ORCID="0000-0002-2361-1440"),
+      role=c("aut")))
 Description: Slice ChIP-seq/ATAC-seq peaks and perform differential analysis.
    Peak counts are prepared, imported, normalized, visualized using MA-plots
    for data QC. Statistical groups are defined and used for differential
@@ -45,7 +45,9 @@ Imports: jamba(>= 1.0.4),
    pacman,
    GenomicRanges,
    IRanges,
-   GenomeInfoDb
+   S4Vectors,
+   GenomeInfoDb,
+   tximport
 Suggests:
    farrisdata
 License: GPL-2

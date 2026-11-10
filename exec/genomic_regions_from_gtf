@@ -170,7 +170,7 @@ if (opt$debug) {
 }
 
 if (!suppressPackageStartupMessages(require(jamba))) {
-   install.packages("jmw86069/jamba");
+   install.packages("jamba");
 }
 if (!suppressPackageStartupMessages(require(jamba))) {
    stop("The jamba package is required.");

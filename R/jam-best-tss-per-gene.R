@@ -93,7 +93,9 @@
 #'    if provided.
 #'    * When both TSS and TTS data are defined, it follows rules
 #'    described in the 'Details' section.
-#' @param detected_genes `character` (default NULL) with optional subset
+#' @param detectedTx `character`, default NULL, optional subset of
+#'    detected transcripts, matching 'transcript_id'.
+#' @param detectedGenes `character`, default NULL, with optional subset
 #'    of genes that are considered "detected" by some criteria.
 #'    The TSS results will only include detected genes by default.
 #'    See `jamses::se_detected_rows()` (Github 'jmw86069/jamses')
@@ -143,8 +145,8 @@
 #'    `as(bed, "GRanges")` via the package GenomicRanges.
 #'
 #' @examples
-#' jamsession::refresh_functions("salmontsspergene")
-#' tss_df638 <- salmon_tss_per_gene(TxSE638, groups="Group", tx2tss=tx2tss, detected_genes=env638$detected_genes, verbose=TRUE)
+#' #jamsession::refresh_functions("salmontsspergene")
+#' #tss_df638 <- salmon_tss_per_gene(TxSE638, groups="Group", tx2tss=tx2tss, detectedGenes=env638$detectedGenes, verbose=TRUE)
 #'
 #' @export
 salmon_tss_per_gene <- function(
@@ -242,7 +244,7 @@ salmon_tss_per_gene <- function(
    }
 
    # validate tx2tss
-   tss_heading <- "tss"
+   # tss_heading <- "tss"
    if (length(tx2tss) > 0) {
       if (!all(grepl("_chr[0-9A-Za-z_]+_[0-9]+_[-+]$", tx2tss[, 2]))) {
          stop(paste0(
@@ -258,7 +260,7 @@ salmon_tss_per_gene <- function(
             "[gene_name]_[seqnames]_[start]_[strand]"
          ))
       }
-      tss_heading <- "tts"
+      # tss_heading <- "tts"
       if (length(tx2tss_txid) == 0) {
          tx2tss_txid <- tx2tts[, 1]
       }

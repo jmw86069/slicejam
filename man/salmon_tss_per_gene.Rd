@@ -62,6 +62,16 @@ if provided.
 described in the 'Details' section.
 }}
 
+\item{detectedGenes}{\code{character}, default NULL, with optional subset
+of genes that are considered "detected" by some criteria.
+The TSS results will only include detected genes by default.
+See \code{jamses::se_detected_rows()} (Github 'jmw86069/jamses')
+for an example of heuristics to define detected genes in
+bulk RNA-seq data.}
+
+\item{detectedTx}{\code{character}, default NULL, optional subset of
+detected transcripts, matching 'transcript_id'.}
+
 \item{countsFromAbundance}{\code{character} string passed to
 \code{tximport::summarizeToGene()}, default 'lengthScaledTPM'.}
 
@@ -100,13 +110,6 @@ also have \code{"_gb"} suffix.}
 \item{...}{additional arguments are passed to \code{jamba::rowGroupMeans()}
 for example one may customize with \code{useMedian=TRUE} to calculate
 group median expression.}
-
-\item{detected_genes}{\code{character} (default NULL) with optional subset
-of genes that are considered "detected" by some criteria.
-The TSS results will only include detected genes by default.
-See \code{jamses::se_detected_rows()} (Github 'jmw86069/jamses')
-for an example of heuristics to define detected genes in
-bulk RNA-seq data.}
 }
 \value{
 Dependent upon the input arguments:
@@ -194,8 +197,8 @@ the \code{'tx2tss'} column 'tss', and comparing with the
 }
 
 \examples{
-jamsession::refresh_functions("salmontsspergene")
-tss_df638 <- salmon_tss_per_gene(TxSE638, groups="Group", tx2tss=tx2tss, detected_genes=env638$detected_genes, verbose=TRUE)
+#jamsession::refresh_functions("salmontsspergene")
+#tss_df638 <- salmon_tss_per_gene(TxSE638, groups="Group", tx2tss=tx2tss, detectedGenes=env638$detectedGenes, verbose=TRUE)
 
 }
 \seealso{

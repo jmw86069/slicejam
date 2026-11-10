@@ -32,6 +32,9 @@ values.}
 
 \item{...}{additional arguments are ignored.}
 }
+\value{
+\code{data.frame}
+}
 \description{
 Trim multiple gene descriptions to max number of entries per field
 }

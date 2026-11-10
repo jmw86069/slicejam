@@ -1,7 +1,15 @@
-# slicejam 0.0.58.900
+# slicejam 0.0.58.950
 
 * Added missing arguments to `convert_gtf_to_tx2gene()`.
 * Minor syntax changes.
+* Added 'S4Vectors', 'tximport' to dependencies
+
+## Changes
+
+* `annotate_gr_by_genome_region()`
+   * New option to annotate to nearest TSS, in addition
+   to nearest gene region. It derives unique TSS sites
+   per gene from the `genomic_regions` object.
 
 # slicejam 0.0.57.900
 

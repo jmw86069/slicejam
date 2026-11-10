@@ -1,5 +1,9 @@
 # TODO items for Slicejam
 
+## 10nov2026
+
+* Add nearest TSS gene logic to genomic regions workflows.
+
 ## 04sep2026
 
 * `genomic_regions_from_gtf_bed()`

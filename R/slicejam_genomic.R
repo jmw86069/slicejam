@@ -559,7 +559,7 @@ genomic_regions_from_gtf <- function(
          GenomicRanges::values(tssByGeneRed@unlistData)[[gene_attr]] <- GenomicRanges::values(
             tssByGene@unlistData)[[gene_attr]][gene_match];
       }
-      promoters_gr_red <- tssByGeneRed@unlistData;
+      # promoters_gr_red <- tssByGeneRed@unlistData;
    }
    
    ## Introns
@@ -666,9 +666,9 @@ genomic_regions_from_gtf <- function(
                   c(geneAttrNames, txAttrNames)), 
                1),
             "feature_type");
-         gr_id <- paste0(GenomicRanges::seqnames(genome_regions), ":",
-            GenomicRanges::start(genome_regions), "-",
-            GenomicRanges::end(genome_regions));
+         # gr_id <- paste0(GenomicRanges::seqnames(genome_regions), ":",
+         #    GenomicRanges::start(genome_regions), "-",
+         #    GenomicRanges::end(genome_regions));
          genome_regions_names <- jamba::pasteByRow(GenomicRanges::values(
             genome_regions)[,attr_colnames],
             sep="|");
@@ -681,6 +681,8 @@ genomic_regions_from_gtf <- function(
                "Genome regions were saved in BED format:",
                bed_file);
          }
+      } else {
+         #
       }
    }
    return(genome_regions);
@@ -719,7 +721,7 @@ statsdf2bed <- function
    hit_cols <- jamba::vigrep("^hit ", colnames(statsdf));
    hit_cols_names <- gsub("^.+ ", "", hit_cols);
    hit_cols_names2 <- gsub("_v2", "",
-      jamba::makeNames(hit_cols_names));
+      jamba::makeNames(hit_cols_names), fixed = TRUE);
    names(hit_cols) <- hit_cols_names2;
    hit_cols_use <- hit_cols[jamba::unvigrep("_v[0-9]+$", hit_cols_names2)];
    
@@ -744,7 +746,7 @@ statsdf2bed <- function
    });
    ## _annoTSS_gene_name
    mgmpg <- paste0("mgm", MGM, "_annoTSS_gene_name");
-   mgmpgid <- paste0("mgm", MGM, "_annoTSS_gene_id");
+   # mgmpgid <- paste0("mgm", MGM, "_annoTSS_gene_id");
    mgmpd <- paste0("mgm", MGM, "_annoTSS_distance");
    
    statsdf$ft_winner <- gsub("[ ()].*$",
@@ -842,35 +844,44 @@ statsdf2bed <- function
 #'    the feature_type_winner for each entry in `gr`.
 #'    3. `"nearest_gene"` annotates each entry in `gr` by the nearest gene
 #'    in `genome_regions` alongside the distance to nearest gene.
+#'    4. `"nearest_tss"` annotates each entry in `gr` by nearest gene TSS,
+#'    derived from `genome_regions`, alongside the distance.
+#' @param sort_optimization `character` string with sort optimization
+#'    approach to use. In most cases, 'fast' is recommended, while 'global'
+#'    is a legacy approach phase out of use.
 #' @param verbose `logical` indicating whether to print verbose output.
 #'    More detailed output is printed when `verbose=2`.
 #' @param ... additional arguments are ignored.
 #' 
 #' @returns `GenomicRanges` object with annotations
 #' @export
-annotate_gr_by_genome_region <- function
-(gr,
- genome_regions,
- name_colname="name",
- gene_name_colname="gene_name",
- feature_type_colname="feature_type",
- gene_id_colname="gene_id",
- mask_regions=NULL,
- feature_grep_order=c("promoter", 
-    "tts",
-    "exon",
-    "intron",
-    "extragenic",
-    "intergenic",
-    "."),
- include_type=c("overlap",
-    "winner",
-    "nearest_gene"),
- sort_optimization=c("fast",
-    "global"),
- verbose=FALSE,
- ...)
-{
+annotate_gr_by_genome_region <- function(
+   gr,
+   genome_regions,
+   name_colname="name",
+   gene_name_colname="gene_name",
+   feature_type_colname="feature_type",
+   gene_id_colname="gene_id",
+   mask_regions=NULL,
+   feature_grep_order=c("promoter", 
+      "tts",
+      "exon",
+      "intron",
+      "extragenic",
+      "intergenic",
+      "."),
+   include_type=c(
+      "overlap",
+      "winner",
+      "nearest_gene",
+      "nearest_tss"
+   ),
+   sort_optimization=c(
+      "fast",
+      "global"),
+   verbose=FALSE,
+   ...
+) {
    # validate input
    include_type <- match.arg(include_type,
       several.ok=TRUE);
@@ -945,13 +956,13 @@ annotate_gr_by_genome_region <- function
          gene_feature_type=GenomicRanges::values(
             genome_regions_exp[sh1])$gene_feature_type);
       # optionally rename columns - not necessary for now
-      if (FALSE) {
-         grdt <- jamba::renameColumn(grdt,
-            from=c("gene_name",
-               "feature_type"),
-            to=c(gene_name_colname,
-               feature_type_colname));
-      }
+      # if (FALSE) {
+      #    grdt <- jamba::renameColumn(grdt,
+      #       from=c("gene_name",
+      #          "feature_type"),
+      #       to=c(gene_name_colname,
+      #          feature_type_colname));
+      # }
 
       # add gene_id if defined
       if (length(gene_id_colname) == 1) {
@@ -1214,7 +1225,79 @@ annotate_gr_by_genome_region <- function
          }
       }
    }
-   
+
+   ##################################################
+   ## gene tss distance analysis
+   if ("nearest_tss" %in% include_type) {
+      if (verbose) {
+         jamba::printDebug("annotate_gr_by_genome_region(): ",
+            "processing nearest_tss");
+      }
+      # Prepare TSS GRanges
+      genome_regions_tss <- promoter_to_tss(
+         subset(
+            genome_regions,
+            startsWith(feature_type, "Promoters")
+         )[, c("gene_name", "gene_id")]
+      )
+
+      fc_gr_tssdist <- GenomicRanges::distanceToNearest(
+         gr,
+         ignore.strand=TRUE,
+         genome_regions_tss,
+         select="all");
+      qh2 <- S4Vectors::queryHits(fc_gr_tssdist);
+      sh2 <- S4Vectors::subjectHits(fc_gr_tssdist);
+      keep_genecols <- intersect(
+         c(gene_name_colname,
+            gene_id_colname),
+         colnames(GenomicRanges::values(genome_regions)));
+      nearest_keep_genecols <- head(
+         paste0("nearest_tss_", c("gene_name", "gene_id")),
+         length(keep_genecols));
+      fc_gr_tssdist_df <- data.frame(
+         check.names=FALSE,
+         stringsAsFactors=FALSE,
+         name=GenomicRanges::values(gr[qh2])[[name_colname]],
+         nearest_tss_gene_distance=GenomicRanges::values(
+            fc_gr_tssdist)$distance,
+         jamba::renameColumn(
+            as.data.frame(GenomicRanges::values(
+               genome_regions[sh2])[, keep_genecols, drop=FALSE]),
+            from=keep_genecols,
+            to=nearest_keep_genecols)
+         );
+      
+      for (i in c(nearest_keep_genecols, "nearest_tss_gene_distance")) {
+         #printDebug(i);
+         fc_gr_tssdist_df1 <- unique(fc_gr_tssdist_df[, c(name_colname, i)]);
+         if (jamba::igrepHas("_distance", i)) {
+            fc_gr_tssdist_df1vals <- jamba::nameVector(
+               fc_gr_tssdist_df1[, c(i, name_colname), drop=FALSE]);
+            GenomicRanges::values(gr)[, i] <- c(NA, 0)[1];
+         } else {
+            fc_gr_tssdist_df1vals <- S4Vectors::unstrsplit(sep=",",
+               IRanges::CharacterList(
+                  split(fc_gr_tssdist_df1[[i]],
+                     fc_gr_tssdist_df1[[name_colname]])
+               )
+            )
+            GenomicRanges::values(gr)[, i] <- c(NA, "")[1];
+         }
+         imatch <- match(
+            names(fc_gr_tssdist_df1vals),
+            GenomicRanges::values(gr)[[name_colname]]);
+         if (length(imatch) > 0) {
+            if (jamba::igrepHas("_distance", i)) {
+               GenomicRanges::values(gr)[imatch, i] <- fc_gr_tssdist_df1vals;
+            } else {
+               GenomicRanges::values(gr)[imatch, i] <- as.character(
+                  fc_gr_tssdist_df1vals);
+            }
+         }
+      }
+   }
+
    ##################################################
    ## Optional mask regions
    # applied only as logical TRUE,FALSE any overlap
@@ -1223,7 +1306,7 @@ annotate_gr_by_genome_region <- function
          jamba::printDebug("annotate_gr_by_genome_region(): ",
             "processing mask_regions");
       }
-      if ("character" %in% class(mask_regions)) {
+      if (inherits(mask_regions, "character")) {
          mask_regions_grl <- GenomicRanges::GRangesList(
             lapply(mask_regions, function(mask_region){
             if (file.exists(mask_region)) {
@@ -1241,10 +1324,10 @@ annotate_gr_by_genome_region <- function
          }));
          mask_regions_gr <- GenomicRanges::sort(mask_regions_grl@unlistData);
       }
-      if ("GRangesList" %in% class(mask_regions_gr)) {
+      if (inherits(mask_regions_gr, "GRangesList")) {
          mask_regions_gr <- mask_regions_gr@unlistData;
       }
-      if ("GRanges" %in% class(mask_regions_gr)) {
+      if (inherits(mask_regions_gr, "GRanges")) {
          GenomicRanges::values(gr)$mask <- IRanges::overlapsAny(gr,
             mask_regions_gr);
       }
@@ -1522,7 +1605,7 @@ promoter_to_tss <- function
       end=newend);
    
    # Handle entries too small for processing above
-   if (any(!to_process)) {
+   if (!all(to_process)) {
       front_clip <- GenomicRanges::start(gr[!to_process]) <= 1;
       # A front_clip happens when one end of the feature is at
       # the front of a chromosome, suggesting it was clipped here.
@@ -1568,6 +1651,8 @@ promoter_to_tss <- function
 #' @param verbose `logical` indicating whether to print verbose output.
 #' @param ... additional arguments are ignored.
 #' 
+#' @returns `data.frame`
+#' 
 #' @export
 trim_multigenedesc <- function
 (df,
@@ -1587,7 +1672,7 @@ trim_multigenedesc <- function
    }
    gene_colnames <- intersect(gene_colnames,
       colnames(df));
-   if (!length(sep) == 1) {
+   if (length(sep) != 1) {
       stop("sep must have length=1")
    }
    multigrep <- paste0("^(",
