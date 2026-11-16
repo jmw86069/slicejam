@@ -1,9 +1,24 @@
 # slicejam 0.0.59.900
 
+## Changes
+
+* `annotate_gr_by_genome_region()`
+   * The "nearest_gene" logic no longer uses expanded
+   Promoter and TSS regions when calculating distance.
+   It now only uses exons/introns so the distance will
+   be to the strict TSS-TTS boundary region.
+   * The promoter-to-TSS calculation now recognizes the
+   'feature_type' column values to determine upstream
+   and downstream values to use.
+
 * Added 'AnnotationDbi' as formal dependency.
 * `genomic_regions_from_gtf()`
    * Much more aggressive in re-using existing txdb and
    tx2gene files.
+
+* `promoter_to_tss()`
+   * Now handles Promoters and TSS regions, by reading the
+   'feature_type' values when provided.
 
 # slicejam 0.0.58.950
 

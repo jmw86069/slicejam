@@ -1220,10 +1220,11 @@ annotate_gr_by_genome_region <- function(
          jamba::printDebug("annotate_gr_by_genome_region(): ",
             "processing nearest_gene");
       }
+      # 0.0.59.900 - remove Promoters,TTS and their expanded regions
       fc_gr_genedist <- GenomicRanges::distanceToNearest(
          gr,
          ignore.strand=TRUE,
-         genome_regions,
+         subset(genome_regions, !grepl("Promoter|TTS", feature_type)),
          select="all");
       qh2 <- S4Vectors::queryHits(fc_gr_genedist);
       sh2 <- S4Vectors::subjectHits(fc_gr_genedist);
@@ -1570,119 +1571,6 @@ flatten_genome_regions <- function
    return(genome_regions_ann);
 }
 
-#' Convert promoter region to a single TSS position
-#' 
-#' Convert promoter region to a single TSS position, for example
-#' to reverse the process of applying upstream and downstream
-#' width to define a 'promoter', as in the label format
-#' 'Promoters (-2000, +200)'.
-#' 
-#' This function is called by `slicejam_analysis.Rmd`.
-#' It takes the promoter region defined around a
-#' transcript start site (TSS) by `upstream` and
-#' `downstream` distances from the TSS, and instead returns
-#' the original TSS position.
-#' 
-#' ### Note
-#' 
-#' This function will also adjust for positions near the
-#' chromosome end, where for example part of the region
-#' 'Promoters (-2000, +-200)' is beyond the chromosome.
-#' It handles this situation by using whichever side of
-#' the feature is not beyond the chromosome.
-#' 
-#' This step makes the assumption of the expected
-#' starting region width, which may not be correct depending
-#' how the original operation was performed (if outside of
-#' slicejam).
-#' For example 'upstream=2000' and 'downstream=200' should
-#' define a region with `width=2200`, however it could also
-#' be `width=2201`. Use the appropriate value with
-#' argument 'minimum_width'.
-#' 
-#' ## Bonus points
-#' 
-#' Calculate `width(gr) - upstream - downstream` and take
-#' the most frequently occuring value. If this value is not
-#' consistently `0` or `1` then it should be reviewed. A mixture
-#' of `0` and `1` indicates the TSS may not have been defined
-#' with consistent rules.
-#' 
-#' @returns `GRanges` object after adjusting the `upstream` and
-#'    `downstream` ranges, relative to the
-#'    `GenomicRanges::strand()` of each feature.
-#' 
-#' @family slicejam genome regions
-#' 
-#' @param gr `GRanges` object representing TSS regions defined using the
-#'    `upstream` and `downstream` argument values.
-#' @param upstream,downstream `integer` number of bases upstream, and
-#'    downstream the stranded gene TSS position, used to define
-#'    a "promoter region" around that site.
-#'    Default is 2000, 200, respectively
-#' @param minimum_width `integer`,
-#'    width below which a feature is considered to be truncated,
-#'    to be adjusted only using the start or end of the range.
-#'    Default is the sum of 'upstream' and 'downstream'.
-#' @param positive `character` vector indicating `GenomicRanges::strand()`
-#'    values processed as positive strands, default assumes
-#'    either '+' or '*' are positive strand. There should
-#'    be no features with '*'.
-#' @param ... additional arguments are ignored.
-#' 
-#' @export
-promoter_to_tss <- function
-(gr,
- upstream=2000,
- downstream=200,
- minimum_width=upstream + downstream,
- positive=c("+", "*"),
- ...)
-{
-   ## Purpose is to convert coordinates of promoters back to original TSS
-   to_process <- (GenomicRanges::width(gr) >= (minimum_width));
-   
-   
-   # Process entries with at least the minimum width, on "+" or "-" strand
-   gr2pos <- (as.character(GenomicRanges::strand(gr)) %in% positive);
-   newstart <- ifelse(gr2pos[to_process],
-      GenomicRanges::start(gr[to_process]) + upstream,
-      GenomicRanges::start(gr[to_process]) + downstream - 1);
-   newend <- ifelse(gr2pos[to_process],
-      GenomicRanges::end(gr[to_process]) - downstream + 1,
-      GenomicRanges::end(gr[to_process]) - upstream);
-   GenomicRanges::ranges(gr[to_process]) <- IRanges::IRanges(
-      start=newstart,
-      end=newend);
-   
-   # Handle entries too small for processing above
-   if (!all(to_process)) {
-      front_clip <- GenomicRanges::start(gr[!to_process]) <= 1;
-      # A front_clip happens when one end of the feature is at
-      # the front of a chromosome, suggesting it was clipped here.
-      # Otherwise assume it was clipped at the far end of the chromosome.
-      # For front_clip trust the end(),
-      # otherwise trust the start().
-      newstart_small <- ifelse(front_clip,
-         ifelse(gr2pos[!to_process],
-            GenomicRanges::end(gr[!to_process]) - downstream,
-            GenomicRanges::end(gr[!to_process]) - upstream),
-         ifelse(gr2pos[!to_process],
-            GenomicRanges::start(gr[!to_process]) + upstream,
-            GenomicRanges::start(gr[!to_process]) + downstream))
-      newend_small <- ifelse(front_clip,
-         ifelse(gr2pos[!to_process],
-            (GenomicRanges::end(gr[!to_process]) - downstream) + 1,
-            (GenomicRanges::end(gr[!to_process]) - upstream) + 1),
-         ifelse(gr2pos[!to_process],
-            GenomicRanges::start(gr[!to_process]) + upstream + 1,
-            GenomicRanges::start(gr[!to_process]) + downstream + 1));
-      GenomicRanges::ranges(gr[!to_process]) <- IRanges::IRanges(
-         start=newstart_small,
-         end=newend_small);
-   }
-   return(gr);
-}
 
 #' Trim multiple gene descriptions to max number of entries per field
 #' 
