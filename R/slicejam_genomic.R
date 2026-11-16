@@ -265,6 +265,10 @@ genomic_regions_from_gtf <- function(
          }
          # only re-use genome_regions if we do not need to subset the data
          if (length(detectedTx) == 0 && length(detectedGenes) == 0) {
+            if (verbose) {
+               jamba::printDebug("genomic_regions_from_gtf(): ",
+                  "Returning genome_regions with no subsetting.");
+            }
             return(genome_regions);
          }
       }
@@ -279,13 +283,20 @@ genomic_regions_from_gtf <- function(
       txdb_path <- dirname(gtf);
    }
    refgene_txdb <- NULL;
+   if (verbose) {
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "Calling convert_gtf_to_txdb() with txdb_file:",
+         txdb_file,
+         ", txdb_path:",
+         txdb_path);
+   }
    refgene_txdb <- convert_gtf_to_txdb(
       gtf,
       save_txdb=save_txdb,
       force_refresh=force_refresh,
       txdb_file=txdb_file,
       txdb_path=txdb_path,
-      verbose=verbose > 1
+      verbose=verbose
    )
 
    
@@ -305,13 +316,20 @@ genomic_regions_from_gtf <- function(
          tx2gene_path <- dirname(gtf);
       }
       # tx2geneDF <- convert_gtf_to_tx2gene()
+      if (verbose) {
+         jamba::printDebug("genomic_regions_from_gtf(): ",
+            "Calling convert_gtf_to_tx2gene() with tx2gene_file:",
+            tx2gene_file,
+            ", tx2gene_path:",
+            tx2gene_path);
+      }
       tx2geneDF <- convert_gtf_to_tx2gene(
          gtf,
          save_tx2gene = save_txdb,
          force_refresh = force_refresh,
          tx2gene_file = tx2gene_file,
          tx2gene_path = tx2gene_path,
-         verbose = verbose > 1,
+         verbose = verbose,
          txAttrNames = txAttrNames,
          geneAttrNames = geneAttrNames,
          geneFeatureType = geneFeatureType,
