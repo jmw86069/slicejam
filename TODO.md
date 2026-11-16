@@ -3,6 +3,7 @@
 ## 10nov2026
 
 * DONE. Add nearest TSS gene logic to genomic regions workflows.
+* Use stranded distances for 'nearest_gene' and 'nearest_tss'.
 
 ## 04sep2026
 
