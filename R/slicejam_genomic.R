@@ -539,6 +539,14 @@ genomic_regions_from_gtf <- function(
          ttsByGene@unlistData)[[gene_attr]][gene_match];
    }
    ttsByTxRed <- ttsByGeneRed@unlistData;
+   if (verbose) {
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "head(ttsByTx):");
+      print(head(ttsByTx));
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "head(ttsByTxRed):");
+      print(head(ttsByTxRed));
+   }
    
    ## promoters
    ## Use default values for GenomicFeatures::promoters()
@@ -575,6 +583,11 @@ genomic_regions_from_gtf <- function(
       promoters_gr_shr <- promoters_gr[match(unique(gene_chr_start_end), gene_chr_start_end)];
    } else {
       promoters_gr_shr <- promoters_gr
+   }
+   if (verbose) {
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "head(promoters_gr):");
+      print(head(promoters_gr));
    }
    # promoters_gr reduce() per gene
    if (1 == 2) {
