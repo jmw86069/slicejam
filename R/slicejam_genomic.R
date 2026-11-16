@@ -660,6 +660,12 @@ genomic_regions_from_gtf <- function(
    } else {
       names(genome_regions_l)[4] <- tts_name;
    }
+   if (verbose) {
+      jamba::printDebug("genomic_regions_from_gtf(): ",
+         "sdim(genome_regions_l):");
+      print(jamba::sdim(genome_regions_l));
+      print(lapply(genome_regions_l, head, 3));
+   }
 
    ## combine list elements into one GRanges object
    genome_regions <- GenomicRanges::GRangesList(genome_regions_l)@unlistData;
