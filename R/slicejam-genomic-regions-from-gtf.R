@@ -111,7 +111,8 @@ genomic_regions_from_gtf_bed <- function
       jamba::printDebug("Confirming genomic regions data.");
    }
    st1 <- system.time({
-      genome_regions <- genomic_regions_from_gtf(gtf=gtf,
+      genome_regions <- genomic_regions_from_gtf(
+         gtf=gtf,
          upstream_promoter=upstream_promoter,
          downstream_promoter=downstream_promoter,
          upstream_tts=upstream_tts,
@@ -122,7 +123,8 @@ genomic_regions_from_gtf_bed <- function
          rdata_file=rdata_file,
          save_txdb=save_txdb,
          force_refresh=force_refresh,
-         verbose=verbose);
+         verbose=verbose
+      );
    })
    if (verbose) {
       jamba::printDebug("Genomic regions time elapsed: ",

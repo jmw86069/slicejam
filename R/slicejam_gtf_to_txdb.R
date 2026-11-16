@@ -60,7 +60,7 @@ convert_gtf_to_txdb <- function
       if (length(txdb_path) == 0 || !nzchar(txdb_path)) {
          txdb_path <- "."
       }
-      file.path(txdb_file, txdb_path)
+      file.path(txdb_path, txdb_file)
       #
    }
    txdb_filepath <- NULL;
