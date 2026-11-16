@@ -1,3 +1,10 @@
+# slicejam 0.0.59.900
+
+* Added 'AnnotationDbi' as formal dependency.
+* `genomic_regions_from_gtf()`
+   * Much more aggressive in re-using existing txdb and
+   tx2gene files.
+
 # slicejam 0.0.58.950
 
 * Added missing arguments to `convert_gtf_to_tx2gene()`.

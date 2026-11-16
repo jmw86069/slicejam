@@ -1,6 +1,6 @@
 Package: slicejam
 Title: Jam Slice ChIP-seq/ATAC-seq peak slice analysis
-Version: 0.0.58.950
+Version: 0.0.59.900
 Authors@R: c(
    person(given="James M.",
       family="Ward",
@@ -47,7 +47,8 @@ Imports: jamba(>= 1.0.4),
    IRanges,
    S4Vectors,
    GenomeInfoDb,
-   tximport
+   tximport,
+   AnnotationDbi
 Suggests:
    farrisdata
 License: GPL-2

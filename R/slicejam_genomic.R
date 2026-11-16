@@ -272,13 +272,21 @@ genomic_regions_from_gtf <- function(
 
    # if we need to create genome_regions, we need the txdb
    txdb_file <- paste0(gtf_base, ".txdb");
+   # 0.0.59.900: try harder to look for existing txdb file
+   txdb_path <- ".";
+   if (!file.exists(file.path(txdb_path, txdb_file)) && 
+      file.exists(file.path(dirname(gtf), txdb_file))) {
+      txdb_path <- dirname(gtf);
+   }
    refgene_txdb <- NULL;
-   refgene_txdb <- convert_gtf_to_txdb(gtf,
+   refgene_txdb <- convert_gtf_to_txdb(
+      gtf,
       save_txdb=save_txdb,
       force_refresh=force_refresh,
       txdb_file=txdb_file,
-      txdb_path=".",
-      verbose=verbose > 1)
+      txdb_path=txdb_path,
+      verbose=verbose > 1
+   )
 
    
    ## tx2geneDF
@@ -287,16 +295,22 @@ genomic_regions_from_gtf <- function(
          jamba::printDebug("genomic_regions_from_gtf(): ", "Creating tx2geneDF")
       }
       tx2gene_file <- paste0(
-         gsub("[.](gff|gff3|gtf)(|[.]gz)$", "", ignore.case = TRUE, gtf),
+         gsub("[.](gff|gff3|gtf)(|[.]gz)$", "", ignore.case = TRUE, gtf_base),
          ".tx2gene.txt"
       )
+      # 0.0.59.900: try harder to look for existing txdb file
+      tx2gene_path <- ".";
+      if (!file.exists(file.path(tx2gene_path, tx2gene_file)) && 
+         file.exists(file.path(dirname(gtf), tx2gene_file))) {
+         tx2gene_path <- dirname(gtf);
+      }
       # tx2geneDF <- convert_gtf_to_tx2gene()
       tx2geneDF <- convert_gtf_to_tx2gene(
          gtf,
          save_tx2gene = save_txdb,
          force_refresh = force_refresh,
          tx2gene_file = tx2gene_file,
-         tx2gene_path = ".",
+         tx2gene_path = tx2gene_path,
          verbose = verbose > 1,
          txAttrNames = txAttrNames,
          geneAttrNames = geneAttrNames,

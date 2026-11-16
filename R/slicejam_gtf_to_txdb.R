@@ -51,13 +51,13 @@ convert_gtf_to_txdb <- function
    }
 
    define_txdb_filepath <- function(txdb_file, txdb_path) {
-      if (length(txdb_file) == 0 || nchar(txdb_file) == 0) {
+      if (length(txdb_file) == 0 || !nzchar(txdb_file)) {
          return(NULL)
       }
       if (grepl("[\\/]", txdb_file)) {
          return(txdb_file);
       }
-      if (length(txdb_path) == 0 || nchar(txdb_path) == 0) {
+      if (length(txdb_path) == 0 || !nzchar(txdb_path)) {
          txdb_path <- "."
       }
       file.path(txdb_file, txdb_path)

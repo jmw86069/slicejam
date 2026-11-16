@@ -2,7 +2,7 @@
 
 ## 10nov2026
 
-* Add nearest TSS gene logic to genomic regions workflows.
+* DONE. Add nearest TSS gene logic to genomic regions workflows.
 
 ## 04sep2026
 
