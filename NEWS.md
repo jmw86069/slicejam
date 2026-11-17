@@ -3,6 +3,7 @@
 * Major changes:
    * Distance is now stranded, relative to the gene strand.
    * Nearest gene no longer uses the expanded Promoters.
+   * Fixed orientation of expanded region for Promoters.
 
 ## New functions
 

@@ -69,26 +69,26 @@
 #' @param ... additional arguments are ignored.
 #' 
 #' @export
-genomic_regions_from_gtf_bed <- function
-(gtf,
- bed=NULL,
- upstream_promoter=2000,
- downstream_promoter=200,
- upstream_tts=1000,
- downstream_tts=1000,
- detectedTx=NULL,
- detectedGenes=NULL,
- mask=NULL,
- save_outfile=FALSE,
- outfile=NULL,
- save_rdata=FALSE,
- rdata_file=NULL,
- save_txdb=TRUE,
- force_refresh=FALSE,
- max_threads=4,
- verbose=FALSE,
- ...)
-{
+genomic_regions_from_gtf_bed <- function(
+   gtf,
+   bed=NULL,
+   upstream_promoter=2000,
+   downstream_promoter=200,
+   upstream_tts=1000,
+   downstream_tts=1000,
+   detectedTx=NULL,
+   detectedGenes=NULL,
+   mask=NULL,
+   save_outfile=FALSE,
+   outfile=NULL,
+   save_rdata=FALSE,
+   rdata_file=NULL,
+   save_txdb=TRUE,
+   force_refresh=FALSE,
+   max_threads=4,
+   verbose=FALSE,
+   ...
+) {
    #
    retvals <- list();
 
@@ -182,11 +182,14 @@ genomic_regions_from_gtf_bed <- function
       if (verbose) {
          jamba::printDebug("Annotating bed with genome regions.");
       }
-      st2 <- system.time({bed_gr <- annotate_gr_by_genome_region(
-         gr=fc_gr,
-         genome_regions=genome_regions,
-         mask_regions=mask,
-         verbose=verbose > 1)});
+      st2 <- system.time({
+         bed_gr <- annotate_gr_by_genome_region(
+            gr=fc_gr,
+            genome_regions=genome_regions,
+            mask_regions=mask,
+            verbose=verbose > 1
+         )
+      });
       if (verbose) {
          jamba::printDebug("Annotation time elapsed: ",
          unlist(st2["elapsed"]));
