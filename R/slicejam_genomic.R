@@ -1387,9 +1387,17 @@ annotate_gr_by_genome_region <- function(
          );
       
       for (i in c(nearest_keep_genecols, "nearest_tss_gene_distance")) {
-         #printDebug(i);
+         if (verbose) {
+            jamba::printDebug("annotate_gr_from_genome_regions(): ",
+               "Adding nearest gene column '", i, "'");
+         }
          fc_gr_tssdist_df1 <- unique(fc_gr_tssdist_df[, c(name_colname, i)]);
          if (jamba::igrepHas("_distance", i)) {
+            if (anyDuplicated(fc_gr_tssdist_df1[[name_colname]])) {
+               fc_gr_tssdist_df1 <- subset(
+                  fc_gr_tssdist_df[, c(name_colname, i)],
+                  !duplicated(fc_gr_tssdist_df[[name_colname]]));
+            }
             fc_gr_tssdist_df1vals <- jamba::nameVector(
                fc_gr_tssdist_df1[, c(i, name_colname), drop=FALSE]);
             GenomicRanges::values(gr)[, i] <- c(NA, 0)[1];
@@ -1405,6 +1413,10 @@ annotate_gr_by_genome_region <- function(
          imatch <- match(
             names(fc_gr_tssdist_df1vals),
             GenomicRanges::values(gr)[[name_colname]]);
+         if (verbose) {
+            jamba::printDebug("annotate_gr_from_genome_regions(): ",
+               "sum(is.na(imatch)): ", sum(is.na(imatch)));
+         }
          if (length(imatch) > 0) {
             if (jamba::igrepHas("_distance", i)) {
                GenomicRanges::values(gr)[imatch, i] <- fc_gr_tssdist_df1vals;

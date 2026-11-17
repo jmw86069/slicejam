@@ -187,7 +187,7 @@ genomic_regions_from_gtf_bed <- function(
             gr=fc_gr,
             genome_regions=genome_regions,
             mask_regions=mask,
-            verbose=verbose > 1
+            verbose=verbose
          )
       });
       if (verbose) {
