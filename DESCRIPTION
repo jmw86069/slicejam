@@ -1,6 +1,6 @@
 Package: slicejam
 Title: Jam Slice ChIP-seq/ATAC-seq peak slice analysis
-Version: 0.0.59.900
+Version: 0.0.60.900
 Authors@R: c(
    person(given="James M.",
       family="Ward",
@@ -50,7 +50,8 @@ Imports: jamba(>= 1.0.4),
    tximport,
    AnnotationDbi
 Suggests:
-   farrisdata
+    farrisdata,
+    testthat (>= 3.0.0)
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
@@ -69,3 +70,4 @@ BugReports: http://github.com/jmw86069/slicejam/issues
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.0.0.9000
+Config/testthat/edition: 3

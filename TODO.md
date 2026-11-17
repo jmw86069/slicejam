@@ -1,9 +1,14 @@
 # TODO items for Slicejam
 
+## 17nov2026
+
+* Add unit tests for the commandline workflow.
+* Add unit tests for 'mergeSplitCountBed.sh'.
+
 ## 10nov2026
 
 * DONE. Add nearest TSS gene logic to genomic regions workflows.
-* Use stranded distances for 'nearest_gene' and 'nearest_tss'.
+* DONE. Use stranded distances for 'nearest_gene' and 'nearest_tss'.
 
 ## 04sep2026
 

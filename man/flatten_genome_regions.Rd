@@ -103,6 +103,7 @@ large potential transcript annotations.
 \seealso{
 Other slicejam genome regions:
 \code{\link[=annotate_gr_by_genome_region]{annotate_gr_by_genome_region()}},
+\code{\link[=distanceToNearestStranded]{distanceToNearestStranded()}},
 \code{\link[=genomic_regions_from_gtf]{genomic_regions_from_gtf()}},
 \code{\link[=genomic_regions_from_gtf_bed]{genomic_regions_from_gtf_bed()}},
 \code{\link[=promoter_to_tss]{promoter_to_tss()}},

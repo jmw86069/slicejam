@@ -115,6 +115,7 @@ the BED file.
 \seealso{
 Other slicejam genome regions:
 \code{\link[=annotate_gr_by_genome_region]{annotate_gr_by_genome_region()}},
+\code{\link[=distanceToNearestStranded]{distanceToNearestStranded()}},
 \code{\link[=flatten_genome_regions]{flatten_genome_regions()}},
 \code{\link[=genomic_regions_from_gtf]{genomic_regions_from_gtf()}},
 \code{\link[=promoter_to_tss]{promoter_to_tss()}},

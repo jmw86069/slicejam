@@ -905,6 +905,54 @@ statsdf2bed <- function
 #' @param ... additional arguments are ignored.
 #' 
 #' @returns `GenomicRanges` object with annotations
+#' 
+#' @examples
+#' genome_regions1 <- GenomicRanges::GRanges(
+#'    seqnames=c("chr1"),
+#'    ranges=IRanges::IRanges(
+#'       start=c(1501, 3001, 3901, 5501, 6001, 6501, 6001),
+#'         end=c(3500, 3900, 5500, 6000, 6500, 7000, 8000),
+#'    ),
+#'    strand=c("+"),
+#'    gene_name="TESTGENE1",
+#'    gene_id="ENSG0000001.1",
+#'    feature_type=c("Promoters (-1500,+500)", "exon", "intron",
+#'       "exon", "intron", "exon", "TTS (-1000,+1000)"
+#'    )
+#' )
+#' genome_regions2 <- genome_regions1;
+#' GenomicRanges::end(genome_regions2) <- GenomicRanges::end(genome_regions1) + 35000;
+#' GenomicRanges::start(genome_regions2) <- GenomicRanges::start(genome_regions1) + 35000;
+#' GenomicRanges::values(genome_regions2)$gene_name <- "TESTGENE2";
+#' GenomicRanges::values(genome_regions2)$gene_id <- "ENSG0000002.1"
+#' 
+#' start3 <- 28001 - GenomicRanges::end(genome_regions1);
+#' end3 <- 28001 - GenomicRanges::start(genome_regions1);
+#' genome_regions3 <- GenomicRanges::GRanges(
+#'    seqnames=c("chr1"),
+#'    ranges=IRanges::IRanges(start=rev(start3), end=rev(end3)),
+#'    strand="-",
+#'    gene_name="TESTGENE3",
+#'    gene_id="ENSG0000003.1",
+#'    feature_type=rev(values(genome_regions1)$feature_type)
+#' )
+#' 
+#' genome_regions <- c(genome_regions1, genome_regions2, genome_regions3)
+#' 
+#' peaks <- GenomicRanges::GRanges(
+#'    seqnames=c("chr1"),
+#'    ranges=IRanges::IRanges(
+#'       start=c(1201, 1801, 3841, 4501, 10001, 19001, 30001, 36001),
+#'         end=c(1300, 1900, 3940, 4600, 10100, 19100, 30100, 36100),
+#'    ),
+#'    strand=c("+"),
+#'    gene_name=paste0("peak_00", 1:8),
+#'    gene_id=paste0("peaks"),
+#'    feature_type="peak"
+#' )
+#' peaks_anno <- annotate_gr_by_genome_region(peaks, genome_regions)
+#' peaks_anno
+#' 
 #' @export
 annotate_gr_by_genome_region <- function(
    gr,
@@ -1221,17 +1269,21 @@ annotate_gr_by_genome_region <- function(
             "processing nearest_gene");
       }
       # 0.0.59.900 - remove Promoters,TTS and their expanded regions
-      fc_gr_genedist <- GenomicRanges::distanceToNearest(
-         gr,
+      genome_regions_sub <- subset(
+         genome_regions,
+         !grepl("Promoter|TTS", ignore.case=TRUE, feature_type))
+      fc_gr_genedist <- distanceToNearestStranded(
+         x=gr,
+         subject=genome_regions_sub,
          ignore.strand=TRUE,
-         subset(genome_regions, !grepl("Promoter|TTS", feature_type)),
-         select="all");
+         select="all"
+      );
       qh2 <- S4Vectors::queryHits(fc_gr_genedist);
       sh2 <- S4Vectors::subjectHits(fc_gr_genedist);
       keep_genecols <- intersect(
          c(gene_name_colname,
             gene_id_colname),
-         colnames(GenomicRanges::values(genome_regions)));
+         colnames(GenomicRanges::values(genome_regions_sub)));
       nearest_keep_genecols <- head(
          paste0("nearest_", c("gene_name", "gene_id")),
          length(keep_genecols));
@@ -1243,7 +1295,7 @@ annotate_gr_by_genome_region <- function(
             fc_gr_genedist)$distance,
          jamba::renameColumn(
             as.data.frame(GenomicRanges::values(
-               genome_regions[sh2])[, keep_genecols, drop=FALSE]),
+               genome_regions_sub[sh2])[, keep_genecols, drop=FALSE]),
             from=keep_genecols,
             to=nearest_keep_genecols)
          );
@@ -1290,20 +1342,21 @@ annotate_gr_by_genome_region <- function(
          subset(
             genome_regions,
             startsWith(feature_type, "Promoters")
-         )[, c("gene_name", "gene_id")]
+         )[, c("gene_name", "gene_id", "feature_type"), drop=FALSE]
       )
 
-      fc_gr_tssdist <- GenomicRanges::distanceToNearest(
-         gr,
+      fc_gr_tssdist <- distanceToNearestStranded(
+         x=gr,
+         subject=genome_regions_tss,
          ignore.strand=TRUE,
-         genome_regions_tss,
-         select="all");
+         select="all"
+      );
       qh2 <- S4Vectors::queryHits(fc_gr_tssdist);
       sh2 <- S4Vectors::subjectHits(fc_gr_tssdist);
       keep_genecols <- intersect(
          c(gene_name_colname,
             gene_id_colname),
-         colnames(GenomicRanges::values(genome_regions)));
+         colnames(GenomicRanges::values(genome_regions_tss)));
       nearest_keep_genecols <- head(
          paste0("nearest_tss_", c("gene_name", "gene_id")),
          length(keep_genecols));
@@ -1315,7 +1368,7 @@ annotate_gr_by_genome_region <- function(
             fc_gr_tssdist)$distance,
          jamba::renameColumn(
             as.data.frame(GenomicRanges::values(
-               genome_regions[sh2])[, keep_genecols, drop=FALSE]),
+               genome_regions_tss[sh2])[, keep_genecols, drop=FALSE]),
             from=keep_genecols,
             to=nearest_keep_genecols)
          );
@@ -1511,7 +1564,8 @@ flatten_genome_regions <- function
          chrom_info <- subset(chrom_info, !is_noncanonical_ci);
       }
       pmax_na <- function(...){pmax(..., na.rm=TRUE)}
-      seq_match <- Reduce("pmax_na",
+      seq_match <- Reduce(
+         pmax_na,
          list(
             match(
                GenomeInfoDb::seqlevels(genome_regions),

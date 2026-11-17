@@ -1,3 +1,47 @@
+# slicejam 0.0.60.900
+
+* Major changes:
+   * Distance is now stranded, relative to the gene strand.
+   * Nearest gene no longer uses the expanded Promoters.
+
+## New functions
+
+* `distanceToNearestStranded()` is an extension to
+`GenomicRanges::distanceToNearest()` which returns the
+stranded distance to nearest feature, negative for upstream
+and positive for downstream, relative to the subject.
+* `get_stranded_distance()` (internal) calculates stranded distance,
+which uses negative values for upstream, positive for downstream,
+relative to the subject.
+
+## Substantial Changes
+
+* `annotate_gr_by_genomic_region()`
+   * Now reports stranded distance with positive values for
+   downstream peaks, and negative values for upstream peaks,
+   relative the strand of the gene.
+   * The "nearest_gene_name" now uses the strict TSS-to-TTS range,
+   **excluding** the expanded promoter and TTS regions.
+   * Version 0.0.59.900 and previous:
+      * reported absolute distance
+      * reported distance to the expanded promoter and TSS region
+
+   * Version 0.0.60.900 and newer:
+      * reports stranded distance
+      * reports distance to the strict TSS-to-TSS region, not promoter.
+
+* `promoter_to_tss()`
+   * now interprets the `feature_type` to determine the
+   upstream and downstream widths for Promoters.
+   * It also recognizes TTS and will return the single TTS position.
+   * Only in version 0.0.59.900 would it assume -2000 to +200 for
+   all features unless specified by the user.
+
+## Unit Tests
+
+* Added unit tests to `annotate_gr_from_genome_region()`, covering
+output for most of the core functions.
+
 # slicejam 0.0.59.900
 
 ## Changes
